@@ -1,0 +1,22 @@
+# 依赖与构建产物
+node_modules/
+out/
+dist/
+*.tsbuildinfo
+.DS_Store
+
+# 走查与探针：scratch 下那些 *-user-data/ 里是**真的 SQLite 库**（走查用的示例库也是库），
+# 一起提交等于把笔记发出去，所以整个目录不入库
+scratch/
+
+# 设计过程的东西按「源码公开、过程文档不公开」的约定留在本地
+docs/
+spark-output/
+prototype/
+scripts/build-brief.mjs
+scripts/build-desktop-preview.mjs
+scripts/build-prototype.mjs
+
+# 日志与临时
+*.log
+*.tmp

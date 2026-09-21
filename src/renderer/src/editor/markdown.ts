@@ -1,0 +1,385 @@
+/** Markdown ⇄ 富文本树：全应用只有这一套转换规则，两个编辑器共用。
+ *
+ *  Tiptap 的文档是一棵富文本树，Markdown 只是它的**序列化格式**——这点和 Typora /
+ *  Obsidian 实时预览不一样，那边的文档本身就是 Markdown 源码（见
+ *  docs/功能与架构设计.md §五 选型修订 3）。所以在两棵表示之间来回过一趟，
+ *  顺手会动一些写法：`* 项目符号` 变 `-`、`__粗体__` 变 `**粗体**`。
+ *
+ *  往返前后的**树**一样，就说明一个字都没丢，只是写法被规范了 —— 这是
+ *  roundTrip() 里那道闸门的判据。 */
+
+import { InputRule, Node, mergeAttributes, type AnyExtension, type JSONContent } from '@tiptap/core'
+import { Markdown, MarkdownManager } from '@tiptap/markdown'
+import StarterKit from '@tiptap/starter-kit'
+import { TaskItem, TaskList } from '@tiptap/extension-list'
+import { TableKit } from '@tiptap/extension-table'
+import Image from '@tiptap/extension-image'
+import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight'
+import { createLowlight, common } from 'lowlight'
+import { TagRefs } from '@/editor/tagRefs'
+import { normalizeLinkKey, resolveDateRef, splitLinkInner } from '../../../shared/links'
+import type { OutgoingLink } from '../../../shared/types'
+
+/** 渲染进程这边给双链节点接的两根线：怎么染色、点了去哪。
+ *  用注入而不是让 markdown.ts 直接 import store：store 要用 roundTrip() 做闸门，
+ *  反过来再 import 就成环了。 */
+export interface LinkBridge {
+  /** 正文里的写法（如 `昨天`、`Kestrel 设计`）→ 落点；悬空返回 null */
+  resolve(targetRaw: string): OutgoingLink | null
+  /** 点链接。nodeKey 为 null 表示目标还不存在，只提示不跳 */
+  open(nodeKey: string | null, label: string): void
+  /** 出链落点变了要重新染色：节点视图是裸 DOM，React 不会替它重画 */
+  subscribe(cb: () => void): () => void
+  /** 点正文里的 `#标签`（§6）：切到标签视图并选中它。走的是 store，不碰文档 */
+  openTag(name: string): void
+}
+
+/** §9.1 的四种形态：实线日记 / 双线文章 / 药丸底主题 / 虚线悬空。
+ *  第五种「灰点未链接提及」是 v2 的未链接提及，这里出不来。 */
+export function linkClass(hit: OutgoingLink | null): string {
+  if (!hit || hit.targetType === null) return 'wl-dangling'
+  if (hit.targetType === 'topic') return 'wl-topic'
+  return hit.targetType === 'diary' ? 'wl-diary' : 'wl-article'
+}
+
+/** 正文里的写法 → 出链表里的那一行。
+ *
+ *  日期引用得先按**源记录自己的 entry_date** 换算绝对日期（见 shared/links.ts）：
+ *  翻去年的日记时正文里的「昨天」指的是那一天的昨天，用 today 会查错目标，
+ *  链接就会从实线掉成虚线。 */
+export function resolveLink(
+  outgoing: OutgoingLink[],
+  targetRaw: string,
+  entryDate: string
+): OutgoingLink | null {
+  const key = resolveDateRef(targetRaw, entryDate) ?? normalizeLinkKey(targetRaw)
+  return key ? linkByKey(outgoing, key) : null
+}
+
+/** 按规范化查找键取落点。源码模式拿到的就是键（findLinkRanges 已经算好了），
+ *  不用再过一遍日期换算 */
+export function linkByKey(outgoing: OutgoingLink[], key: string): OutgoingLink | null {
+  return outgoing.find((l) => l.key === key) ?? null
+}
+
+/** `[[Kestrel 设计|这个项目]]` 在界面上显示成什么：有别名用别名，否则用目标（去掉锚点） */
+export function rawLabel(raw: string): string {
+  const inner = raw.replace(/^\[\[|\]\]$/g, '')
+  const bar = inner.indexOf('|')
+  if (bar !== -1) {
+    const alias = inner.slice(bar + 1).trim()
+    if (alias) return alias
+  }
+  const left = bar === -1 ? inner : inner.slice(0, bar)
+  const hash = left.indexOf('#')
+  return (hash === -1 ? left : left.slice(0, hash)).trim()
+}
+
+/** `[[ 目标 #锚点 |别名 ]]` → 节点属性。目标为空（`[[#某标题]]`）不是链接。 */
+function wikiAttrs(raw: string): {
+  raw: string
+  target: string
+  alias: string | null
+  anchor: string | null
+} | null {
+  const inner = /^\[\[([^[\]\n]*)\]\]$/.exec(raw)?.[1]
+  if (inner === undefined) return null
+  const parts = splitLinkInner(inner)
+  return parts ? { raw, target: parts.target, alias: parts.alias, anchor: parts.anchor } : null
+}
+
+/** 双链节点：inline atom。
+ *
+ *  必须是真节点，不能只靠文本样式：marked 序列化时会把 `[` 转义成 `\[`，
+ *  存回去就成了 `\[\[x\]\]`，链接层的解析器要的是字面 `[[`，那一篇的双链会
+ *  在第一次保存时全掉，而且每存一次多一层反斜杠。做成 atom 并让
+ *  renderMarkdown 逐字吐回 raw，往返才逐字节一致。 */
+const WikiLink = Node.create<{ bridge: LinkBridge | null }>({
+  name: 'wikiLink',
+  group: 'inline',
+  inline: true,
+  atom: true,
+  markdownTokenName: 'wikiLink',
+
+  addOptions() {
+    return { bridge: null }
+  },
+
+  addAttributes() {
+    return {
+      raw: { default: '' },
+      target: { default: '' },
+      alias: { default: null },
+      anchor: { default: null },
+    }
+  },
+
+  parseHTML() {
+    return [{ tag: 'span[data-wl]' }]
+  },
+
+  renderHTML({ HTMLAttributes }) {
+    // 复制粘贴走的是 HTML 这条路，raw 得带上，否则粘出去的链接粘回来会散架
+    const label = HTMLAttributes.alias || HTMLAttributes.target || ''
+    return [
+      'span',
+      mergeAttributes(HTMLAttributes, {
+        'data-wl': '',
+        class: 'wl wl-dangling',
+        'data-key': HTMLAttributes.target,
+      }),
+      label,
+    ]
+  },
+
+  addNodeView() {
+    const bridge = this.options.bridge
+    return ({ node }) => {
+      const dom = document.createElement('span')
+      const label = (node.attrs.alias as string) || (node.attrs.target as string) || ''
+      const target = (node.attrs.target as string) || ''
+      dom.textContent = label
+
+      let nodeKey: string | null = null
+      const paint = (): void => {
+        if (!bridge) return
+        const hit = bridge.resolve(target)
+        nodeKey = hit?.nodeKey ?? null
+        dom.className = `wl ${linkClass(hit)}`
+        dom.title = nodeKey ? `打开「${label}」` : `「${label}」还没有创建`
+      }
+      paint()
+      const off = bridge?.subscribe(paint)
+
+      const onClick = (e: MouseEvent): void => {
+        e.preventDefault()
+        bridge?.open(nodeKey, label)
+      }
+      dom.addEventListener('click', onClick)
+
+      return {
+        dom,
+        update: (next) => {
+          if (next.type.name !== node.type.name) return false
+          const nextLabel = (next.attrs.alias as string) || (next.attrs.target as string) || ''
+          if (nextLabel !== label) return false
+          return true
+        },
+        // 分型色是 paint() 直接改 dom.className/title 上去的，ProseMirror 并不管这块 DOM。
+        // 不声明忽略的话它会把这类改动当成「DOM 被外力改了」，做一次 recover：那一趟会
+        // 重新序列化整篇（末尾多一个空行）并标脏落库——只是点一下链接也会写盘。
+        ignoreMutation: () => true,
+        destroy: () => {
+          off?.()
+          dom.removeEventListener('click', onClick)
+        },
+      }
+    }
+  },
+
+  /** 边打边认：光标前刚好凑出 `[[…]]` 就换成链接节点。
+   *  不做这一步的话，所见即所得里手打的 `[[x]]` 要等到下一次从 Markdown
+   *  解析（切模式或重开这篇）才会变成链接，同一篇文档看起来前后不一致。 */
+  addInputRules() {
+    return [
+      new InputRule({
+        find: /\[\[([^[\]\n]*)\]\]$/,
+        handler: ({ state, range, match }) => {
+          const attrs = wikiAttrs(match[0])
+          if (!attrs) return null
+          state.tr.replaceWith(range.from, range.to, this.type.create(attrs))
+        },
+      }),
+    ]
+  },
+
+  markdownTokenizer: {
+    name: 'wikiLink',
+    level: 'inline',
+    start: (src) => src.indexOf('[['),
+    tokenize(src) {
+      const m = /^\[\[([^[\]\n]*)\]\]/.exec(src)
+      if (!m) return undefined
+      return { type: 'wikiLink', raw: m[0], text: m[0] }
+    },
+  },
+
+  parseMarkdown: (token, helpers) => {
+    const attrs = wikiAttrs(token.raw ?? '')
+    return attrs ? helpers.createNode('wikiLink', attrs) : []
+  },
+
+  renderMarkdown: (node) => node.attrs?.raw ?? '',
+})
+
+const lowlight = createLowlight(common)
+
+/** v1 要认的 Markdown 语法全在这里。StarterKit 自带粗体/标题/列表/引用/代码/分割线，
+ *  另外三样要单独装：待办（TaskList）、表格（TableKit）、图片。 */
+export function buildExtensions(bridge: LinkBridge | null = null): AnyExtension[] {
+  return [
+    StarterKit.configure({ codeBlock: false }),
+    CodeBlockLowlight.configure({ lowlight }),
+    TaskList,
+    TaskItem.configure({ nested: true }),
+    TableKit.configure({ table: { resizable: false } }),
+    Image,
+    WikiLink.configure({ bridge }),
+    TagRefs.configure({ openTag: bridge ? (name) => bridge.openTag(name) : null }),
+    Markdown.configure({ indentation: { style: 'space', size: 2 } }),
+  ]
+}
+
+/** 闸门用的管理器：只做解析与序列化，不画界面，所以不带 bridge */
+const manager = new MarkdownManager({
+  extensions: buildExtensions(),
+  indentation: { style: 'space', size: 2 },
+})
+
+export interface RoundTrip {
+  /** 重新序列化出来的 Markdown。无损时这才是切过去以后会存进去的内容 */
+  out: string
+  /** 树没变 ⇒ 只是写法被规范，一个字没丢 */
+  lossless: boolean
+  /** 规范化的说明（人话），没有就空 */
+  notes: string[]
+  /** 拦住时：到底会丢什么 */
+  lost: string[]
+}
+
+/** 「只是写法被规范了」的说明。判据是同一个特征在改前改后各出现几次，
+ *  差出来的那几次就是被规范掉的。用差值而不是逐行 diff：代码块里的 `* 星号`
+ *  两边都算一次，自然抵消，不会误报。 */
+const NORMALIZED: { re: RegExp; label: string }[] = [
+  { re: /^[ \t]{0,3}[*+][ \t]+/gm, label: '项目符号统一为 -' },
+  { re: /^[ \t]{0,3}\d+\)[ \t]+/gm, label: '有序编号统一为 1.' },
+  { re: /__[^_\n]+__/g, label: '下划线粗体改为 **' },
+  { re: /_[^_\n]+_/g, label: '下划线斜体改为 *' },
+  { re: /^[ \t]{0,3}~{3,}/gm, label: '波浪线围栏改为 ```' },
+]
+
+/** 带样式属性的 HTML 标签。富文本树里没有「样式」这个位置：`<span style="color:red">`
+ *  被拆开只留文字，树的形状一点没变，所以「树相等」这条判据看不见它——但它是真丢东西，
+ *  而且切过去时原文会被就地改写，style 再也回不来。所以单独查一遍、单独拦住。
+ *  只认 style/class/id：`<a href>`、`<img src>` 这些是 Markdown 本身能表达的，不算丢。 */
+const STYLE_ATTR = /<[a-zA-Z][^>]*\s(?:style|class|id)\s*=/g
+
+const TYPE_NAMES: Record<string, string> = {
+  paragraph: '段落',
+  heading: '标题',
+  codeBlock: '代码块',
+  blockquote: '引用',
+  bulletList: '无序列表',
+  orderedList: '有序列表',
+  taskList: '待办列表',
+  taskItem: '待办项',
+  table: '表格',
+  tableRow: '表格行',
+  tableCell: '单元格',
+  image: '图片',
+  horizontalRule: '分隔线',
+  hardBreak: '强制换行',
+  wikiLink: '双链',
+  code: '行内代码',
+  text: '文字',
+}
+
+function countMatches(text: string, re: RegExp): number {
+  return text.match(re)?.length ?? 0
+}
+
+/** 比树时先抹掉的属性。`target`/`rel` 是 Link 扩展给裸 `<a>` 补的默认值，
+ *  Markdown 里根本没有写法能表达它，也不是用户写进去的内容；`class`/`style`/`id`
+ *  另有 STYLE_ATTR 那一关拦住，放行这里不会悄没声地丢东西。
+ *  除此之外的字段（正文、标题层级、代码语言、待办勾选、单元格对齐）都逐字比。 */
+const IGNORED_ATTRS = new Set(['target', 'rel', 'class', 'id', 'style'])
+
+function sameAttrs(
+  a: Record<string, unknown> | undefined,
+  b: Record<string, unknown> | undefined,
+): boolean {
+  for (const key of new Set([...Object.keys(a ?? {}), ...Object.keys(b ?? {})])) {
+    if (IGNORED_ATTRS.has(key)) continue
+    if ((a?.[key] ?? null) !== (b?.[key] ?? null)) return false
+  }
+  return true
+}
+
+/** 树相等。手写深比而不是 `JSON.stringify` 对拍：stringify 受键序影响，
+ *  同一棵树只是 `marks` 排在 `text` 前面就会被判成不一样（parseHTML 出来的节点
+ *  正是这个键序），那是纯误报。 */
+function sameTree(a: JSONContent, b: JSONContent): boolean {
+  if (a.type !== b.type || a.text !== b.text) return false
+  if (!sameAttrs(a.attrs, b.attrs)) return false
+
+  const am = a.marks ?? []
+  const bm = b.marks ?? []
+  if (am.length !== bm.length) return false
+  if (!am.every((m, i) => m.type === bm[i].type && sameAttrs(m.attrs, bm[i].attrs))) return false
+
+  const ac = a.content ?? []
+  const bc = b.content ?? []
+  if (ac.length !== bc.length) return false
+  return ac.every((child, i) => sameTree(child, bc[i]))
+}
+
+function tally(node: JSONContent, acc: Record<string, number>): void {
+  if (node.type) acc[node.type] = (acc[node.type] ?? 0) + 1
+  for (const child of node.content ?? []) tally(child, acc)
+}
+
+function textLength(node: JSONContent): number {
+  let n = node.text?.length ?? 0
+  for (const child of node.content ?? []) n += textLength(child)
+  return n
+}
+
+/** 会丢什么。只说「少了」，不说「多了」：表格散成段落时多出来的是段落，
+ *  报出来只会让人以为多得了什么。 */
+function describeLoss(before: JSONContent, after: JSONContent): string[] {
+  const a: Record<string, number> = {}
+  const b: Record<string, number> = {}
+  tally(before, a)
+  tally(after, b)
+
+  const out: string[] = []
+  for (const [type, n] of Object.entries(a)) {
+    const lost = n - (b[type] ?? 0)
+    if (lost > 0) out.push(`${TYPE_NAMES[type] ?? type}（${lost} 处）`)
+  }
+  const chars = textLength(before) - textLength(after)
+  if (chars > 0) out.push(`文字少了 ${chars} 字`)
+  return out.length ? out : ['内容对不上']
+}
+
+/** 把 Markdown 过一遍「解析 → 序列化 → 再解析」，报告这一趟到底动了什么。
+ *
+ *  无损的判据是**树**相等，不是文本逐字节相等。逐字节相等的判据会把
+ *  `* 项目符号`、`__粗体__` 全判成有损，那等于永远进不了所见即所得
+ *  （实测见 scratch/md-spike.mjs）。树相等之外只剩样式属性一个口子，见 STYLE_ATTR。 */
+export function roundTrip(md: string): RoundTrip {
+  const tree = manager.parse(md)
+  const out = manager.serialize(tree)
+  if (out === md) return { out, lossless: true, notes: [], lost: [] }
+
+  const again = manager.parse(out)
+  const lossless = sameTree(tree, again)
+  const styles = countMatches(md, STYLE_ATTR) - countMatches(out, STYLE_ATTR)
+  if (!lossless) {
+    const lost = describeLoss(tree, again)
+    if (styles > 0) lost.unshift(`${styles} 处 HTML 样式标记（style/class）`)
+    return { out, lossless: false, notes: [], lost }
+  }
+  if (styles > 0) {
+    return { out, lossless: false, notes: [], lost: [`${styles} 处 HTML 样式标记（style/class）`] }
+  }
+
+  const notes = NORMALIZED.map(({ re, label }) => ({
+    n: countMatches(md, re) - countMatches(out, re),
+    label,
+  }))
+    .filter((x) => x.n > 0)
+    .map((x) => `${x.n} 处${x.label}`)
+  // 有改动却一条都对不上（比如表格分隔行被补齐），别装作什么都没发生
+  return { out, lossless: true, notes: notes.length ? notes : ['排版细节被重排'], lost: [] }
+}

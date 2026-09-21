@@ -1,0 +1,262 @@
+/* Kestrel 设计系统 — Token 层
+   玻璃层只用于 chrome（标题栏/侧栏/右栏/浮层）
+   编辑区保持实色：长文可读 + 滚动性能
+   色值取自 prototype/_style.css（已实测 WCAG AA，勿随手改） */
+
+:root {
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 12px;
+  --blur: 22px;
+  --sat: 1.7;
+  --shadow-glass: 0 8px 32px rgba(0, 0, 0, 0.1), 0 1px 0 rgba(255, 255, 255, 0.5) inset;
+  --shadow-panel: 0 2px 12px rgba(0, 0, 0, 0.06);
+  /* Maple Mono 打底。三个名字连着一列是有讲究的，不是随手堆别名：
+     `@fontsource/maple-mono` 只发布 **latin 子集**，汉字一个没有，所以中文必须往后续名单里走——
+     装了 Maple Mono CN / NF CN 的人直接拿到全套字形，没装的落到本机已有的 Noto Sans SC。
+     Noto Sans SC 放在 Inter 前头也是这个意思：Inter 这台机器上没装，真实渲染一直是 Noto。 */
+  --font-ui: 'Maple Mono', 'Maple Mono CN', 'Maple Mono NF CN', 'Noto Sans SC', 'Inter',
+    -apple-system, 'Segoe UI', 'Microsoft YaHei', sans-serif;
+  --font-serif: 'Cormorant Garamond', 'Noto Serif SC', Georgia, serif;
+  /* 等宽栈里同样塞一个中文 face：不加的话代码块里的中文注释会和界面里的中文长得不一样 */
+  --font-mono: 'Maple Mono', 'Maple Mono CN', 'Maple Mono NF CN', 'Noto Sans SC',
+    'JetBrains Mono', 'Cascadia Code', Consolas, monospace;
+  --font-body: var(--font-ui);
+  --fs-body: 15px;
+  --lh-body: 1.85;
+
+  /* 品牌色：**固定值，不跟主题的 --accent 走**。理由不是审美——应用图标是打包进
+     .ico / 快捷方式 / 任务栏的静态资源，换主题就换脸的话，用户认不出哪个是自己的应用；
+     而且界面上那枚标记和任务栏上那枚图标理应是同一个东西。
+     颜色取自红隼（kestrel）：背与翼的栗红做底，胸腹的奶油做点。
+     栅格化源头是 resources/icon.svg，两处的图形比例必须一致。 */
+  --brand: #b4482c;
+  --brand-deep: #a63a1f;
+  --brand-light: #d97a4c;
+  --brand-cream: #fbefdf;
+  --brand-soft: rgba(180, 72, 44, 0.14);
+}
+
+/* 主题选择器不写 body 前缀：任意元素挂上 data-theme 就得到那套变量。
+   外观面板里的主题缩略图正是靠这个——缩略图直接 data-theme="paper"，
+   用的就是真主题的变量，不存在「预览色和实际色两套值」的漂移。 */
+
+/* 标签色板：八个预调 token，`Tag.color` 存的就是它的下标（没配过色时按名字哈希取，
+   shared/tags.ts 的 tagColorIndex）。
+   为什么不自由取色（`hsl(hash, 60%, 50%)`）：四个主题的底色差得很远，同一个任意色相不可能
+   在云雾白和午夜黑里都读得清。这八组是逐色对底色算过 WCAG 对比度的（小字号要 4.5:1，
+   实测最低 5.39:1），改任何一个都要回去跑 scratch/check-tag-contrast.mjs，别拿眼睛判断。 */
+
+[data-theme='cloud'] {
+  /* 原生控件（date / datetime / checkbox、select 弹层）跟着这一条走，不必逐个覆盖 UA 样式 */
+  color-scheme: light;
+  --bg-base: #eef1f6;
+  --bg-wall: radial-gradient(1100px 620px at 12% -8%, #dbe6ff 0%, transparent 60%),
+    radial-gradient(900px 520px at 92% 8%, #ffe0ea 0%, transparent 58%),
+    radial-gradient(800px 600px at 60% 108%, #d9f2ff 0%, transparent 62%);
+  --bg-glass: rgba(255, 255, 255, 0.58);
+  --bg-glass-strong: rgba(255, 255, 255, 0.8);
+  --bg-panel: #ffffff;
+  --text-1: #171a20;
+  --text-2: #4d545f;
+  --text-3: #707680;
+  --accent: #4f6ef7;
+  --accent-soft: rgba(79, 110, 247, 0.12);
+  --border: rgba(23, 26, 32, 0.1);
+  --border-strong: rgba(23, 26, 32, 0.16);
+  --hover: rgba(23, 26, 32, 0.05);
+  --tag-1: #3d55c9;
+  --tag-2: #0f766e;
+  --tag-3: #1d7a3a;
+  --tag-4: #7a5a10;
+  --tag-5: #a13a1f;
+  --tag-6: #9c2f6e;
+  --tag-7: #5b3ea8;
+  --tag-8: #2b6ca3;
+  --font-body: var(--font-ui);
+}
+
+[data-theme='paper'] {
+  color-scheme: light;
+  --bg-base: #efe9dd;
+  --bg-wall: radial-gradient(1000px 600px at 10% -10%, #fbf3e3 0%, transparent 62%),
+    radial-gradient(900px 500px at 90% 4%, #f6e3d2 0%, transparent 58%),
+    radial-gradient(760px 560px at 55% 106%, #e6ecdf 0%, transparent 60%);
+  --bg-glass: rgba(255, 252, 246, 0.66);
+  --bg-glass-strong: rgba(255, 253, 249, 0.86);
+  --bg-panel: #fffdf8;
+  --text-1: #231d16;
+  --text-2: #5c5346;
+  --text-3: #7c7366;
+  --accent: #c2703f;
+  --accent-soft: rgba(194, 112, 63, 0.13);
+  --border: rgba(35, 29, 22, 0.11);
+  --border-strong: rgba(35, 29, 22, 0.18);
+  --hover: rgba(35, 29, 22, 0.05);
+  --tag-1: #8a4a12;
+  --tag-2: #14636b;
+  --tag-3: #4a6b12;
+  --tag-4: #7a5a10;
+  --tag-5: #a13a1f;
+  --tag-6: #8c2f62;
+  --tag-7: #5b3ea8;
+  --tag-8: #2b6083;
+  --font-body: var(--font-serif);
+}
+
+[data-theme='midnight'] {
+  color-scheme: dark;
+  --bg-base: #0b0d11;
+  --bg-wall: radial-gradient(1100px 620px at 10% -10%, #1a2440 0%, transparent 60%),
+    radial-gradient(900px 520px at 92% 6%, #2a1a34 0%, transparent 58%),
+    radial-gradient(820px 600px at 58% 108%, #0f2a33 0%, transparent 62%);
+  --bg-glass: rgba(28, 33, 42, 0.52);
+  --bg-glass-strong: rgba(34, 40, 50, 0.78);
+  --bg-panel: #12161c;
+  --text-1: #eef1f6;
+  --text-2: #a6aeba;
+  --text-3: #77818e;
+  --accent: #7c9cff;
+  --accent-soft: rgba(124, 156, 255, 0.16);
+  --border: rgba(255, 255, 255, 0.09);
+  --border-strong: rgba(255, 255, 255, 0.16);
+  --hover: rgba(255, 255, 255, 0.06);
+  --tag-1: #93a9ff;
+  --tag-2: #4dd0c4;
+  --tag-3: #6bd48f;
+  --tag-4: #e0c060;
+  --tag-5: #f0907a;
+  --tag-6: #e98ac0;
+  --tag-7: #b79cff;
+  --tag-8: #78b8e8;
+  --shadow-glass: 0 8px 34px rgba(0, 0, 0, 0.42), 0 1px 0 rgba(255, 255, 255, 0.07) inset;
+  --shadow-panel: 0 2px 14px rgba(0, 0, 0, 0.3);
+  --font-body: var(--font-ui);
+}
+
+[data-theme='terminal'] {
+  color-scheme: dark;
+  --bg-base: #080c0d;
+  --bg-wall: radial-gradient(1000px 600px at 8% -10%, #0f2b28 0%, transparent 60%),
+    radial-gradient(880px 520px at 94% 6%, #10262e 0%, transparent 58%),
+    radial-gradient(760px 560px at 56% 106%, #131f18 0%, transparent 62%);
+  --bg-glass: rgba(16, 24, 25, 0.56);
+  --bg-glass-strong: rgba(22, 32, 33, 0.8);
+  --bg-panel: #0d1415;
+  --text-1: #e6f2ee;
+  --text-2: #94ada6;
+  --text-3: #66847c;
+  --accent: #2ee6a8;
+  --accent-soft: rgba(46, 230, 168, 0.14);
+  --border: rgba(255, 255, 255, 0.08);
+  --border-strong: rgba(255, 255, 255, 0.15);
+  --hover: rgba(255, 255, 255, 0.05);
+  --tag-1: #6fd8ff;
+  --tag-2: #4dd0a8;
+  --tag-3: #9fe07a;
+  --tag-4: #e8d06a;
+  --tag-5: #f0a07a;
+  --tag-6: #e88ac0;
+  --tag-7: #b0b0ff;
+  --tag-8: #7adcd8;
+  --shadow-glass: 0 8px 34px rgba(0, 0, 0, 0.5), 0 1px 0 rgba(255, 255, 255, 0.06) inset;
+  --shadow-panel: 0 2px 14px rgba(0, 0, 0, 0.35);
+  --font-body: var(--font-mono);
+}
+
+/* 用户自选强调色不走选择器，而是往 body 上写内联的 --accent / --accent-soft：
+   内联样式天然压过主题块，且不用为每个颜色生成一条规则。 */
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  font-family: var(--font-ui);
+  /* --bg-wall 只能放渐变层：末尾跟一个实色在 background 简写里合法，在 background-image 里
+     却是无效值，会让整条声明在计算值阶段被丢掉——玻璃底下那层氛围底色就悄悄没了。*/
+  background-color: var(--bg-base);
+  background-image: var(--bg-wall);
+  background-attachment: fixed;
+  color: var(--text-1);
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+button {
+  font-family: inherit;
+  color: inherit;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+input,
+textarea {
+  font-family: inherit;
+  color: inherit;
+}
+
+::selection {
+  background: var(--accent-soft);
+}
+
+.glass {
+  background: var(--bg-glass);
+  backdrop-filter: blur(var(--blur)) saturate(var(--sat));
+  -webkit-backdrop-filter: blur(var(--blur)) saturate(var(--sat));
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-glass);
+  border-radius: var(--radius-lg);
+}
+
+body.no-glass .glass {
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  background: var(--bg-glass-strong);
+  box-shadow: var(--shadow-panel);
+}
+
+::-webkit-scrollbar {
+  width: 9px;
+  height: 9px;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 9px;
+  border: 3px solid transparent;
+  background-clip: content-box;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* 动效偏好：系统开启"减少动态效果"时关掉过渡与位移动效。
+   保留颜色变化（否则状态切换会失去反馈），只去掉位移与缩放。 */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  .heat i:hover,
+  .entry-item:hover,
+  .topic:hover,
+  .article-card:hover,
+  .theme-card:hover {
+    transform: none !important;
+  }
+}

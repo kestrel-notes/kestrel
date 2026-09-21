@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="cloud">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>捐赠 Kestrel</title>
+<meta name="description" content="如果 Kestrel 每天都被你打开，可以考虑请作者喝杯咖啡。捐赠二维码与金额建议。">
+<script>(function(){var t='cloud';try{var v=localStorage.getItem('kestrel.theme');if(v==='cloud'||v==='paper'||v==='midnight'||v==='terminal')t=v}catch(e){};document.documentElement.setAttribute('data-theme',t)})();</script>
+<link rel="stylesheet" href="assets/site.css">
+<script src="assets/site.js" defer></script>
+<script src="assets/confetti.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">跳到正文</a>
+<canvas id="confetti" aria-hidden="true"></canvas>
+
+<header class="topbar glass">
+  <a class="brand" href="index.html">
+    <svg width="26" height="26" viewBox="0 0 26 26" role="img" aria-label="Kestrel 标记">
+      <rect width="26" height="26" rx="7" fill="#b4482c"></rect>
+      <path d="M7 18.5 L13 6.5 L19 18.5 L13 14.6 Z" fill="#fbefdf"></path>
+    </svg>
+    Kestrel
+  </a>
+  <div class="theme-switch" id="theme-switch" role="group" aria-label="界面主题">
+    <button type="button" data-theme-value="cloud" style="--dot:#4f6ef7"><i aria-hidden="true"></i><span>云雾白</span></button>
+    <button type="button" data-theme-value="paper" style="--dot:#c2703f"><i aria-hidden="true"></i><span>纸感暖</span></button>
+    <button type="button" data-theme-value="midnight" style="--dot:#7c9cff"><i aria-hidden="true"></i><span>极夜黑</span></button>
+    <button type="button" data-theme-value="terminal" style="--dot:#2ee6a8"><i aria-hidden="true"></i><span>终端青</span></button>
+  </div>
+  <ul class="topbar-links">
+    <li><a href="index.html">主页</a></li>
+    <li><a href="about.html">关于</a></li>
+    <li><a href="donate.html" aria-current="page">捐赠</a></li>
+    <li><a href="https://github.com/fangjj1008/kestrel">源码在 GitHub</a></li>
+  </ul>
+</header>
+
+<main id="main" class="narrow">
+  <h1>如果它合你的手</h1>
+  <p class="lede">Kestrel 免费、开源、无内购，靠自愿捐赠维持更新。不是必需，也不设门槛——继续用、提 Issue、把别扭的地方说出来，同样是支持。</p>
+
+  <p>捐赠方式是直接扫码，本站不接任何支付链接，也不会有第二个页面替你要钱。金额随你，下面三档只是给个参照。</p>
+
+  <div class="tiers">
+    <div class="tier glass">
+      <b>一杯咖啡</b>
+      <p>够作者在某个凌晨为一处别扭的交互多熬半小时。</p>
+    </div>
+    <div class="tier glass">
+      <b>一顿饭</b>
+      <p>大约是一篇功能设计稿加上把它写完的周末。</p>
+    </div>
+    <div class="tier glass">
+      <b>随你</b>
+      <p>比上面都多、或者比上面都少，都完全可以。</p>
+    </div>
+  </div>
+
+  <figure class="qr">
+    <div class="box">
+      <img src="assets/donate-qr.png" alt="捐赠二维码" width="600" height="600" onerror="this.closest('.qr').classList.add('is-broken')">
+      <div class="fallback"><span>二维码位 · 图片待放入</span><span>assets/donate-qr.png</span></div>
+    </div>
+    <figcaption>扫码前请核对收款方名字与仓库署名一致（fangjj1008）。二维码以外的任何收款方式都不是本项目。</figcaption>
+  </figure>
+
+  <p>不想花钱也有用：<a href="https://github.com/fangjj1008/kestrel">Issues</a> 里「用不上 / 别扭 / 数据不放心」这三类反馈最值钱。仓库里也能看到路线图，v0.2 想做图谱的力学布局与动效，v0.3 想做站内搜索。</p>
+
+  <div class="motion glass">
+    <label for="motion-off">
+      <input type="checkbox" id="motion-off">
+      关闭动效
+    </label>
+    <output id="motion-hint" for="motion-off"></output>
+  </div>
+
+  <p class="note"><strong>关于这页的彩纸。</strong>只在进入页面时放一轮，不会循环；系统开了「减少动态效果」时压根不播。上面那个开关的选择记在这台浏览器的 localStorage 里。</p>
+</main>
+
+<footer>
+  <div class="foot-inner">
+    <p>Copyright © 2026 fangjj1008 · 本站是 Kestrel 的静态说明页，不发起任何外部网络请求。</p>
+    <nav aria-label="页脚链接">
+      <a href="https://github.com/fangjj1008/kestrel/blob/main/LICENSE">AGPL-3.0-only</a>
+      <a href="index.html">主页</a>
+      <a href="about.html">关于</a>
+    </nav>
+  </div>
+</footer>
+</body>
+</html>

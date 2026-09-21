@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <!-- Kestrel 应用图标的唯一源头。resources/icon.ico 与 icon-*.png 都由它生成
+       （scripts/make-icon.mjs 用渲染进程的 canvas 栅格化，见 docs/视觉设计系统.md）。
+       图形固定：圆角方块 + 居中圆点，是界面里 .brand-dot 那枚标记的放大版。
+       颜色从红隼身上取：背与翼的栗红做底，胸腹的奶油做点。 -->
+  <defs>
+    <linearGradient id="back" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#A63A1F" />
+      <stop offset="1" stop-color="#D97A4C" />
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="18" fill="url(#back)" />
+  <circle cx="32" cy="32" r="9.5" fill="#FBEFDF" />
+</svg>

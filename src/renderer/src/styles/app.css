@@ -1,0 +1,2519 @@
+/* Kestrel 组件层 — 尺寸与规格对齐 prototype/_style.css */
+
+.app {
+  height: 100vh;
+  display: grid;
+  /* 右栏 262 → 300：局部图谱的画布比原型放大到 300×216（标签要排到环外，见 GraphView.tsx），
+     1:1 渲染需要约 300px 的可用宽度。窄下来只是整张图等比缩小，不会画错，所以窗口窄时
+     不用改这里，由 ≤1100px 那条媒体查询直接收起右栏。 */
+  grid-template-columns: 242px 1fr 300px;
+  grid-template-rows: 46px 1fr;
+  gap: 10px;
+  padding: 10px;
+}
+
+/* ── 标题栏（玻璃，兼作窗口拖拽区）── */
+.titlebar {
+  grid-column: 1 / 4;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 0 6px 0 16px;
+  -webkit-app-region: drag;
+  transition: opacity 0.3s;
+}
+/* 拖拽区内的一切可点元素都要排除，否则点不动 */
+.titlebar button,
+.titlebar input,
+.titlebar .mode-switch,
+.titlebar .searchbar,
+.win-controls {
+  -webkit-app-region: no-drag;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-weight: 600;
+  font-size: 14px;
+  letter-spacing: -0.01em;
+  flex-shrink: 0;
+}
+/* 标记用固定的品牌色，不跟 --accent：见 tokens.css 里 --brand 的说明。
+   图形是 resources/icon.svg 的 16px 版：圆角方块 + 居中奶油点，
+   圆角与点径都按 18/64、9.5/64 的同一比例折过来。 */
+.brand-dot {
+  position: relative;
+  width: 16px;
+  height: 16px;
+  border-radius: var(--radius-xs);
+  background: linear-gradient(135deg, var(--brand-deep), var(--brand-light));
+  box-shadow: 0 0 14px var(--brand-soft);
+}
+.brand-dot::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: 4.75px;
+  height: 4.75px;
+  border-radius: 50%;
+  background: var(--brand-cream);
+}
+
+.mode-switch {
+  display: flex;
+  gap: 3px;
+  padding: 3px;
+  border-radius: var(--radius-md);
+  background: var(--hover);
+  border: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.mode-switch button {
+  padding: 5px 15px;
+  border-radius: var(--radius-sm);
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--text-2);
+  transition: all 0.18s;
+}
+.mode-switch button.active {
+  background: var(--bg-glass-strong);
+  color: var(--text-1);
+  box-shadow: var(--shadow-panel);
+}
+/* 「标签」「属性」这两格是**回头看**，比「今天 / 主题」那两格轻一档（期-02-设计 §3.1 末段）。
+   按位置收而不是加类：以后第四格进来就是第五条规则，不用为它再造一个名字 */
+.mode-switch button:nth-child(n + 3) {
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  padding: 5px 11px;
+}
+
+.searchbar {
+  flex: 1;
+  max-width: 400px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 30px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: var(--hover);
+  border: 1px solid var(--border);
+  color: var(--text-3);
+  font-size: 12.5px;
+  cursor: text;
+  transition: border-color 0.2s;
+}
+.searchbar:hover {
+  border-color: var(--border-strong);
+}
+.searchbar kbd {
+  margin-left: auto;
+}
+
+kbd {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  padding: 2px 6px;
+  border-radius: var(--radius-xs);
+  background: var(--bg-glass-strong);
+  border: 1px solid var(--border);
+  color: var(--text-3);
+}
+
+.titlebar-right {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.tb-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 30px;
+  padding: 0 11px;
+  border-radius: var(--radius-sm);
+  font-size: 12.5px;
+  color: var(--text-2);
+  transition: background 0.15s, color 0.15s;
+}
+.tb-btn:hover {
+  background: var(--hover);
+  color: var(--text-1);
+}
+.tb-btn.on {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+/* 自绘窗口按钮：无边框窗口下这是唯一能关掉应用的地方 */
+.win-controls {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin-left: 4px;
+}
+.win-controls button {
+  width: 32px;
+  height: 30px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-3);
+  transition: background 0.15s, color 0.15s;
+}
+.win-controls button:hover {
+  background: var(--hover);
+  color: var(--text-1);
+}
+.win-controls button.close:hover {
+  background: #e5484d;
+  color: #fff;
+}
+
+/* ── 通用小件 ── */
+.ic {
+  width: 15px;
+  height: 15px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  flex-shrink: 0;
+}
+.sec-label {
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-3);
+  padding: 0 8px;
+  margin-bottom: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.sec-label button {
+  color: var(--text-3);
+  font-size: 15px;
+  line-height: 1;
+  padding: 0 5px;
+  border-radius: var(--radius-xs);
+}
+.sec-label button:hover {
+  background: var(--hover);
+  color: var(--accent);
+}
+.badge {
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  font-family: var(--font-mono);
+  flex-shrink: 0;
+  font-weight: 400;
+}
+.badge.draft {
+  background: var(--hover);
+  color: var(--text-3);
+  border: 1px solid var(--border);
+}
+.badge.src {
+  background: var(--accent-soft);
+  color: var(--accent);
+  border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
+}
+
+/* ── 侧栏 ── */
+.sidebar {
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  overflow-y: auto;
+  transition: opacity 0.3s;
+}
+.heat-grid {
+  display: grid;
+  grid-auto-flow: column;
+  grid-template-rows: repeat(7, 1fr);
+  gap: 3px;
+  justify-content: start;
+}
+.heat i {
+  width: 11px;
+  height: 11px;
+  border-radius: 3px;
+  background: var(--hover);
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: transform 0.12s;
+}
+.heat i:hover {
+  transform: scale(1.35);
+  border-color: var(--text-3);
+}
+.heat i[data-l='1'] {
+  background: color-mix(in srgb, var(--accent) 22%, transparent);
+}
+.heat i[data-l='2'] {
+  background: color-mix(in srgb, var(--accent) 44%, transparent);
+}
+.heat i[data-l='3'] {
+  background: color-mix(in srgb, var(--accent) 70%, transparent);
+}
+.heat i[data-l='4'] {
+  background: var(--accent);
+}
+.heat i.today {
+  border-color: var(--text-1);
+  border-width: 1.5px;
+}
+/* 键盘光标：整块日历占一个 Tab 位，内部用方向键移动 */
+.heat i.cursor {
+  outline: 1.5px solid var(--accent);
+  outline-offset: 1px;
+}
+.heat:focus-visible {
+  outline: none;
+}
+.heat:focus-visible .heat-grid {
+  box-shadow: 0 0 0 1px var(--accent-soft);
+  border-radius: var(--radius-xs);
+}
+.heat-legend {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 8px;
+  font-size: 10.5px;
+  color: var(--text-3);
+}
+.heat-legend i {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+}
+
+.stream {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.entry-item {
+  padding: 8px 9px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background 0.15s;
+  border-left: 2px solid transparent;
+  text-align: left;
+  width: 100%;
+}
+.entry-item:hover {
+  background: var(--hover);
+}
+.entry-item.active {
+  background: var(--accent-soft);
+  border-left-color: var(--accent);
+}
+.entry-item .t {
+  font-size: 12.5px;
+  color: var(--text-1);
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.entry-item .d {
+  font-size: 11px;
+  color: var(--text-3);
+  margin-top: 2px;
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+.entry-item .d em {
+  font-style: normal;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+}
+
+.topics {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.topic {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 8px 9px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--text-2);
+  transition: background 0.15s;
+  width: 100%;
+  text-align: left;
+}
+.topic:hover {
+  background: var(--hover);
+  color: var(--text-1);
+}
+.topic.active {
+  background: var(--accent-soft);
+  color: var(--text-1);
+}
+.topic .dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+/* 主题自己填的图标（一个 emoji 或几个字符），与色点占同一个位置 */
+.topic .icn {
+  flex-shrink: 0;
+  font-size: 12px;
+  line-height: 1;
+}
+.topic .topic-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* 归档于别的主题：缩进一格。侧栏这一列没有虚线可画，只靠缩进表达层级 */
+.topic.child {
+  padding-left: 25px;
+  font-size: 12.5px;
+}
+.topic .cnt {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--text-3);
+}
+/* 一个 sec-label 里挤两枚动作（管理 + 新建）：按钮各自包一层，别把 justify-content 拆开 */
+.sec-acts {
+  display: flex;
+  align-items: center;
+  gap: 1px;
+}
+
+.articles {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.article-card {
+  padding: 10px;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  border: 1px solid var(--border);
+  background: var(--hover);
+  transition: border-color 0.15s;
+  text-align: left;
+  width: 100%;
+}
+.article-card:hover {
+  border-color: var(--border-strong);
+}
+.article-card.active {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+.article-card h4 {
+  font-size: 12.5px;
+  font-weight: 600;
+  margin-bottom: 4px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  line-height: 1.4;
+}
+.article-card p {
+  font-size: 11.5px;
+  color: var(--text-3);
+  line-height: 1.55;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.empty-hint {
+  font-size: 11.5px;
+  color: var(--text-3);
+  padding: 4px 9px;
+  line-height: 1.6;
+}
+
+/* ── 侧栏：标签树（期-02-设计 §3.1）── */
+.tag-tree {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.tag-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  /* 缩进由组件按深度写 paddingLeft，这里只管上下与右侧 */
+  padding: 3px 5px 3px 0;
+  border-radius: var(--radius-sm);
+}
+.tag-row:hover {
+  background: var(--hover);
+}
+.tag-row.active {
+  background: var(--accent-soft);
+}
+/* 折叠箭头。没有子节点的行放一个同宽的 span 占位，chip 才不会左右错位 */
+.tag-fold {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  font-size: 9px;
+  line-height: 14px;
+  color: var(--text-3);
+  border-radius: var(--radius-xs);
+  transition: transform 0.15s;
+}
+button.tag-fold:hover {
+  color: var(--text-1);
+  background: var(--bg-glass-strong);
+}
+.tag-fold.on {
+  transform: rotate(90deg);
+}
+.tag-row .cnt {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--text-3);
+  flex-shrink: 0;
+}
+/* 改名按钮平时不占注意力：只在悬停或键盘焦点进到这一行时出现。
+   用 opacity + pointer-events 而不是 display:none，键盘 Tab 仍能走到它 */
+.tag-act {
+  color: var(--text-3);
+  opacity: 0;
+  pointer-events: none;
+  padding: 2px;
+  border-radius: var(--radius-xs);
+  flex-shrink: 0;
+}
+.tag-row:hover .tag-act,
+.tag-row:focus-within .tag-act {
+  opacity: 1;
+  pointer-events: auto;
+}
+.tag-act:hover {
+  color: var(--accent);
+  background: var(--bg-glass-strong);
+}
+.tag-act .ic {
+  width: 12px;
+  height: 12px;
+  display: block;
+}
+/* 侧栏一行里塞不下长标签路径，截断而不是让整行换行 */
+.tag-row .tag {
+  max-width: 165px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── 编辑区（实色，非玻璃）── */
+.editor-wrap {
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-panel);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+}
+.editor-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.crumb {
+  font-size: 12.5px;
+  color: var(--text-3);
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.crumb b {
+  color: var(--text-1);
+  font-weight: 600;
+}
+.editor-actions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 11px;
+  border-radius: var(--radius-sm);
+  font-size: 12.5px;
+  color: var(--text-2);
+  border: 1px solid var(--border);
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+.chip:hover {
+  background: var(--hover);
+  border-color: var(--border-strong);
+  color: var(--text-1);
+}
+.chip.primary {
+  background: var(--accent);
+  color: #fff;
+  border-color: transparent;
+}
+.chip.primary:hover {
+  filter: brightness(1.08);
+}
+/* 已经处于该状态的 chip（这颗星代表「这一篇已在收藏里」）。
+   与 .tb-btn.on 同一套语言：accent-soft 底 + accent 字，不用 primary——
+   primary 是"提交/主操作"的意思，这里只是状态回报 */
+.chip.on {
+  background: var(--accent-soft);
+  color: var(--accent);
+  border-color: transparent;
+}
+.chip.on:hover {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.chip:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+.chip:disabled:hover {
+  background: none;
+  border-color: var(--border);
+  color: var(--text-2);
+}
+
+.editor-scroll {
+  flex: 1;
+  overflow-y: auto;
+  padding: 38px 0 120px;
+}
+.doc {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 0 32px;
+}
+
+.meta-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+  color: var(--text-3);
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+.meta-row .pill {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: var(--hover);
+  border: 1px solid var(--border);
+}
+
+h1.doc-title {
+  font-size: 31px;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+  line-height: 1.3;
+  margin-bottom: 14px;
+  font-family: var(--font-body);
+}
+input.doc-title {
+  width: 100%;
+  background: none;
+  border: none;
+  outline: none;
+  font-size: 31px;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+  line-height: 1.3;
+  margin-bottom: 14px;
+  font-family: var(--font-body);
+  color: var(--text-1);
+  padding: 0;
+}
+input.doc-title::placeholder {
+  color: var(--text-3);
+  opacity: 0.6;
+}
+
+/* ── 编辑器正文（两种模式共用一套排版）──
+   所见即所得那半是 Tiptap 渲染出来的 DOM（.md-prose），源码模式那半是 CodeMirror 的
+   div。字号、行高、颜色都取自同一批 token，切模式时同样的字不会跳一下。
+
+   标题只到 h3 有独立尺寸：日记正文里再往下的层级，分得再细也只是小字灰字，
+   不如把力气花在 h2 那根强调色小竖条上（照抄原型 .doc-h2）。 */
+.md-body .ProseMirror {
+  min-height: 45vh;
+  outline: none;
+  caret-color: var(--accent);
+  word-break: break-word;
+}
+.md-prose {
+  font-family: var(--font-body);
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
+  color: var(--text-2);
+}
+.md-prose > *:first-child {
+  margin-top: 0;
+}
+.md-prose p {
+  margin: 0 0 16px;
+}
+.md-prose strong {
+  color: var(--text-1);
+  font-weight: 600;
+}
+.md-prose em {
+  color: var(--text-1);
+}
+.md-prose a {
+  color: var(--accent);
+  text-decoration: none;
+  border-bottom: 1px solid color-mix(in srgb, var(--accent) 45%, transparent);
+}
+.md-prose h1,
+.md-prose h2,
+.md-prose h3,
+.md-prose h4,
+.md-prose h5,
+.md-prose h6 {
+  font-family: var(--font-body);
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  color: var(--text-1);
+}
+.md-prose h1 {
+  font-size: 26px;
+  margin: 30px 0 14px;
+}
+.md-prose h2 {
+  font-size: 19px;
+  margin: 34px 0 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.md-prose h2::before {
+  content: '';
+  width: 3px;
+  height: 15px;
+  border-radius: 2px;
+  background: var(--accent);
+  flex-shrink: 0;
+}
+.md-prose h3 {
+  font-size: 16px;
+  margin: 26px 0 10px;
+}
+.md-prose h4,
+.md-prose h5,
+.md-prose h6 {
+  font-size: 14.5px;
+  margin: 22px 0 8px;
+}
+/* 列表：圆点是强调色的小豆子，不是系统 marker。有序表留着数字，读起来更清楚 */
+.md-prose ul,
+.md-prose ol {
+  margin: 0 0 16px 2px;
+  padding: 0;
+}
+.md-prose ul {
+  list-style: none;
+}
+.md-prose ul > li {
+  position: relative;
+  padding-left: 22px;
+  margin-bottom: 9px;
+}
+.md-prose ul > li::before {
+  content: '';
+  position: absolute;
+  left: 6px;
+  top: 0.72em;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--accent);
+  opacity: 0.6;
+}
+.md-prose ol {
+  list-style: decimal;
+  padding-left: 24px;
+}
+.md-prose ol > li {
+  margin-bottom: 9px;
+}
+.md-prose ol > li::marker {
+  color: var(--accent);
+  font-size: 0.9em;
+}
+.md-prose li > p {
+  margin-bottom: 6px;
+}
+.md-prose li > ul,
+.md-prose li > ol {
+  margin-bottom: 0;
+}
+/* 待办：勾选框跟着强调色走，勾掉的那条淡下去 */
+.md-prose ul[data-type='taskList'] {
+  list-style: none;
+  padding-left: 2px;
+}
+.md-prose ul[data-type='taskList'] > li {
+  padding-left: 0;
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+}
+.md-prose ul[data-type='taskList'] > li::before {
+  content: none;
+}
+.md-prose ul[data-type='taskList'] > li > label {
+  flex-shrink: 0;
+  margin-top: 0.45em;
+}
+.md-prose ul[data-type='taskList'] input[type='checkbox'] {
+  width: 13px;
+  height: 13px;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+.md-prose ul[data-type='taskList'] > li[data-checked='true'] > div {
+  color: var(--text-3);
+  text-decoration: line-through;
+  text-decoration-color: color-mix(in srgb, var(--text-3) 60%, transparent);
+}
+.md-prose ul[data-type='taskList'] > li > div {
+  flex: 1;
+  min-width: 0;
+}
+.md-prose blockquote {
+  margin: 0 0 16px;
+  padding: 12px 16px;
+  border-left: 3px solid var(--accent);
+  background: var(--accent-soft);
+  border-radius: 0 10px 10px 0;
+  font-size: 14.5px;
+  line-height: 1.8;
+}
+.md-prose blockquote > *:last-child {
+  margin-bottom: 0;
+}
+.md-prose code {
+  font-family: var(--font-mono);
+  font-size: 0.88em;
+  padding: 2px 6px;
+  border-radius: var(--radius-xs);
+  background: var(--hover);
+  border: 1px solid var(--border);
+  color: var(--text-1);
+}
+.md-prose pre {
+  margin: 0 0 18px;
+  padding: 15px 17px;
+  border-radius: var(--radius-md);
+  background: var(--hover);
+  border: 1px solid var(--border);
+  overflow-x: auto;
+}
+.md-prose pre code {
+  padding: 0;
+  border: none;
+  background: none;
+  font-size: 12.5px;
+  line-height: 1.75;
+  color: var(--text-2);
+}
+/* 代码着色只给两个对比色：关键字用强调色，其余靠 text-1/2/3 分层。
+   主题只有这几个色，硬凑一份彩虹色板会在某个配色方案上撞车（照原型 .k） */
+.md-prose pre .hljs-comment,
+.md-prose pre .hljs-quote {
+  color: var(--text-3);
+  font-style: italic;
+}
+.md-prose pre .hljs-keyword,
+.md-prose pre .hljs-literal,
+.md-prose pre .hljs-selector-tag,
+.md-prose pre .hljs-doctag,
+.md-prose pre .hljs-built_in,
+.md-prose pre .hljs-type {
+  color: var(--accent);
+}
+.md-prose pre .hljs-string,
+.md-prose pre .hljs-title,
+.md-prose pre .hljs-name,
+.md-prose pre .hljs-section,
+.md-prose pre .hljs-attr {
+  color: var(--text-1);
+}
+.md-prose .tableWrapper {
+  overflow-x: auto;
+  margin: 0 0 18px;
+}
+.md-prose table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0;
+  font-size: 13.5px;
+}
+.md-prose th,
+.md-prose td {
+  padding: 9px 12px;
+  border: 1px solid var(--border);
+  text-align: left;
+  vertical-align: top;
+}
+/* 单元格里 Tiptap 会塞一个 <p>，段落外边距留着表格就成了大花脸 */
+.md-prose th > p,
+.md-prose td > p {
+  margin: 0;
+}
+.md-prose th {
+  background: var(--hover);
+  color: var(--text-1);
+  font-weight: 600;
+  font-size: 12.5px;
+}
+.md-prose img {
+  max-width: 100%;
+  border-radius: var(--radius-md);
+}
+.md-prose hr {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 22px 0;
+}
+.md-prose hr.ProseMirror-selectednode {
+  border-top-color: var(--accent);
+}
+
+/* ── 源码模式（CodeMirror 6）──
+   原型里源码视图是 13px 等宽的纯文字，字符间距比正文密：同一块屏能多看几行，
+   这是「要看语法」的模式该有的取舍。不改字号只改颜色，行高才不会在切换时跳。
+   高度 auto + scroller overflow: visible = 编辑器跟着内容长，不与外层滚动条抢手势 */
+.md-body.source .cm-editor {
+  min-height: 45vh;
+}
+.cm-h {
+  color: var(--accent);
+  font-weight: 600;
+}
+.cm-strong {
+  color: var(--text-1);
+  font-weight: 600;
+}
+.cm-em {
+  color: var(--text-1);
+  font-style: italic;
+}
+.cm-code {
+  color: var(--text-1);
+  background: var(--hover);
+  border-radius: var(--radius-xs);
+}
+.cm-link {
+  color: var(--accent);
+}
+/* `#`、`**`、`>` 这些记号本身：弱化但不藏起来——源码模式的意义就是看得见它们 */
+.cm-mark {
+  color: var(--text-3);
+}
+/* 双链内部的记号与内文都跟着链接走。
+   Lezer 会把 `[[昨天]]` 拆成「`[` + 链接文字 + `]`」——那两个记号是 cm-mark、
+   内文是 cm-link，各自带着自己的颜色，会盖掉外面那层分型色（结果就是虚线链接
+   的内文变成强调色，看起来像已经连上了）。降级成继承，让上面那四态说了算 */
+.cm-content .wl .cm-link,
+.cm-content .wl .cm-mark {
+  color: inherit;
+}
+
+/* ── 双链 ─
+   形态本身就是信息（docs/视觉设计系统.md §9.1）：不看文字先把「日记 / 文章 / 主题 /
+   悬空」认出来。两个模式共用这套类名，同一个链接在哪一边都不该长成两样。 */
+.wl {
+  cursor: pointer;
+  border-radius: var(--radius-xs);
+  transition: background 0.15s;
+}
+.wl-diary {
+  color: var(--accent);
+  border-bottom: 1px solid color-mix(in srgb, var(--accent) 60%, transparent);
+}
+.wl-article {
+  color: var(--accent);
+  border-bottom: 3px double color-mix(in srgb, var(--accent) 70%, transparent);
+}
+.wl-topic {
+  color: var(--accent);
+  background: var(--accent-soft);
+  padding: 0 6px;
+  border: 1px solid color-mix(in srgb, var(--accent) 25%, transparent);
+}
+.wl-dangling {
+  color: var(--text-3);
+  border-bottom: 1px dashed color-mix(in srgb, var(--text-3) 80%, transparent);
+  cursor: default;
+}
+.wl-diary:hover,
+.wl-article:hover {
+  background: var(--accent-soft);
+}
+.wl-topic:hover {
+  background: color-mix(in srgb, var(--accent) 22%, transparent);
+}
+
+/* ── 正文里的 #标签（期-02-设计 §6）──
+   两个编辑器共用这一套类名（富文本那边是 ProseMirror 的 inline 装饰，源码那边是 CM 的
+   mark 装饰），同一处标签在两种模式下必须是一个样子。颜色由使用方注入 `--tc`，
+   与侧栏那棵树同一个取色函数。
+   不加 padding：装饰套在可编辑文字上，一 padding 就让行高与选区边界跟着动，
+   源码模式里还会让「点哪跳哪」的坐标算偏。 */
+.tag-ref {
+  color: var(--tc, var(--text-2));
+  border-bottom: 1px solid color-mix(in srgb, var(--tc, var(--text-2)) 55%, transparent);
+  border-radius: var(--radius-xs);
+  transition: background 0.15s;
+}
+.tag-ref:hover {
+  background: color-mix(in srgb, var(--tc, var(--text-2)) 16%, transparent);
+}
+/* 同 `.wl` 那条：Lezer 给记号自己上色的话会盖掉外面这层，降级成继承 */
+.cm-content .tag-ref .cm-link,
+.cm-content .tag-ref .cm-mark,
+.cm-content .tag-ref .cm-h {
+  color: inherit;
+}
+
+.statusbar {
+  position: absolute;
+  bottom: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: var(--bg-glass-strong);
+  backdrop-filter: blur(var(--blur));
+  -webkit-backdrop-filter: blur(var(--blur));
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-glass);
+  font-size: 11.5px;
+  color: var(--text-3);
+  white-space: nowrap;
+  /* 胶囊超出编辑列会被 .editor-wrap 的 overflow:hidden 切掉两头，窄窗口（1100px 时
+     编辑列只剩 ~848px）里「保存失败 + gate 说明」同时出现就是这种事故。
+     夹住列宽，多出来的部分由下面那两条能缩的文字项吃掉。 */
+  max-width: calc(100% - 24px);
+}
+/* 分隔点和按钮不许缩（缩了会换行/错位），挤压只发生在长文字项上 */
+.statusbar .sep,
+.statusbar .sb-btn {
+  flex: 0 0 auto;
+}
+.statusbar .live {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 8px var(--accent);
+}
+.statusbar .live.idle {
+  background: var(--text-3);
+  box-shadow: none;
+}
+.statusbar .sep {
+  opacity: 0.4;
+}
+/* 切模式时交代一句「改了什么 / 为什么没切过去」。状态条是胶囊，长句子要截断，
+   全文放 title 里——不然一条说明能把状态条撑到半个屏宽 */
+.statusbar .gate {
+  color: var(--text-2);
+  max-width: 360px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.statusbar .gate.blocked {
+  color: var(--accent);
+}
+/* 报错信息和 gate 说明同样要夹住：状态栏是 nowrap 的胶囊，一条 SQLITE_BUSY 长文本
+   能把它撑到 575px（实测），加上别的就顶出编辑列。全文放 title 里。 */
+.statusbar .err {
+  color: var(--accent);
+  max-width: 360px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── 右栏 ── */
+.rail {
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  overflow-y: auto;
+  transition: opacity 0.3s;
+}
+.rail-block h5 {
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-3);
+  margin-bottom: 9px;
+}
+
+/* ─ 右栏：知识网络 ── */
+
+/* h5 是 uppercase + 字距拉开的。节点名要反着来，否则中文加字距很难看 */
+.net-cur {
+  font-style: normal;
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--accent);
+  font-weight: 500;
+  margin-left: 4px;
+}
+.net-count {
+  font-style: normal;
+  margin-left: 5px;
+  padding: 0 5px;
+  border-radius: var(--radius-xs);
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.graph-wrap {
+  background: var(--hover);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 2px;
+  overflow: hidden;
+  transition: border-color 0.18s;
+}
+/* 鼠标进画板或键盘聚焦到某个节点时，画板自己亮一下边（和 .article-card 同一套 hover 语言）。
+   不做整体 transform 缩放：右栏内容宽只比画板宽多 4px，放大会撞上右栏的 overflow-x 裁切，
+   卡片的圆角会被切掉一条。节点的放大放下面 .g-node:hover 那条做——节点在画布中间，怎么放都不会被裁。 */
+.graph-wrap:hover,
+.graph-wrap:focus-within {
+  border-color: var(--border-strong);
+}
+svg.graph {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.g-edge {
+  stroke-linecap: round;
+}
+.g-edge.k-wiki {
+  stroke: color-mix(in srgb, var(--text-3) 55%, transparent);
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+}
+.g-edge.k-dangling {
+  stroke: color-mix(in srgb, var(--text-3) 38%, transparent);
+  stroke-width: 1;
+  stroke-dasharray: 2 3;
+}
+/* 归属边（entry → topic）不是双链，是"这篇归在这个主题下"。画成实线：
+   虚线的 k-wiki 已经有主，同一张图上再出现一种虚线就分不出谁是谁了。 */
+.g-edge.k-topic {
+  stroke: color-mix(in srgb, var(--accent) 38%, transparent);
+  stroke-width: 1.2;
+}
+
+.g-node {
+  /* 半径用 CSS 几何属性写（SVG2 的 r，Electron 的 Chromium 认，别的内核不认就退回 JSX 里的属性值）。
+     之所以不写在 JSX 属性里了事：属性没法用 :hover 改，而 hover 时把节点放大是这张图上
+     唯一一个不会撞到画布边的「聚焦」反馈——节点离四边都远，放大多少都不会被裁。
+     这里跟 JSX 里的 r 必须一致：5 / 8（中心）/ 3.4（悬空短枝）。 */
+  r: 5px;
+  fill: var(--bg-panel);
+  stroke-width: 1.6;
+  cursor: pointer;
+  transition: stroke-width 0.15s, r 0.15s;
+}
+.g-node.n-diary {
+  stroke: color-mix(in srgb, var(--text-3) 75%, transparent);
+  fill: color-mix(in srgb, var(--text-3) 22%, transparent);
+}
+.g-node.n-article {
+  stroke: var(--accent);
+  fill: color-mix(in srgb, var(--accent) 26%, transparent);
+}
+.g-node.n-topic {
+  stroke: var(--accent);
+  fill: var(--accent);
+}
+.g-node.center {
+  r: 8px;
+  stroke: var(--accent);
+  fill: var(--accent);
+}
+.g-node.dangling {
+  r: 3.4px;
+  stroke: var(--text-3);
+  fill: transparent;
+  stroke-dasharray: 2 2;
+}
+/* :not(.center) —— 中心节点本来就是最大的那个（r=8），悬停反而该缩小，索性不参与放大。
+   :not(.dangling) —— 悬空短枝的点不是可点的东西（只有一个 tooltip），而且 r=3.4 放大到 7
+   之后墨迹直径变成 (14+1.6)*0.88 = 13.7px，比 12 的间距还大：鼠标一停上去，
+   那列点就自己叠成一坨。放大是「你指的是它」的反馈，指一个点不动的东西本来就没意义。
+   放大后会压住旁边的标签一点点，是故意的。 */
+.g-node:hover:not(.center):not(.dangling),
+.g-node:focus-visible:not(.center):not(.dangling) {
+  r: 7px;
+  stroke-width: 2.8;
+  outline: none;
+}
+
+.g-label {
+  font-family: var(--font-ui);
+  font-size: 7px;
+  fill: var(--text-3);
+  pointer-events: none;
+  /* 描边垫在字形底下（paint-order），相当于给标签刷一层底色：
+     悬空短枝的虚线本来就穿过右下角，环上落到正下方的标签会被它横切一刀。
+     用底色描边而不是挪几何：一动 R1/R2 就等于改设计稿。 */
+  paint-order: stroke;
+  stroke: var(--bg-panel);
+  stroke-width: 2.4px;
+  stroke-linejoin: round;
+}
+
+.graph-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 9px;
+  margin-top: 8px;
+  font-size: 10px;
+  color: var(--text-3);
+}
+.graph-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.lg {
+  width: 11px;
+  height: 2px;
+  border-radius: 2px;
+  display: inline-block;
+  flex-shrink: 0;
+}
+.lg-wiki {
+  background: color-mix(in srgb, var(--text-3) 55%, transparent);
+  background-image: repeating-linear-gradient(90deg, var(--text-3) 0 3px, transparent 3px 6px);
+}
+.lg-dangling {
+  background: color-mix(in srgb, var(--text-3) 38%, transparent);
+  background-image: repeating-linear-gradient(90deg, var(--text-3) 0 2px, transparent 2px 5px);
+}
+.lg-diary {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--text-3) 55%, transparent);
+}
+.lg-article {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--accent) 45%, transparent);
+  border: 1.5px solid var(--accent);
+}
+.lg-topic {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+.bl-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.bl {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  width: 100%;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.bl:hover {
+  background: var(--hover);
+}
+.bl-top {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  width: 100%;
+}
+.bl-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.tip-diary {
+  background: color-mix(in srgb, var(--text-3) 70%, transparent);
+}
+.tip-article {
+  background: var(--accent);
+}
+.tip-topic {
+  background: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-soft);
+}
+.bl-h {
+  font-size: 12px;
+  color: var(--text-2);
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.bl-m {
+  font-size: 9.5px;
+  padding: 1px 6px;
+  border-radius: var(--radius-xs);
+  flex-shrink: 0;
+  background: var(--hover);
+  border: 1px solid var(--border);
+  color: var(--text-3);
+}
+.bl-m.k-promotion {
+  color: var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 34%, transparent);
+  background: var(--accent-soft);
+}
+/* 上下文行：写链接时的原话比标题更能说明「为什么连过来」 */
+.bl-ctx {
+  font-size: 11px;
+  color: var(--text-3);
+  padding-left: 13px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.bl-empty {
+  font-size: 11.5px;
+  color: var(--text-3);
+  padding: 2px 8px;
+}
+.bl-hint {
+  padding-top: 0;
+  line-height: 1.6;
+}
+.bl-hint code {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  padding: 0 3px;
+  border-radius: var(--radius-xs);
+  background: var(--hover);
+}
+.bl-sub {
+  font-size: 10px;
+  color: var(--text-3);
+  letter-spacing: 0.06em;
+  margin: 10px 0 4px;
+  padding: 0 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.bl-sub::before {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+  order: 2;
+}
+.outline {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+/* 大纲项是按钮（点了要滚过去），得把按钮那套默认外观抹掉 */
+.ol-item {
+  width: 100%;
+  text-align: left;
+  font-size: 12.5px;
+  font-family: inherit;
+  color: var(--text-2);
+  background: none;
+  border: none;
+  border-left: 2px solid transparent;
+  padding: 5px 9px;
+  border-radius: var(--radius-sm);
+  transition: all 0.15s;
+  cursor: pointer;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ol-item:hover {
+  background: var(--hover);
+  color: var(--text-1);
+}
+/* 当前滚到的那一节：左边一道竖条 + 提亮。只加粗会顶动行宽，看起来像在抖 */
+.ol-item.on {
+  color: var(--text-1);
+  border-left-color: var(--accent);
+  background: var(--accent-soft);
+}
+.ol-item.lv2 {
+  padding-left: 20px;
+  font-size: 12px;
+  color: var(--text-3);
+}
+.ol-item.lv2.on {
+  color: var(--text-1);
+}
+.kv {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.kv-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12.5px;
+  gap: 8px;
+}
+.kv-row span {
+  color: var(--text-3);
+  flex-shrink: 0;
+}
+.kv-row b {
+  color: var(--text-2);
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  text-align: right;
+}
+.kv-row b.mono {
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+}
+.tag-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+/* 标签 chip。颜色由使用方注入 `--tc`（八个预调 token 之一，见 tokens.css 的说明），
+   没注入时退回中性色——`--tc` 缺省这条 fallback 让旧的 `.tag` 用法不用一起改。 */
+.tag {
+  font-size: 11.5px;
+  padding: 3px 9px;
+  border-radius: var(--radius-sm);
+  background: var(--hover);
+  border: 1px solid var(--tc, var(--border));
+  color: var(--tc, var(--text-2));
+}
+
+/* ── 专注模式 ── */
+body.focus-mode .app {
+  grid-template-columns: 0 1fr 0;
+}
+body.focus-mode .sidebar,
+body.focus-mode .rail {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* ─ 外观浮层 ── */
+.sheet {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.32);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+}
+.sheet.open {
+  display: flex;
+}
+.sheet-card {
+  width: min(680px, 92vw);
+  background: var(--bg-glass-strong);
+  backdrop-filter: blur(28px) saturate(1.8);
+  -webkit-backdrop-filter: blur(28px) saturate(1.8);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-glass);
+  padding: 22px 24px 24px;
+  max-height: 86vh;
+  overflow-y: auto;
+}
+.sheet-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 18px;
+}
+.sheet-head h3 {
+  font-size: 16px;
+  font-weight: 650;
+}
+.sheet-head p {
+  font-size: 12px;
+  color: var(--text-3);
+  margin-top: 3px;
+}
+.close-x {
+  width: 30px;
+  height: 30px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-3);
+  font-size: 18px;
+}
+.close-x:hover {
+  background: var(--hover);
+  color: var(--text-1);
+}
+.theme-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-bottom: 22px;
+}
+.theme-card {
+  border-radius: var(--radius-md);
+  border: 1.5px solid var(--border);
+  padding: 10px;
+  cursor: pointer;
+  transition: border-color 0.18s, transform 0.18s;
+  text-align: left;
+}
+.theme-card:hover {
+  transform: translateY(-2px);
+}
+.theme-card.on {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+.theme-card .prev {
+  height: 62px;
+  border-radius: var(--radius-sm);
+  margin-bottom: 9px;
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--border);
+}
+.theme-card .prev i {
+  position: absolute;
+  border-radius: 3px;
+  display: block;
+}
+.theme-card .nm {
+  font-size: 12.5px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.theme-card .ds {
+  font-size: 10.5px;
+  color: var(--text-3);
+  margin-top: 2px;
+}
+.swatches {
+  display: flex;
+  gap: 7px;
+  margin-bottom: 18px;
+}
+.swatch {
+  width: 30px;
+  height: 30px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  border: 2px solid transparent;
+  transition: transform 0.15s;
+}
+.swatch:hover {
+  transform: scale(1.1);
+}
+.swatch.on {
+  border-color: var(--text-1);
+}
+.slider-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.slider-row label {
+  font-size: 12.5px;
+  color: var(--text-2);
+  width: 96px;
+  flex-shrink: 0;
+}
+input[type='range'] {
+  flex: 1;
+  accent-color: var(--accent);
+  height: 4px;
+}
+.slider-row b {
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  color: var(--text-3);
+  width: 52px;
+  text-align: right;
+}
+.row-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 0;
+  border-top: 1px solid var(--border);
+  font-size: 13px;
+  gap: 12px;
+}
+.row-toggle em {
+  font-style: normal;
+  font-size: 11.5px;
+  color: var(--text-3);
+  display: block;
+  margin-top: 2px;
+}
+.sw {
+  width: 40px;
+  height: 23px;
+  border-radius: 999px;
+  background: var(--hover);
+  border: 1px solid var(--border);
+  position: relative;
+  transition: background 0.2s;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+.sw::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 17px;
+  height: 17px;
+  border-radius: 50%;
+  background: var(--bg-panel);
+  box-shadow: var(--shadow-panel);
+  transition: transform 0.2s;
+}
+.sw.on {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.sw.on::after {
+  transform: translateX(17px);
+  background: #fff;
+}
+
+/* ── 轻提示与启动态 ── */
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 26px;
+  transform: translate(-50%, 14px);
+  padding: 9px 16px;
+  border-radius: var(--radius-md);
+  background: var(--bg-glass-strong);
+  backdrop-filter: blur(var(--blur));
+  -webkit-backdrop-filter: blur(var(--blur));
+  color: var(--text-1);
+  border: 1px solid var(--border);
+  font-size: 12.5px;
+  z-index: 200;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s, transform 0.2s;
+  box-shadow: var(--shadow-glass);
+}
+.toast.on {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+
+.boot {
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  color: var(--text-3);
+  font-size: 13px;
+}
+.boot-error {
+  flex-direction: column;
+  gap: 6px;
+  text-align: center;
+  padding: 0 40px;
+}
+.boot-error h3 {
+  font-size: 16px;
+  color: var(--text-1);
+  margin-bottom: 4px;
+}
+.boot-error .hint {
+  color: var(--text-3);
+  font-size: 12px;
+}
+
+/* 骨架阶段：窗口窄时的降级（桌面应用主场是 ≥1280px） */
+@media (max-width: 1100px) {
+  .app {
+    grid-template-columns: 222px 1fr;
+  }
+  .rail {
+    display: none;
+  }
+  .searchbar {
+    max-width: 260px;
+  }
+}
+
+/* ── 命令面板 / 快速切换 ─────────────────────────────────────────────
+   浮层骨架沿用 .sheet（遮罩 + 点外面关掉），卡片自己往上挪一点：
+   面板是"从上面掉下来的"，居中会让人下意识去找列表在哪 */
+.palette-card {
+  width: min(560px, 92vw);
+  margin-top: -14vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-glass-strong);
+  backdrop-filter: blur(28px) saturate(1.8);
+  -webkit-backdrop-filter: blur(28px) saturate(1.8);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-glass);
+  overflow: hidden;
+}
+.pal-input {
+  border: none;
+  outline: none;
+  background: none;
+  font-family: inherit;
+  font-size: 15px;
+  color: var(--text-1);
+  padding: 15px 18px;
+  border-bottom: 1px solid var(--border);
+}
+.pal-input::placeholder {
+  color: var(--text-3);
+}
+.pal-list {
+  max-height: 56vh;
+  overflow-y: auto;
+  padding: 7px;
+}
+/* 分组标题在这里是列表内的小标，不占整行高度 */
+.pal-group {
+  padding: 8px 10px 4px;
+  margin: 0;
+}
+.pal-row {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  height: 34px;
+  padding: 0 10px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-family: inherit;
+  color: var(--text-2);
+  text-align: left;
+  cursor: pointer;
+}
+.pal-row.on {
+  background: var(--accent-soft);
+  color: var(--text-1);
+}
+.pal-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pal-hint {
+  flex-shrink: 0;
+  font-size: 11.5px;
+  font-family: var(--font-mono);
+  color: var(--text-3);
+}
+
+/* ── 浮层的表单与动作行（升格 / 版本预览共用） ── */
+.field {
+  display: block;
+  margin-bottom: 14px;
+}
+.field > span {
+  display: block;
+  font-size: 11.5px;
+  color: var(--text-3);
+  margin-bottom: 6px;
+}
+.field input,
+.field select {
+  width: 100%;
+  font-family: inherit;
+  font-size: 13.5px;
+  color: var(--text-1);
+  background: var(--hover);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  padding: 9px 11px;
+  outline: none;
+}
+.field input:focus,
+.field select:focus {
+  border-color: var(--accent);
+}
+.card-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 9px;
+  margin-top: 20px;
+}
+.chip.danger {
+  color: var(--accent);
+  border-color: var(--accent-soft);
+}
+.chip.danger:hover {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.promote-card {
+  width: min(430px, 92vw);
+}
+/* 标签改名弹层：与升格同宽同形，只是字段是一个名字 + 一句代价 */
+.rename-card {
+  width: min(430px, 92vw);
+}
+
+/* ─ 确认弹层（替掉原生 window.confirm）──
+   这一层比 .sheet 压得更暗、虚化得更狠。.sheet 那些面板是「在旁边看一眼」，
+   这一层要的是「世界先停一下」——所以它必须比被它压住的那些面板更成主体，
+   靠的就是遮罩的暗与虚化，不是卡片自己的边框。 */
+.confirm-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.42);
+  backdrop-filter: blur(14px) saturate(1.6);
+  -webkit-backdrop-filter: blur(14px) saturate(1.6);
+  animation: scrim-in 0.16s ease-out;
+}
+.confirm-card {
+  width: min(420px, 92vw);
+  background: var(--bg-glass-strong);
+  backdrop-filter: blur(28px) saturate(1.8);
+  -webkit-backdrop-filter: blur(28px) saturate(1.8);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-glass);
+  padding: 20px 22px 18px;
+  animation: card-in 0.18s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.confirm-card h3 {
+  font-size: 15px;
+  font-weight: 650;
+}
+.confirm-card p {
+  margin-top: 6px;
+  font-size: 13px;
+  line-height: 1.65;
+  color: var(--text-2);
+}
+.confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 9px;
+  margin-top: 18px;
+}
+@keyframes scrim-in {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes card-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+/* ── 历史版本预览 ── */
+.version-card {
+  width: min(760px, 94vw);
+}
+.diff {
+  /* 三种状态的色只在这一块里用，就近定义，不往全局 token 里加一对只此一处的名字 */
+  --diff-add: #46a758;
+  --diff-del: #e5484d;
+  max-height: 46vh;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--hover);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.7;
+  padding: 6px 0;
+}
+.diff-line {
+  display: flex;
+  gap: 8px;
+  padding: 0 12px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: var(--text-2);
+}
+.diff-line.add {
+  background: color-mix(in srgb, var(--diff-add) 16%, transparent);
+}
+.diff-line.del {
+  background: color-mix(in srgb, var(--diff-del) 16%, transparent);
+}
+.diff-mark {
+  flex-shrink: 0;
+  width: 10px;
+  color: var(--text-3);
+}
+.diff-line.add .diff-mark {
+  color: var(--diff-add);
+}
+.diff-line.del .diff-mark {
+  color: var(--diff-del);
+}
+
+/* ── 回收站 ── */
+.bin-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.bin-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 11px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+.bin-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.bin-main b {
+  font-size: 13px;
+  font-weight: 550;
+  color: var(--text-1);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.bin-sub {
+  font-size: 11px;
+  color: var(--text-3);
+}
+.bin-date {
+  flex-shrink: 0;
+  font-size: 11.5px;
+  color: var(--text-3);
+}
+
+/* ── 收藏 sheet（期-02-设计 §3.4）──
+   行 shape 与 .bin-row 同构，所以只补三件回收站没有的：整行可点、失效态、分组里的计数 */
+.bk-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.bk-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 11px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+.bk-row:hover {
+  border-color: var(--border-strong);
+}
+/* 指向的对象进了回收站或已被彻底删掉：淡下去，但**留在列表里**（§3.4 的「不静悄悄消失」）。
+   不用删除线——划掉的是一枚收藏，不是那条记录，记录本身可能只是暂存在回收站 */
+.bk-row.stale {
+  opacity: 0.62;
+}
+/* 整行是跳转按钮，所以要把按钮那套默认外观抹掉，让文字与 .bin-main 对齐 */
+.bk-go {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 0;
+  background: none;
+  border: none;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.bk-go b {
+  max-width: 100%;
+  font-size: 13px;
+  font-weight: 550;
+  color: var(--text-1);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.bk-go:hover b {
+  color: var(--accent);
+}
+.bk-sub {
+  font-size: 11px;
+  color: var(--text-3);
+}
+
+/* ── 主题管理 sheet（期-02-设计 §3.5）──
+   一行两层：第一层是「认这个主题」（换位 · 色点 · 名字 · 文章数 · 三枚动作），
+   第二层是「改它的属性」（图标 / 颜色 / 归档）。不把这些塞进同一行是因为
+   8 个色板加一个下拉在同一行里会变成谁都不好点。 */
+.topic-card {
+  width: min(720px, 94vw);
+}
+.tm-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.tm-row {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+.tm-row:hover {
+  border-color: var(--border-strong);
+}
+/* 归档于别的主题：缩进一格，让它一眼看得出是跟着上一行走的 */
+.tm-row.child {
+  margin-left: 18px;
+  border-style: dashed;
+}
+.tm-main {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+}
+.tm-move {
+  display: flex;
+  gap: 1px;
+  flex-shrink: 0;
+}
+.tm-move button {
+  color: var(--text-3);
+  font-size: 11px;
+  line-height: 1;
+  padding: 3px 4px;
+  border-radius: var(--radius-xs);
+}
+.tm-move button:hover:not(:disabled) {
+  background: var(--hover);
+  color: var(--accent);
+}
+.tm-move button:disabled {
+  opacity: 0.3;
+}
+.tm-main .dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+.tm-name {
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 550;
+  color: var(--text-1);
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  max-width: 240px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tm-name:hover {
+  color: var(--accent);
+}
+.tm-cnt {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--text-3);
+  flex-shrink: 0;
+}
+.tm-acts {
+  display: flex;
+  gap: 2px;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+/* 侧栏那条 .tag-act 规则是按 .tag-row 悬停写的，这一行不是 .tag-row，
+   所以要在 .tm-row 上重说一遍「悬停或焦点进到这一行才出现」。
+   .on 是已收藏：它得一直看得见，否则用户不知道星在谁身上 */
+.tm-row .tag-act.on,
+.tm-row:hover .tag-act,
+.tm-row:focus-within .tag-act {
+  opacity: 1;
+  pointer-events: auto;
+}
+.tm-row .tag-act.on {
+  color: var(--accent);
+}
+
+.tm-fields {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 14px;
+}
+.tm-field {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 11px;
+  color: var(--text-3);
+}
+.tm-icon {
+  width: 54px;
+  padding: 4px 7px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--hover);
+  font-family: inherit;
+  font-size: 12px;
+  color: var(--text-1);
+  outline: none;
+}
+.tm-icon:focus {
+  border-color: var(--accent);
+}
+.tm-swatches {
+  display: flex;
+  gap: 4px;
+}
+.tm-swatch {
+  width: 15px;
+  height: 15px;
+  border-radius: var(--radius-xs);
+  border: 1px solid transparent;
+  opacity: 0.75;
+  cursor: pointer;
+}
+.tm-swatch:hover {
+  opacity: 1;
+}
+/* 选中态用外描边而不是加粗边框：边框宽度一变整排色板会横向跳动 */
+.tm-swatch.on {
+  opacity: 1;
+  border-color: var(--text-1);
+  box-shadow: 0 0 0 2px var(--bg-glass-strong);
+}
+.tm-parent {
+  padding: 4px 7px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--hover);
+  font-family: inherit;
+  font-size: 12px;
+  color: var(--text-1);
+  max-width: 190px;
+  outline: none;
+}
+.tm-parent:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+/* 删除的第二次确认就地展开，不再叠一层弹层：它只有一句话两个按钮 */
+.tm-confirm {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 9px 11px;
+  border-radius: var(--radius-md);
+  background: var(--accent-soft);
+  font-size: 12px;
+  color: var(--text-2);
+}
+.tm-confirm .card-actions {
+  margin-top: 0;
+}
+
+/* 主题改名弹层里那枚「同时改写正文」——§8-D4 的默认勾选 */
+.tm-rewrite {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+  font-size: 12.5px;
+  color: var(--text-2);
+  cursor: pointer;
+}
+.tm-rewrite input {
+  accent-color: var(--accent);
+  flex-shrink: 0;
+}
+
+/* ── 日记页：已升格横幅 ── */
+.banner {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 8px 12px;
+  margin-bottom: 12px;
+  border-radius: var(--radius-md);
+  background: var(--accent-soft);
+  font-size: 12.5px;
+  color: var(--text-2);
+}
+.banner-go {
+  font-family: inherit;
+  font-size: 12.5px;
+  color: var(--accent);
+  background: none;
+  border: 1px solid var(--accent-soft);
+  border-radius: var(--radius-sm);
+  padding: 3px 9px;
+  cursor: pointer;
+  transition: all 0.15s;
+  max-width: 240px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.banner-go:hover {
+  border-color: var(--accent);
+}
+
+/* ── 状态栏里可点的两项 ── */
+.sb-btn {
+  font-family: inherit;
+  font-size: 11.5px;
+  color: var(--text-3);
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  transition: color 0.15s;
+}
+.sb-btn:hover {
+  color: var(--accent);
+}
+
+/* ── 标题栏：回收站条数 ── */
+.tb-count {
+  font-style: normal;
+  margin-left: 1px;
+  padding: 0 5px;
+  border-radius: var(--radius-xs);
+  background: var(--accent);
+  color: #fff;
+  font-size: 10.5px;
+}
+
+/* ── 右栏：历史版本 ── */
+.rail-fold {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  user-select: none;
+}
+.rail-fold .caret {
+  font-style: normal;
+  margin-right: 4px;
+  display: inline-block;
+  transition: transform 0.15s;
+}
+.rail-fold .caret.on {
+  transform: rotate(90deg);
+}
+.versions {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.ver-row {
+  width: 100%;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  font-family: inherit;
+  font-size: 12px;
+  color: var(--text-2);
+  background: none;
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 5px 9px;
+  cursor: pointer;
+  text-align: left;
+}
+.ver-row:hover {
+  background: var(--hover);
+  color: var(--text-1);
+}
+.ver-reason {
+  flex-shrink: 0;
+  font-size: 11px;
+  color: var(--text-3);
+}
+
+/* ── 右栏：属性面板（期-02-设计 §3.2） ──
+   形状还是「名字在左、值在右」那一行（.kv / .kv-row 的读法）。控件是原生
+   input / select，只另收一档尺寸：.field input 那套（13.5px 字 + 9px 内边距）
+   是给浮层准备的，塞进 300px 的右栏会把行撑爆。颜色一律走 token。 */
+.prop-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 12.5px;
+}
+/* list 那一行例外：chip 会换行，横着排在窄栏里挤成一团，所以名字在上、值在下 */
+.prop-row.stack {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 5px;
+}
+.prop-name {
+  color: var(--text-3);
+  flex-shrink: 0;
+  max-width: 45%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.prop-val {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 5px;
+}
+.prop-input,
+.prop-select {
+  min-width: 0;
+  flex: 1;
+  font-family: inherit;
+  font-size: 12.5px;
+  color: var(--text-1);
+  background: var(--hover);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  padding: 4px 8px;
+  outline: none;
+}
+.prop-input:focus,
+.prop-select:focus {
+  border-color: var(--accent);
+}
+/* 原生输入框会把打不进去的内容（`1e999`、选了一半的日期）吞成空串，提交就成了删键。
+   组件按 `validity.badInput` 拦在本地，理由挂在同一行下面——不另起红色：这套设计系统里
+   报错一律是 accent 色（.statusbar .err 同样），多一个色就多一套要在四个主题里核对比度的东西 */
+.prop-input.bad {
+  border-color: var(--accent);
+}
+.prop-flag {
+  flex-basis: 100%;
+  text-align: right;
+  font-size: 11px;
+  line-height: 1.2;
+  color: var(--accent);
+}
+.prop-select {
+  flex: 0 0 auto;
+}
+.prop-list {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 5px;
+}
+/* 删属性 / 去掉列表里的一项 / 跳到侧栏那格。跟 .tag-act 同一条规矩：平时不占注意力，
+   悬停或键盘进到这一行才现形（用 opacity 不用 display:none，Tab 依然走得到） */
+.mini-x,
+.prop-drill {
+  color: var(--text-3);
+  opacity: 0;
+  pointer-events: none;
+  font-size: 13px;
+  line-height: 1;
+  padding: 2px 5px;
+  border-radius: var(--radius-xs);
+  flex-shrink: 0;
+}
+.prop-row:hover .mini-x,
+.prop-row:focus-within .mini-x,
+.prop-row:hover .prop-drill,
+.prop-row:focus-within .prop-drill,
+.tag:hover .mini-x,
+.tag:focus-within .mini-x {
+  opacity: 1;
+  pointer-events: auto;
+}
+.mini-x:hover,
+.prop-drill:hover {
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+.tag:has(.mini-x) {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding-right: 4px;
+}
+.prop-add {
+  align-self: flex-start;
+  font-family: inherit;
+  font-size: 12px;
+  color: var(--text-3);
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-sm);
+  padding: 4px 9px;
+}
+.prop-add:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+.prop-add-line {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* ── 侧栏：属性视图的下钻（期-02-设计 §3.3） ──
+   文件浏览器形态：主体永远是一层列表，层级只体现在这一行面包屑上。列表本身复用
+   .topics / .topic / .cnt（与主题、标签两格同一个形状），这里只补面包屑。 */
+.crumb {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 2px;
+  font-size: 11.5px;
+  padding: 0 8px 8px;
+}
+/* 长值（日期时间、一段长文本属性）截断，而不是把整行挤到下一行去 */
+.crumb-part {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+  max-width: 100%;
+}
+.crumb button {
+  color: var(--text-3);
+  padding: 1px 4px;
+  border-radius: var(--radius-xs);
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.crumb button:hover {
+  color: var(--accent);
+  background: var(--hover);
+}
+.crumb-sep {
+  color: var(--text-3);
+  flex-shrink: 0;
+}
+/* 最后一级不可点：它没有「回到自己」这个动作 */
+.crumb-here {
+  color: var(--text-1);
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
