@@ -754,8 +754,7 @@ export const useStore = create<AppState>()((set, get) => {
           topicId,
         })
         applyEntry(entry)
-        await refreshArticles(topicId)
-        await refreshRecent()
+        await Promise.all([refreshArticles(topicId), refreshTopics(), refreshRecent()])
       } catch (err) {
         get().notify(errorMessage(err))
       }
@@ -767,7 +766,7 @@ export const useStore = create<AppState>()((set, get) => {
       const row = get().entry
       const ok = await get().askConfirm({
         title: row ? `删掉「${entryLabel(row)}」？` : '删掉这条记录？',
-        body: '它会进回收站，30 天内可以恢复。',
+        body: '它会进回收站，随时可以恢复；只有「彻底删除」才是真删。',
         confirmLabel: '删除',
       })
       if (!ok) return
@@ -775,7 +774,7 @@ export const useStore = create<AppState>()((set, get) => {
       try {
         const isDiary = get().entry?.kind === 'diary'
         await window.kestrel.entries.remove(currentId)
-        await Promise.all([refreshRecent(), refreshHeat(), refreshBin()])
+        await Promise.all([refreshRecent(), refreshHeat(), refreshBin(), refreshTopics()])
         if (get().mode === 'topic') await refreshArticles(get().activeTopicId)
         // 少一篇 = 它身上那些标签各少一次计数，全为 0 的那一行还要从树上消失
         if (get().mode === 'tag') await refreshTagSide()
@@ -1222,7 +1221,7 @@ export const useStore = create<AppState>()((set, get) => {
         // 用户刚给了它归属，应该立刻看到它在主题下的样子
         await get().selectTopic(promoted.topicId ?? input.topicId)
         set({ mode: 'topic' })
-        await Promise.all([refreshRecent(), refreshBin()])
+        await Promise.all([refreshRecent(), refreshBin(), refreshTopics()])
         get().notify(`已升格为《${promoted.title}》`)
       } catch (err) {
         get().notify(errorMessage(err))
@@ -1285,7 +1284,9 @@ export const useStore = create<AppState>()((set, get) => {
     async restoreDeleted(id) {
       try {
         const restored = await window.kestrel.entries.restore(id)
-        await Promise.all([refreshBin(), refreshRecent(), refreshHeat()])
+        // 主题行上的篇数是 topics.list() 带回来的计数，和文章列表是两次查询：
+        // 只刷列表的话，恢复完徽章还停在删除前那一刻
+        await Promise.all([refreshBin(), refreshRecent(), refreshHeat(), refreshTopics()])
         if (get().mode === 'topic') await refreshArticles(get().activeTopicId)
         // 少一篇 = 它身上那些标签各少一次计数，全为 0 的那一行还要从树上消失
         if (get().mode === 'tag') await refreshTagSide()
@@ -1303,7 +1304,7 @@ export const useStore = create<AppState>()((set, get) => {
     async purgeEntry(id) {
       try {
         await window.kestrel.entries.purge(id)
-        await Promise.all([refreshBin(), refreshRecent(), refreshHeat()])
+        await Promise.all([refreshBin(), refreshRecent(), refreshHeat(), refreshTopics()])
         if (get().mode === 'topic') await refreshArticles(get().activeTopicId)
         // 少一篇 = 它身上那些标签各少一次计数，全为 0 的那一行还要从树上消失
         if (get().mode === 'tag') await refreshTagSide()

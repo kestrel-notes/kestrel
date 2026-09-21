@@ -1,20 +1,14 @@
 /** 回收站。软删除的记录在这里能取回，也能真删掉（设计文档 §2.3）。
  *
  *  恢复日记时可能撞上「这天已有一篇日记」——那是 `idx_entry_diary_date` 给的硬约束，
- *  不吞错，把主进程的话原样提示出来，那条记录留在回收站。 */
+ *  不吞错，把主进程的话原样提示出来，那条记录留在回收站。
+ *
+ *  这里**不写倒计时**：主进程到现在没有任何自动清理路径（第 8 期才跟备份清理一处做），
+ *  标一个「剩 30 天」等于承诺一件不会发生的事——用户可能因此以为不点「彻底删除」东西也会自己消失。 */
 
 import type { JSX } from 'react'
 import { useStore, entryLabel } from '@/store'
 import { formatDateZh, relativeTime } from '../../../shared/date'
-
-/** 回收站的保留期，与主进程的软删除策略对齐：30 天内可恢复 */
-const KEEP_DAYS = 30
-
-function daysLeft(deletedAt: string): number {
-  const gone = new Date(deletedAt)
-  const end = gone.getTime() + KEEP_DAYS * 86_400_000
-  return Math.max(0, Math.ceil((end - Date.now()) / 86_400_000))
-}
 
 export function RecycleBin(): JSX.Element | null {
   const open = useStore((s) => s.binOpen)
@@ -47,7 +41,7 @@ export function RecycleBin(): JSX.Element | null {
         <div className="sheet-head">
           <div>
             <h3>回收站</h3>
-            <p>删除的记录在这里留 {KEEP_DAYS} 天，之后可以彻底删掉</p>
+            <p>删掉的记录留在这里，直到你点「彻底删除」</p>
           </div>
           <button className="close-x" onClick={() => setOpen(false)}>
             ×
@@ -65,8 +59,7 @@ export function RecycleBin(): JSX.Element | null {
                   <div className="bin-main">
                     <b>{label}</b>
                     <span className="bin-sub">
-                      {r.kind === 'diary' ? '日记' : '文章'} · 删除于 {relativeTime(r.deletedAt ?? '')} · 剩{' '}
-                      {daysLeft(r.deletedAt ?? '')} 天
+                      {r.kind === 'diary' ? '日记' : '文章'} · 删除于 {relativeTime(r.deletedAt ?? '')}
                     </span>
                   </div>
                   <span className="bin-date mono">{formatDateZh(r.entryDate)}</span>
