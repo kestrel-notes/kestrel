@@ -40,7 +40,13 @@
 
 /* 主题选择器不写 body 前缀：任意元素挂上 data-theme 就得到那套变量。
    外观面板里的主题缩略图正是靠这个——缩略图直接 data-theme="paper"，
-   用的就是真主题的变量，不存在「预览色和实际色两套值」的漂移。 */
+   用的就是真主题的变量，不存在「预览色和实际色两套值」的漂移。
+
+   主题块里**不再覆盖 `--font-body`**（2026-09-22 用户反馈）：旧版本 paper 主题走
+   serif、terminal 主题走 mono，切主题时正文的字体族会跟着跳，读起来像整篇重排。
+   笔记应用「文字的样子」应当是稳定的，主题只换颜色；纸墨感靠底色与文字色，
+   不靠换字体。`--font-serif` / `--font-mono` 保留在 :root 里，将来给引用/代码
+   这类局部元素用，不再让主题动全局正文。 */
 
 /* 标签色板：八个预调 token，`Tag.color` 存的就是它的下标（没配过色时按名字哈希取，
    shared/tags.ts 的 tagColorIndex）。
@@ -74,7 +80,6 @@
   --tag-6: #9c2f6e;
   --tag-7: #5b3ea8;
   --tag-8: #2b6ca3;
-  --font-body: var(--font-ui);
 }
 
 [data-theme='paper'] {
@@ -102,7 +107,6 @@
   --tag-6: #8c2f62;
   --tag-7: #5b3ea8;
   --tag-8: #2b6083;
-  --font-body: var(--font-serif);
 }
 
 [data-theme='midnight'] {
@@ -132,7 +136,6 @@
   --tag-8: #78b8e8;
   --shadow-glass: 0 8px 34px rgba(0, 0, 0, 0.42), 0 1px 0 rgba(255, 255, 255, 0.07) inset;
   --shadow-panel: 0 2px 14px rgba(0, 0, 0, 0.3);
-  --font-body: var(--font-ui);
 }
 
 [data-theme='terminal'] {
@@ -162,7 +165,6 @@
   --tag-8: #7adcd8;
   --shadow-glass: 0 8px 34px rgba(0, 0, 0, 0.5), 0 1px 0 rgba(255, 255, 255, 0.06) inset;
   --shadow-panel: 0 2px 14px rgba(0, 0, 0, 0.35);
-  --font-body: var(--font-mono);
 }
 
 /* 用户自选强调色不走选择器，而是往 body 上写内联的 --accent / --accent-soft：
