@@ -1,4 +1,5 @@
 import { useStore, entryLabel, type AppState } from '@/store'
+import { getRichEditor } from '@/editor/richView'
 import { todayKey } from '../../shared/date'
 
 /** 命令分组。命令面板按这个顺序分组显示，顺序即优先级。 */
@@ -185,6 +186,64 @@ export const COMMANDS: Command[] = [
     group: '编辑器',
     enabled: (s) => s.currentId !== null && s.editorMode !== 'source',
     run: (s) => void s.switchEditorMode('source'),
+  },
+  // ── 表格增删行列（§4.6）：TableKit 已装、rich 模式本就能渲染，这里接命令。
+  //    入口先只走命令面板（键盘优先）；右键菜单与边缘 +/- 按钮是后续的事。
+  //    enabled 读 getRichEditor() 那个单例：命令面板每次渲染、每次按键匹配都会重算，
+  //    光标进没进表格当场就有答案，不必往 store 里再塞一份「在不在表格里」。
+  {
+    id: 'table.insert',
+    title: '插入表格（3×3）',
+    group: '编辑器',
+    enabled: (s) => s.editorMode === 'rich' && !!getRichEditor() && !getRichEditor()?.isActive('table'),
+    run: () => {
+      getRichEditor()?.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()
+    },
+  },
+  {
+    id: 'table.addRowAfter',
+    title: '表格 · 在下方插入行',
+    group: '编辑器',
+    enabled: (s) => s.editorMode === 'rich' && !!getRichEditor()?.isActive('table'),
+    run: () => {
+      getRichEditor()?.chain().focus().addRowAfter().run()
+    },
+  },
+  {
+    id: 'table.deleteRow',
+    title: '表格 · 删除当前行',
+    group: '编辑器',
+    enabled: (s) => s.editorMode === 'rich' && !!getRichEditor()?.isActive('table'),
+    run: () => {
+      getRichEditor()?.chain().focus().deleteRow().run()
+    },
+  },
+  {
+    id: 'table.addColumnAfter',
+    title: '表格 · 在右侧插入列',
+    group: '编辑器',
+    enabled: (s) => s.editorMode === 'rich' && !!getRichEditor()?.isActive('table'),
+    run: () => {
+      getRichEditor()?.chain().focus().addColumnAfter().run()
+    },
+  },
+  {
+    id: 'table.deleteColumn',
+    title: '表格 · 删除当前列',
+    group: '编辑器',
+    enabled: (s) => s.editorMode === 'rich' && !!getRichEditor()?.isActive('table'),
+    run: () => {
+      getRichEditor()?.chain().focus().deleteColumn().run()
+    },
+  },
+  {
+    id: 'table.delete',
+    title: '表格 · 删除整张表',
+    group: '编辑器',
+    enabled: (s) => s.editorMode === 'rich' && !!getRichEditor()?.isActive('table'),
+    run: () => {
+      getRichEditor()?.chain().focus().deleteTable().run()
+    },
   },
   {
     id: 'entry.save',

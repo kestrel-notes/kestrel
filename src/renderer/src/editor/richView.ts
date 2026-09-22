@@ -8,8 +8,10 @@
  *  量位置仍然在 DOM 上做（PM 不虚拟化，整篇都在 DOM 里），这与 `cmView.ts` 的分工一致。 */
 
 import type { EditorView } from '@tiptap/pm/view'
+import type { Editor as TiptapEditor } from '@tiptap/core'
 
 let view: EditorView | null = null
+let editor: TiptapEditor | null = null
 
 export function setRichView(v: EditorView | null): void {
   view = v
@@ -17,4 +19,15 @@ export function setRichView(v: EditorView | null): void {
 
 export function getRichView(): EditorView | null {
   return view
+}
+
+/** 表格增删那几条命令要的是 Editor 实例（`editor.chain().focus().addRowAfter().run()`
+ *  与 `editor.isActive('table')` 都挂在它身上，view 上没有）。与 view 句柄并存：
+ *  view 给搜索定位用，editor 给块级操作用，两个都在 RichEditor 卸载时清成 null。 */
+export function setRichEditor(e: TiptapEditor | null): void {
+  editor = e
+}
+
+export function getRichEditor(): TiptapEditor | null {
+  return editor
 }
