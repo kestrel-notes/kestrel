@@ -838,6 +838,42 @@ input.doc-title::placeholder {
 .md-prose blockquote > *:last-child {
   margin-bottom: 0;
 }
+/* Callout（期-04 §4.2 / §6）：外观走 `.md-callout.tone-{type}`。
+   8 个 tone 复用期-2 的 `--tag-*` 色板；不新造 token。 */
+.md-prose blockquote.md-callout {
+  display: block;
+  margin: 0 0 16px;
+  padding: 10px 14px;
+  border-left: 3px solid var(--tone, var(--accent));
+  background: color-mix(in oklab, var(--tone, var(--accent)) 12%, transparent);
+  border-radius: 8px;
+}
+.md-prose blockquote.md-callout .callout-title {
+  font-weight: 600;
+  color: var(--tone, var(--accent));
+  margin-bottom: 6px;
+  font-size: 13.5px;
+  letter-spacing: 0.02em;
+}
+.md-prose blockquote.md-callout .callout-body {
+  color: var(--text-1);
+}
+.md-prose blockquote.md-callout .callout-body > *:last-child {
+  margin-bottom: 0;
+}
+.md-prose blockquote.md-callout.collapsed > .callout-body {
+  display: none;
+}
+.md-prose blockquote.md-callout.tone-note    { --tone: var(--tag-1); }
+.md-prose blockquote.md-callout.tone-tip     { --tone: var(--tag-2); }
+.md-prose blockquote.md-callout.tone-warning { --tone: var(--tag-3); }
+.md-prose blockquote.md-callout.tone-danger  { --tone: var(--tag-4); }
+.md-prose blockquote.md-callout.tone-info    { --tone: var(--tag-5); }
+.md-prose blockquote.md-callout.tone-bug     { --tone: var(--tag-6); }
+.md-prose blockquote.md-callout.tone-example { --tone: var(--tag-7); }
+.md-prose blockquote.md-callout.tone-quote   { --tone: var(--tag-8); }
+
+.statusbar .sel-count { color: var(--text-3); }
 .md-prose code {
   font-family: var(--font-mono);
   font-size: 0.88em;

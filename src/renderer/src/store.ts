@@ -50,11 +50,12 @@ export interface SearchJump {
   /** 请求号。与 headingJump 同一个道理：连点同一行也要能再滚一次 */
   at: number
 }
-/** 编辑器的两种模式。**只有源码模式是无损的**：所见即所得要经过
- *  Markdown → 富文本树 → Markdown 的往返，所以切过去要通过 roundTrip() 那道闸门。
- *  不持久化：它更像「当前这篇怎么编辑」而不是一条偏好，且遇到闸门过不去的文档
+/** 编辑器的三种模式（期-04 §4.1）。**只有源码模式是无损的**：另外两档都要经过
+ *  Markdown → 富文本树 → Markdown 的往返（reading 挂同一棵 ProseMirror，只是
+ *  `editable: false`），所以切过去/在打开时停在那一档都要通过 roundTrip() 那道闸门。
+ *  不持久化：它更像「当前这篇怎么编辑/怎么看」而不是一条偏好，且遇到闸门过不去的文档
  *  会被拽回源码模式，记住它没有意义。 */
-export type EditorMode = 'rich' | 'source'
+export type EditorMode = 'rich' | 'source' | 'reading'
 export type SaveState = 'saved' | 'saving' | 'error'
 
 /** 确认弹层上要写的那三句话。原来这两处是 `window.confirm`，一句话塞满所有信息：
@@ -355,9 +356,10 @@ export const useStore = create<AppState>()((set, get) => {
     }
 
     // 开一篇新文档也要过闸门：从这一篇的双链点进另一篇时，不会经过 switchEditorMode，
-    // 要是那篇有文件树认不出的东西（比如一整块原始 HTML），所见即所得会把它吃掉，
+    // 要是那篇有文件树认不出的东西（比如一整块原始 HTML），所见即所得/阅读都会把它吃掉，
     // 用户下一次敲键保存就真的没了。宁可把他按在源码模式里。
-    const gate = get().editorMode === 'rich' ? roundTrip(entry.content) : null
+    const mode = get().editorMode
+    const gate = mode === 'rich' || mode === 'reading' ? roundTrip(entry.content) : null
     const blocked = gate !== null && !gate.lossless
 
     set({
@@ -371,7 +373,7 @@ export const useStore = create<AppState>()((set, get) => {
       saveError: null,
       rev: 0,
       editorMode: blocked ? 'source' : get().editorMode,
-      gateNote: blocked ? `这一篇留在源码模式：所见即所得会丢 ${gate.lost.join('、')}` : null,
+      gateNote: blocked ? `这一篇留在源码模式：非源码视图会丢 ${gate.lost.join('、')}` : null,
       gateBlocked: blocked,
     })
     // 换文档 = 网络整体换掉，快照作废（否则回看一篇内容相同的旧文档会拿上一次的结果糊弄）
@@ -1158,7 +1160,9 @@ export const useStore = create<AppState>()((set, get) => {
       set((s) => ({ focus: !s.focus }))
     },
 
-    /** 切编辑器模式。切到所见即所得要过闸门，切回源码永远放行。 */
+    /** 切编辑器模式。切到非源码那一档要过闸门，切回源码永远放行。
+     *  进入 reading 与进入 rich 走同一条判据（§4.1）：都不写回、但读视图看不到被 schema
+     *  吃掉的标签；宁可让用户停在源码里看到真相，也别在 reading 里少东西他还以为文档就那样。 */
     async switchEditorMode(mode) {
       const s = get()
       if (mode === s.editorMode) return
@@ -1170,21 +1174,22 @@ export const useStore = create<AppState>()((set, get) => {
 
       const { out, lossless, notes, lost } = roundTrip(s.content)
       if (!lossless) {
-        // 留在源码模式。这不是「失败了」，是这一篇本来就不该用所见即所得编辑
-        set({ gateBlocked: true, gateNote: `留在源码模式：所见即所得会丢 ${lost.join('、')}` })
-        get().notify('这篇还进不了所见即所得')
+        // 留在源码模式。这不是「失败了」，是这一篇本来就不该用非源码视图看/编辑
+        set({ editorMode: 'source', gateBlocked: true, gateNote: `留在源码模式：${mode === 'reading' ? '阅读' : '所见即所得'}会丢 ${lost.join('、')}` })
+        get().notify('这篇还进不了非源码视图')
         return
       }
 
       set({
-        editorMode: 'rich',
+        editorMode: mode,
         gateBlocked: false,
-        gateNote: notes.length ? `已切到所见即所得 · ${notes.join('、')}` : null,
+        gateNote: notes.length ? `已切到${mode === 'reading' ? '阅读' : '所见即所得'} · ${notes.join('、')}` : null,
       })
       // 规范化过的写法就地写回：所见即所得里看到的就是将来会存进去的。
       // 会标脏并触发一次自动保存，是有意的——否则文件里留着一份和界面不同的写法，
       // 用户敲下一个键时才悄悄换掉，那才叫难解释。
-      if (out !== s.content) s.setContent(out)
+      // 阅读模式不做这一步：这一档不该改落库内容（用户可能只是想「看」一遍）。
+      if (mode === 'rich' && out !== s.content) s.setContent(out)
     },
 
     setSheetOpen(open) {

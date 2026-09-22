@@ -17,6 +17,7 @@ import Image from '@tiptap/extension-image'
 import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight'
 import { createLowlight, common } from 'lowlight'
 import { TagRefs } from '@/editor/tagRefs'
+import { Callout } from '@/editor/callout'
 import { normalizeLinkKey, resolveDateRef, splitLinkInner } from '../../../shared/links'
 import type { OutgoingLink } from '../../../shared/types'
 
@@ -218,12 +219,13 @@ const lowlight = createLowlight(common)
  *  另外三样要单独装：待办（TaskList）、表格（TableKit）、图片。 */
 export function buildExtensions(bridge: LinkBridge | null = null): AnyExtension[] {
   return [
-    StarterKit.configure({ codeBlock: false }),
+    StarterKit.configure({ codeBlock: false, blockquote: false }),
     CodeBlockLowlight.configure({ lowlight }),
     TaskList,
     TaskItem.configure({ nested: true }),
     TableKit.configure({ table: { resizable: false } }),
     Image,
+    Callout,
     WikiLink.configure({ bridge }),
     TagRefs.configure({ openTag: bridge ? (name) => bridge.openTag(name) : null }),
     Markdown.configure({ indentation: { style: 'space', size: 2 } }),
@@ -258,11 +260,53 @@ const NORMALIZED: { re: RegExp; label: string }[] = [
   { re: /^[ \t]{0,3}~{3,}/gm, label: '波浪线围栏改为 ```' },
 ]
 
-/** 带样式属性的 HTML 标签。富文本树里没有「样式」这个位置：`<span style="color:red">`
- *  被拆开只留文字，树的形状一点没变，所以「树相等」这条判据看不见它——但它是真丢东西，
- *  而且切过去时原文会被就地改写，style 再也回不来。所以单独查一遍、单独拦住。
- *  只认 style/class/id：`<a href>`、`<img src>` 这些是 Markdown 本身能表达的，不算丢。 */
-const STYLE_ATTR = /<[a-zA-Z][^>]*\s(?:style|class|id)\s*=/g
+/** 带样式或事件属性的 HTML 标签。富文本树里没有「样式」也没有「事件」这个位置：
+ *  `<span style="color:red">` 被拆开只留文字，树的形状一点没变，所以「树相等」这条
+ *  判据看不见它——但它是真丢东西，而且切过去时原文会被就地改写，style 再也回不来。
+ *  `onclick` / `onerror` 这类事件属性同一栏，理由一样。所以单独查一遍、单独拦住。
+ *  只认 style/class/id/on*：`<a href>`、`<img src>` 这些是 Markdown 本身能表达的，不算丢。 */
+const STYLE_ATTR = /<[a-zA-Z][^>]*\s(?:style|class|id|on[a-z]+)\s*=/g
+
+/** schema 认得的标签：round-trip 之后要么原样回、要么等价改写，不算丢。名单外的标签
+ *  （`<svg>` / `<math>` / `<iframe>` / 用户自己写的自定义元素）会被 `parse(md)` 整块吃光，
+ *  `parse(serialize(tree))` 自然也吃光——两棵树相等、Gate 报「无损」，但用户手写的东西
+ *  在切 rich 之后确实消失了（2026-09-22 的 A③ 实测：`<p onmouseover>悬停</p>` +
+ *  `<svg onload>...</svg>` + `<math>...</math>` 一篇 → Gate 放行 → 落库变成 `悬停` 加
+ *  几行 escaped text）。这一栏就是补上那个口子：只要 md 里出现过名单外的标签，就拦。
+ *  代码围栏里的 `<circle>` 这类两边都算一次，自然抵消，不误报。 */
+const KNOWN_TAGS = new Set([
+  'a', 'b', 'blockquote', 'br', 'code', 'del', 'div', 'em', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+  'hr', 'i', 'img', 'input', 'ins', 'kbd', 'li', 'mark', 'ol', 'p', 'pre', 's', 'samp', 'small',
+  'span', 'strong', 'sub', 'sup', 'table', 'tbody', 'td', 'tfoot', 'th', 'thead', 'tr', 'ul', 'var',
+])
+const TAG_PATTERN = /<\s*(\/?)\s*([a-zA-Z][a-zA-Z0-9]*)/g
+
+/** md 里出现了但 out 里没有的、schema 不认的标签名（含次数）。差分而不是绝对计数：
+ *  代码围栏里的 `<circle>` 两边都数一次，diff = 0，不误报。 */
+function diffUnknownTags(md: string, out: string): { n: number; names: string[] } {
+  const before = new Map<string, number>()
+  for (const m of md.matchAll(TAG_PATTERN)) {
+    const tag = m[2].toLowerCase()
+    if (KNOWN_TAGS.has(tag)) continue
+    before.set(tag, (before.get(tag) ?? 0) + 1)
+  }
+  const after = new Map<string, number>()
+  for (const m of out.matchAll(TAG_PATTERN)) {
+    const tag = m[2].toLowerCase()
+    if (KNOWN_TAGS.has(tag)) continue
+    after.set(tag, (after.get(tag) ?? 0) + 1)
+  }
+  let n = 0
+  const names: string[] = []
+  for (const [tag, cnt] of before) {
+    const lost = cnt - (after.get(tag) ?? 0)
+    if (lost > 0) {
+      n += lost
+      names.push(`<${tag}>`)
+    }
+  }
+  return { n, names }
+}
 
 const TYPE_NAMES: Record<string, string> = {
   paragraph: '段落',
@@ -356,7 +400,8 @@ function describeLoss(before: JSONContent, after: JSONContent): string[] {
  *
  *  无损的判据是**树**相等，不是文本逐字节相等。逐字节相等的判据会把
  *  `* 项目符号`、`__粗体__` 全判成有损，那等于永远进不了所见即所得
- *  （实测见 scratch/md-spike.mjs）。树相等之外只剩样式属性一个口子，见 STYLE_ATTR。 */
+ *  （实测见 scratch/md-spike.mjs）。树相等之外还有两个口子：样式属性（STYLE_ATTR）、
+ *  未识别标签（diffUnknownTags）——两个都是「parse 一上来就吃光、树看不出差别」的那一类。 */
 export function roundTrip(md: string): RoundTrip {
   const tree = manager.parse(md)
   const out = manager.serialize(tree)
@@ -365,13 +410,16 @@ export function roundTrip(md: string): RoundTrip {
   const again = manager.parse(out)
   const lossless = sameTree(tree, again)
   const styles = countMatches(md, STYLE_ATTR) - countMatches(out, STYLE_ATTR)
+  const tags = diffUnknownTags(md, out)
+  const htmlLost: string[] = []
+  if (styles > 0) htmlLost.push(`${styles} 处 HTML 属性（style/class/on*）`)
+  if (tags.n > 0) htmlLost.push(`${tags.n} 处 HTML 标签：${tags.names.join(' ')}`)
   if (!lossless) {
     const lost = describeLoss(tree, again)
-    if (styles > 0) lost.unshift(`${styles} 处 HTML 样式标记（style/class）`)
-    return { out, lossless: false, notes: [], lost }
+    return { out, lossless: false, notes: [], lost: [...htmlLost, ...lost] }
   }
-  if (styles > 0) {
-    return { out, lossless: false, notes: [], lost: [`${styles} 处 HTML 样式标记（style/class）`] }
+  if (htmlLost.length) {
+    return { out, lossless: false, notes: [], lost: htmlLost }
   }
 
   const notes = NORMALIZED.map(({ re, label }) => ({

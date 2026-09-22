@@ -155,12 +155,36 @@ export const COMMANDS: Command[] = [
     run: (s) => (s.mode === 'diary' ? void s.openDate(todayKey()) : void s.newArticle()),
   },
   {
-    id: 'editor.toggleMode',
-    title: '源码 ⇄ 所见即所得',
+    id: 'editor.cycleMode',
+    title: '循环切换编辑器模式（阅读 → 所见即所得 → 源码）',
     group: '编辑器',
     keys: ['Ctrl+Shift+M'],
     enabled: (s) => s.currentId !== null,
-    run: (s) => void s.switchEditorMode(s.editorMode === 'rich' ? 'source' : 'rich'),
+    run: (s) => {
+      const next = s.editorMode === 'reading' ? 'rich' : s.editorMode === 'rich' ? 'source' : 'reading'
+      void s.switchEditorMode(next)
+    },
+  },
+  {
+    id: 'editor.mode.reading',
+    title: '切到阅读视图',
+    group: '编辑器',
+    enabled: (s) => s.currentId !== null && s.editorMode !== 'reading',
+    run: (s) => void s.switchEditorMode('reading'),
+  },
+  {
+    id: 'editor.mode.rich',
+    title: '切到所见即所得',
+    group: '编辑器',
+    enabled: (s) => s.currentId !== null && s.editorMode !== 'rich',
+    run: (s) => void s.switchEditorMode('rich'),
+  },
+  {
+    id: 'editor.mode.source',
+    title: '切到源码模式',
+    group: '编辑器',
+    enabled: (s) => s.currentId !== null && s.editorMode !== 'source',
+    run: (s) => void s.switchEditorMode('source'),
   },
   {
     id: 'entry.save',

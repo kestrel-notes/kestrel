@@ -1,7 +1,10 @@
-/** 所见即所得那一半（Tiptap）。
+/** 所见即所得那一半（Tiptap），兼作阅读视图。
  *
  *  和 store 是带守卫的双向同步：编辑器自己吐出去的 Markdown 不再灌回来。
- *  不加这道守卫的话，每敲一个字都会 setContent → 回灌 → 整篇重建文档 → 光标跳到文首。 */
+ *  不加这道守卫的话，每敲一个字都会 setContent → 回灌 → 整篇重建文档 → 光标跳到文首。
+ *
+ *  `readOnly` 挂同一棵 ProseMirror，只是 `editable: false`——所以阅读视图不新起
+ *  一条渲染管线（§2.3 结论；红线：renderer 不许有 innerHTML sink）。 */
 
 import { EditorContent, useEditor } from '@tiptap/react'
 import type { JSX } from 'react'
@@ -10,7 +13,7 @@ import { useStore } from '@/store'
 import { setRichView } from '@/editor/richView'
 import { buildExtensions, resolveLink, type LinkBridge } from '@/editor/markdown'
 
-export function RichEditor(): JSX.Element {
+export function RichEditor({ readOnly = false }: { readOnly?: boolean }): JSX.Element {
   const content = useStore((s) => s.content)
   const entryDate = useStore((s) => s.entry?.entryDate ?? '')
   const setContent = useStore((s) => s.setContent)
@@ -41,8 +44,15 @@ export function RichEditor(): JSX.Element {
       extensions,
       content,
       contentType: 'markdown',
-      editorProps: { attributes: { class: 'md-prose', spellcheck: 'false' } },
+      editable: !readOnly,
+      editorProps: {
+        attributes: {
+          class: readOnly ? 'md-prose md-reading' : 'md-prose',
+          spellcheck: 'false',
+        },
+      },
       onUpdate: ({ editor, transaction }) => {
+        if (readOnly) return
         // 光标移动也会走到这里。不拦的话，点一下正文就会整篇重新序列化（末尾会多一个
         // 空行）、标脏、落库——用户什么都没改，文件却变了
         if (!transaction.docChanged) return
@@ -56,6 +66,15 @@ export function RichEditor(): JSX.Element {
     // 只建一次。正文、条目日期、出链都从 store 现取；换文档时整个组件按 key 重建
     []
   )
+
+  // 挂载后编辑性变了要跟着改（同 key 的情况下 readOnly 只有从 rich 切到 reading 会翻转，
+  // 但那条路径会走 set-editorMode → Editor 层重新渲染 RichEditor；这里 editor 实例保住，
+  // 只 setEditable 一次——省一次整篇重建）
+  useEffect(() => {
+    if (!editor) return
+    if (editor.isEditable === !readOnly) return
+    editor.setEditable(!readOnly)
+  }, [editor, readOnly])
 
   useEffect(() => {
     if (!editor || content === emitted.current) return
@@ -71,10 +90,12 @@ export function RichEditor(): JSX.Element {
     return () => setRichView(null)
   }, [editor])
 
-  // 装好就把光标放到文末：这是"接着写"的场景，落在文首的话第一句话会插到最前面
+  // 装好就把光标放到文末：这是"接着写"的场景，落在文首的话第一句话会插到最前面。
+  // 阅读模式不占光标，免得把 window 焦点从别处抢走。
   useEffect(() => {
+    if (readOnly) return
     editor?.commands.focus('end')
-  }, [editor])
+  }, [editor, readOnly])
 
   return (
     <div className="md-body">

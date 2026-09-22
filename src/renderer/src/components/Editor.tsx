@@ -1,5 +1,5 @@
 import type { JSX } from 'react'
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { EditorView } from '@codemirror/view'
 import { TextSelection } from '@tiptap/pm/state'
 import { countChars, formatDateZh, relativeTime } from '../../../shared/date'
@@ -177,7 +177,22 @@ export function Editor(): JSX.Element {
   const toggleBookmark = useStore((s) => s.toggleBookmark)
 
   const scrollRef = useRef<HTMLDivElement>(null)
-  const rich = editorMode === 'rich'
+  // `rich` 在这里的语义是「挂着 ProseMirror 的那两档」（rich 或 reading），不是特指 rich
+  const rich = editorMode === 'rich' || editorMode === 'reading'
+
+  // 期-04 §4.10：选区字数。走原生 selectionchange——Tiptap 与 CodeMirror 都会把
+  // 各自的选区反映到 DOM 的 selection 上，`toString()` 拿到的就是选中的字；
+  // 不需要在两个编辑器里各装一份回调。0 = 光标（不算选中），也不显示。
+  const [selChars, setSelChars] = useState(0)
+  useEffect(() => {
+    const onSel = (): void => {
+      const s = window.getSelection()
+      const text = s ? s.toString() : ''
+      setSelChars(text ? countChars(text) : 0)
+    }
+    document.addEventListener('selectionchange', onSel)
+    return () => document.removeEventListener('selectionchange', onSel)
+  }, [])
 
   // 大纲点击 → 滚过去
   useEffect(() => {
@@ -295,11 +310,11 @@ export function Editor(): JSX.Element {
           )}
           <button
             className="chip"
-            onClick={() => void switchEditorMode(editorMode === 'rich' ? 'source' : 'rich')}
-            title="Ctrl+Shift+M"
+            onClick={() => void switchEditorMode(editorMode === 'reading' ? 'rich' : editorMode === 'rich' ? 'source' : 'reading')}
+            title="Ctrl+Shift+M · 阅读 → 所见即所得 → 源码 → 阅读"
           >
             <IconCode />
-            {editorMode === 'rich' ? '源码模式' : '所见即所得'}
+            {editorMode === 'reading' ? '编辑（所见即所得）' : editorMode === 'rich' ? '源码模式' : '阅读'}
           </button>
           {/* 设计与 §10 第 11 项只点了 Ctrl+D 这一个入口，但那样鼠标用户根本收藏不了东西，
               所以这里留一枚看得见的星。判据与快捷键是同一份 store，不会漂出第二套状态 */}
@@ -375,7 +390,11 @@ export function Editor(): JSX.Element {
             <span className="pill">创建于 {entry.entryDate}</span>
           </div>
 
-          {rich ? <RichEditor key={entry.id} /> : <SourceEditor key={entry.id} />}
+          {rich ? (
+            <RichEditor key={entry.id} readOnly={editorMode === 'reading'} />
+          ) : (
+            <SourceEditor key={entry.id} />
+          )}
         </div>
       </div>
 
@@ -390,6 +409,7 @@ export function Editor(): JSX.Element {
         )}
         <span className="sep">|</span>
         <span>{chars} 字</span>
+        {selChars > 0 && <span className="sel-count"> · 选中 {selChars} 字</span>}
         {gateNote && (
           <>
             <span className="sep">|</span>
@@ -402,10 +422,10 @@ export function Editor(): JSX.Element {
         <span className="sep">|</span>
         <button
           className="sb-btn"
-          title="切换编辑器模式（Ctrl+Shift+M）"
-          onClick={() => void switchEditorMode(rich ? 'source' : 'rich')}
+          title="切换编辑器模式（Ctrl+Shift+M · 阅读 → 所见即所得 → 源码 → 阅读）"
+          onClick={() => void switchEditorMode(editorMode === 'reading' ? 'rich' : editorMode === 'rich' ? 'source' : 'reading')}
         >
-          {rich ? '所见即所得' : '源码'}
+          {editorMode === 'reading' ? '阅读' : editorMode === 'rich' ? '所见即所得' : '源码'}
         </button>
         {focus && (
           <button className="sb-btn" title="退出专注模式" onClick={toggleFocus}>
