@@ -23,18 +23,12 @@ export function KestrelMark({ size = 18 }: { size?: number }): JSX.Element {
         </linearGradient>
       </defs>
       <rect width="64" height="64" rx="18" fill={`url(#${id})`} />
-      <g fill="var(--brand-cream)">
-        <path d="M28 22 Q19 12 10 5 Q13 20 23 31 Z" />
-        <path d="M36 22 Q45 12 54 5 Q51 20 41 31 Z" />
-        <path d="M32 12 C36.5 12 37.5 16.5 37 20 C37 28 34 36 32 40 C30 36 27 28 27 20 C26.5 16.5 27.5 12 32 12 Z" />
-        <path d="M29 39 L25 57 Q32 59 39 57 L35 39 Z" />
-      </g>
-      <g fill="#7a2411">
-        <path d="M27 15 A5 3.2 0 0 1 37 15 Z" />
-        <path d="M32 18.4 L31 21 L33 21 Z" />
-        <rect x="28.2" y="17.5" width="1.1" height="4" rx="0.55" />
-        <rect x="34.7" y="17.5" width="1.1" height="4" rx="0.55" />
-      </g>
+      {/* 俯冲的红隼：头喙压在左下、双翼掠向右上，一笔成型的极简箭头鸟。
+          与 resources/icon.svg 同一份路径，改这里记得同步改那边。 */}
+      <path
+        fill="var(--brand-cream)"
+        d="M12 52 C18 40 24 26 30 14 C31 26 30 34 28 40 C34 36 44 32 54 32 C44 40 30 50 12 52 Z"
+      />
     </svg>
   )
 }

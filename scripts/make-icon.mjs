@@ -12,6 +12,8 @@ import { evaluate } from '../scratch/cdp-client.mjs'
 
 const ROOT = join(import.meta.dirname, '..')
 const SIZES = [16, 24, 32, 48, 64, 128, 256]
+// apple-touch-icon 要 180，不在 .ico 的名单里；单独栅格一张
+const RASTER = [...SIZES, 180]
 
 const svg = readFileSync(join(ROOT, 'resources/icon.svg'), 'utf8')
 const svgLiteral = JSON.stringify(svg)
@@ -22,7 +24,7 @@ const expression = `(async () => {
   img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(markup)
   await img.decode()
   const out = {}
-  for (const size of ${JSON.stringify(SIZES)}) {
+  for (const size of ${JSON.stringify(RASTER)}) {
     const cv = document.createElement('canvas')
     cv.width = size
     cv.height = size
@@ -68,6 +70,11 @@ const ico = buildIco(entries)
 
 writeFileSync(join(ROOT, 'resources/icon.png'), entries.find((e) => e.size === 256).data)
 writeFileSync(join(ROOT, 'resources/icon.ico'), ico)
+
+// 站点图标同源：favicon 用 32，apple-touch 用 180，favicon.ico 直接复用上面拼好的 ico
+writeFileSync(join(ROOT, 'site/favicon.png'), Buffer.from(pngs[32], 'base64'))
+writeFileSync(join(ROOT, 'site/apple-touch-icon.png'), Buffer.from(pngs[180], 'base64'))
+writeFileSync(join(ROOT, 'site/favicon.ico'), ico)
 
 // 回读校验：目录项说的大小和 PNG 头里的一致，说明拼装没串位
 const check = SIZES.map((size) => {
