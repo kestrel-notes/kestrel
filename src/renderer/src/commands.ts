@@ -21,8 +21,8 @@ export interface Command {
 /** 保留键位——**只有注释，不做成 `enabled: () => false` 的命令**。
  *  禁用命令会在面板里显示成一条永远点不动的项，比不显示更让人困惑。
  *  写在这里是为了「这个键位已经被预定」这件事有据可查，不会被别的功能顺走。 */
-// Ctrl+F    站内搜索        —— 第 3 期
-// Ctrl+Shift+F 被「专注模式」占用（已发布），所以搜索用 Ctrl+F 而不是 Obsidian 的 Ctrl+Shift+F
+// Ctrl+Shift+F 不给站内搜索——它已属于专注模式（期-03 设计 §4.3），
+// 所以搜索用 Ctrl+F 而不是 Obsidian 的 Ctrl+Shift+F
 
 /** 主键取 `e.code` 而不是 `e.key`：Shift 按下时 `e.key` 对字母变大写、对数字变符号
  *  （Shift+1 是 `!`），拿它拼键位会漏掉所有带 Shift 的组合。 */
@@ -131,6 +131,13 @@ export const COMMANDS: Command[] = [
     group: '跳转',
     keys: ['Ctrl+O'],
     run: (s) => void s.openPalette('switch'),
+  },
+  {
+    id: 'view.search',
+    title: '站内搜索',
+    group: '跳转',
+    keys: ['Ctrl+F'],
+    run: (s) => s.openSearch(),
   },
   {
     id: 'tag.focus',

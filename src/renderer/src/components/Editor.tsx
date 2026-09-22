@@ -1,10 +1,12 @@
 import type { JSX } from 'react'
 import { useEffect, useRef } from 'react'
 import { EditorView } from '@codemirror/view'
+import { TextSelection } from '@tiptap/pm/state'
 import { countChars, formatDateZh, relativeTime } from '../../../shared/date'
-import { useStore, entryLabel } from '@/store'
+import { useStore, entryLabel, type SearchJump } from '@/store'
 import { outlineLines } from '@/outline'
 import { getCmView } from '@/editor/cmView'
+import { getRichView } from '@/editor/richView'
 import { RichEditor } from '@/editor/RichEditor'
 import { SourceEditor } from '@/editor/SourceEditor'
 import { useBookmarkedCurrent } from '@/components/Bookmarks'
@@ -53,6 +55,101 @@ function scrollToHeading(box: HTMLElement | null, rich: boolean, content: string
   })
 }
 
+/** 搜索结果的命中定位（§4.4）。返回 false = 这一拍没动着任何东西，调用方可以换一帧再试。
+ *
+ *  两条路各用各的坐标，因为两边拿到的根本不是同一个东西：
+ *   - 源码模式：`pos` 是 Markdown 原文里的下标，而 CM 的文档**就是**那份原文，直接用。
+ *   - 所见即所得：`pos` 对不上——渲染出来的 DOM 里没有 `#`、`**` 这些语法字符，
+ *     偏移天然错开。所以这一边只认命中词，在摊平的文本节点里找它出现的位置。
+ *     同一个词在别处先出现过也会滚到那儿：那也是同一个词，不是别的词。
+ *
+ *  两种情况都允许失败，失败就只是不滚（设计稿那句「定位失败不影响打开」）。 */
+function locateHit(jump: SearchJump, rich: boolean, box: HTMLElement | null): boolean {
+  return rich ? locateInProse(box, jump.needle) : locateInCm(jump.pos, jump.needle)
+}
+
+function locateInCm(pos: number | null, needle: string | null): boolean {
+  const v = getCmView()
+  if (!v || pos === null || !needle) return false
+  // `pos` 是主进程在**库里那一份正文**上量出来的下标。写路径上任何一次规范化
+  // （markdown 转义、行尾处理）都会让它和 CM 文档错开一位——错一位就选到邻字上。
+  // 所以先拿 needle 自证：对不上就照字符串再找一次，两边都找不到才放弃
+  const len = needle.length
+  const lower = needle.toLowerCase()
+  const direct = v.state.doc.slice(pos, pos + len).toString().toLowerCase()
+  const at = direct === lower ? pos : indexOfCm(v, lower)
+  if (at < 0) return false
+  v.dispatch({
+    selection: { anchor: at, head: Math.min(at + len, v.state.doc.length) },
+    effects: EditorView.scrollIntoView(at, { y: 'start' }),
+  })
+  // 面板关掉时输入框从 DOM 里消失了，不主动把焦点要回来的话光标会掉在地上
+  v.focus()
+  return true
+}
+
+/** 在 CM 文档里按字符串找命中词（`pos` 对不上时的兜底）。文档是几 KB 量级，逐行找够用。
+ *  两边都 downcase 再比：ASCII 的大小写折叠不变长，下标仍然对得上 */
+function indexOfCm(v: EditorView, lowerNeedle: string): number {
+  const doc = v.state.doc
+  for (let i = 1; i <= doc.lines; i++) {
+    const line = doc.line(i)
+    const at = line.text.toLowerCase().indexOf(lowerNeedle)
+    if (at >= 0) return line.from + at
+  }
+  return -1
+}
+
+function locateInProse(box: HTMLElement | null, needle: string | null): boolean {
+  const prose = box?.querySelector<HTMLElement>('.md-prose')
+  if (!prose || !needle) return false
+
+  const nodes: Text[] = []
+  let flat = ''
+  const walk = document.createTreeWalker(prose, NodeFilter.SHOW_TEXT)
+  for (let n = walk.nextNode(); n; n = walk.nextNode()) {
+    const t = n as Text
+    if (!t.data) continue
+    nodes.push(t)
+    flat += t.data
+  }
+  const at = flat.indexOf(needle)
+  if (at < 0) return false
+
+  const range = document.createRange()
+  const tail = at + needle.length
+  let started = false
+  let ended = false
+  let cur = 0
+  for (const t of nodes) {
+    const end = cur + t.data.length
+    if (!started && at >= cur && at < end) {
+      range.setStart(t, at - cur)
+      started = true
+    }
+    if (started && !ended && tail > cur && tail <= end) {
+      range.setEnd(t, tail - cur)
+      ended = true
+      break
+    }
+    cur = end
+  }
+  if (!started || !ended) return false
+
+  const view = getRichView()
+  if (!view) return false
+  // 换成 PM 的文档坐标再派发。直接写 window.getSelection() 的话 PM 会把自己那份
+  // selection 同步回来，选区塌成一个点——看着就是"没选中"（实机验收抓到的）
+  const from = view.posAtDOM(range.startContainer, range.startOffset)
+  const to = view.posAtDOM(range.endContainer, range.endOffset)
+  if (from < 0 || to < 0 || from === to) return false
+  const tr = view.state.tr.setSelection(TextSelection.create(view.state.doc, from, to)).scrollIntoView()
+  view.dispatch(tr)
+  // 面板关掉时输入框从 DOM 里消失了，不主动把焦点要回来的话下一次打字打到空处
+  view.focus()
+  return true
+}
+
 export function Editor(): JSX.Element {
   const entry = useStore((s) => s.entry)
   const title = useStore((s) => s.title)
@@ -75,6 +172,7 @@ export function Editor(): JSX.Element {
   const openEntry = useStore((s) => s.openEntry)
   const openDate = useStore((s) => s.openDate)
   const headingJump = useStore((s) => s.headingJump)
+  const searchJump = useStore((s) => s.searchJump)
   const bookmarked = useBookmarkedCurrent()
   const toggleBookmark = useStore((s) => s.toggleBookmark)
 
@@ -86,6 +184,24 @@ export function Editor(): JSX.Element {
     if (!headingJump) return
     scrollToHeading(scrollRef.current, rich, useStore.getState().content, headingJump.index)
   }, [headingJump, rich])
+
+  // 搜索命中 → 滚过去并选中那一串字（§4.4）
+  useEffect(() => {
+    if (!searchJump) return
+    const s = useStore.getState()
+    // 换文档与定位请求是两次 set：这一拍可能还没切过来，也可能已经切到别的一篇了。
+    // 认 entryId 而不是认「最新一次请求」，才不会把上一篇文章的坐标打到当前这篇上
+    if (s.entry?.id !== searchJump.entryId) return
+    if (locateHit(searchJump, rich, scrollRef.current)) return
+    // 试不动多半是刚换完模式、编辑器还没排版完（与大纲跳转同一类：CM6 与 Tiptap
+    // 都到下一帧才量得准）。再试一次就收手——第二次还失败，这篇里确实没有那一串字
+    const raf = requestAnimationFrame(() => {
+      const now = useStore.getState()
+      if (now.searchJump?.at !== searchJump.at || now.entry?.id !== searchJump.entryId) return
+      locateHit(searchJump, rich, scrollRef.current)
+    })
+    return () => cancelAnimationFrame(raf)
+  }, [searchJump, rich])
 
   // 滚动时回报「当前所在的标题」，右栏据此高亮
   useEffect(() => {

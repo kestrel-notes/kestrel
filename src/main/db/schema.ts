@@ -196,4 +196,37 @@ export const MIGRATIONS: Migration[] = [
       create index idx_bookmark_ref on Bookmark(kind, ref);
     `,
   },
+  {
+    version: 5,
+    name: 'search: EntryFts（FTS5 外部内容表），索引数据与触发器交给 db/fts.ts',
+    sql: `
+      -- 全文索引。**这一步只建表，不建数据、也不建触发器**。两件事都有实测出处：
+      --
+      -- 1. 不建数据：分批灌 6 万条 × 600 字（34 MiB 正文）要 33~39 秒，而迁移跑在
+      --    createWindow() 之前（main/index.ts:233 vs :238），同步建 = 大库升级后
+      --    窗口半分钟不出现。数据由 db/fts.ts 在首帧之后分批补（§2.6 / §5.2）。
+      -- 2. 不建触发器：对**不在索引里**的 rowid 执行 FTS5 的 'delete' 命令，SQLite 不报
+      --    「找不到」而是抛 database disk image is malformed；这条语句在触发器里的话
+      --    **整条用户写操作回滚**（§2.7，probe12/13）。所以「索引不完整 + 触发器已装」
+      --    = 回填窗口里用户改一篇还没索引的旧笔记，保存直接失败。这是内容损失，不能要。
+      --    触发器一律等索引追平之后再装，装卸都归 fts.ts 那台状态机。
+      --
+      -- tokenize 用 trigram 而不是 unicode61：unicode61 把连续汉字切成整段，
+      -- 中文查询实测七个词全 0 命中（§2.2）。trigram 是真子串语义，代价是只认
+      -- ≥3 字符——1~2 字的查询由查询层打到同一张表的 LIKE 上，那条也有索引（§2.4）。
+      --
+      -- 外部内容表（content='Entry'）：正文不在索引里存第二份。代价是跨列取值要回表，
+      -- 所以查询层禁止 join 流，见 §2.5 那条红线；另一条代价就是 'delete' 要按传进来的
+      -- 旧值重算 token，于是有了上面第 2 点。
+      create virtual table EntryFts using fts5(
+        title, content,
+        content='Entry', content_rowid='id',
+        tokenize='trigram case_sensitive 0'
+      );
+
+      -- 回填状态位。Setting 是 key/value + JSON 值，而 settings.ts 的 coerce 只认它
+      -- 自己那几个键（多出来的键读时忽略、写时不碰），所以这里直接插一条不影响设置。
+      insert or replace into Setting(key, value) values('fts.backfill', '"pending"');
+    `,
+  },
 ]

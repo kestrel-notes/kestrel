@@ -300,6 +300,48 @@ export interface Bookmark {
   state: 'ok' | 'deleted' | 'gone'
 }
 
+/** 全文索引引擎的进度。`state` 与 `main/db/fts.ts` 的 `FtsState` 同一套值。
+ *  搜索面板那句「索引建立中（已完成 N%）」就是它（期-03-设计 §4.5）。 */
+export interface FtsStatus {
+  state: 'pending' | 'building' | 'ready'
+  done: number
+  total: number
+}
+
+/** 这次查询走的是哪条路，面板底部与探针都靠它自证：
+ *  `match` = 有 ≥3 字的词走了 FTS5 短语查询；`like` = 全靠 1~2 字词的同表 `LIKE`；
+ *  `scan` = 索引还没追平，整条查询打到原表 `Entry`（期-03-设计 §5.2）。 */
+export type SearchPath = 'match' | 'like' | 'scan'
+
+/** 一行搜索结果。上下文与命中区间在主进程算好后交过来（期-03-设计 §5.3）：
+ *  高亮是 `--accent` 下划线 + 底色，不是 `<mark>`，所以 IPC 上跑的是**区间**而不是 HTML
+ *  ——把 `<b>` 拼好再送过来，等于把渲染层的样式决定搬进了数据库。 */
+export interface SearchResultRow {
+  id: number
+  kind: EntryKind
+  title: string | null
+  entryDate: string
+  updatedAt: string
+  /** 元信息那行的主题名；没有归属时为 null */
+  topicName: string | null
+  /** 首个命中附近一段（前后各约 24 字，换行压成空格）。只命中标题时为 null */
+  excerpt: string | null
+  /** `excerpt` 内的命中区间，左闭右开、码元下标 */
+  hits: Array<[number, number]>
+  /** 命中在 `content` 里的绝对码元下标，§4.4 定位用。只命中标题时为 null */
+  pos: number | null
+}
+
+export interface SearchResult {
+  rows: SearchResultRow[]
+  /** 候选集大小，**封顶在 2000**（§5.3）。所以它是「至少这么多」的意思 */
+  total: number
+  /** 撞了候选上限：面板该说「命中 2000+」而不是「命中 2000」 */
+  capped: boolean
+  path: SearchPath
+  status: FtsStatus
+}
+
 /** 渲染进程可用的 API，由 preload 注入；主进程侧一一对应注册。
  *  刻意不暴露「执行任意 SQL」的通道——只暴露具体的领域操作。 */
 export interface KestrelApi {
@@ -390,6 +432,15 @@ export interface KestrelApi {
     /** 这篇指向谁：正文里每一条链接落到了哪，编辑器照着分型着色 */
     outgoing(entryId: number): Promise<OutgoingLink[]>
   }
+  /** 全文搜索（期-03）。查询串的语法只有一份实现：`shared/query.ts`。
+   *  空串**不该发过来**（面板自己拦，见 §10 第 8 项），主进程再兜一道。 */
+  search: {
+    run(query: string, limit?: number): Promise<SearchResult>
+  }
+  /** 索引引擎的进度。只有轮询没有推送：回调跨不过 IPC（§5.2） */
+  fts: {
+    status(): Promise<FtsStatus>
+  }
   settings: {
     all(): Promise<Settings>
     patch(patch: Partial<Settings>): Promise<Settings>
@@ -414,6 +465,11 @@ export interface KestrelApi {
      *  没有这一问的话，按 × 前 500ms 内敲的字会整个丢掉（实测，见期-01 设计 §4.6） */
     onFlushRequest(cb: () => void): () => void
     flushDone(): void
+  }
+  /** 开发版的裸 SQL 通道。**打包版这个键根本不存在**（preload 按主进程传来的条件挂，
+   *  主进程那边也不注册 handler），所以 §10 第 12 项测的是 `in window.kestrel` 而不是「调了报错」。 */
+  __dev?: {
+    sql(query: string): Promise<unknown[]>
   }
 }
 
@@ -460,6 +516,12 @@ export const IPC = {
   linkOutgoing: 'link:outgoing',
   settingsAll: 'settings:all',
   settingsPatch: 'settings:patch',
+  searchRun: 'search:run',
+  ftsStatus: 'fts:status',
+  /** 裸 SQL 通道。**只在非打包版注册**（期-03-设计 §8-D6）：本期所有 FTS 的 DDL 与
+   *  探针只能在 Electron 主进程那份 SQLite 上跑（§2.1：系统 node 的 3.47 没有 FTS5），
+   *  要有自动验收就得能跑建表和 pragma。打包版这个 handler 不是"锁起来"，是不存在。 */
+  devSql: 'dev:sql',
   winMinimize: 'win:minimize',
   winToggleMaximize: 'win:toggleMaximize',
   winClose: 'win:close',

@@ -7,6 +7,7 @@ import { EditorContent, useEditor } from '@tiptap/react'
 import type { JSX } from 'react'
 import { useEffect, useMemo, useRef } from 'react'
 import { useStore } from '@/store'
+import { setRichView } from '@/editor/richView'
 import { buildExtensions, resolveLink, type LinkBridge } from '@/editor/markdown'
 
 export function RichEditor(): JSX.Element {
@@ -62,6 +63,13 @@ export function RichEditor(): JSX.Element {
     emitted.current = content
     editor.commands.setContent(content, { contentType: 'markdown', emitUpdate: false })
   }, [editor, content])
+
+  // 交出去的句柄只有一份：搜索命中要在 PM 自己的坐标系里选字（见 richView.ts）
+  useEffect(() => {
+    if (!editor) return
+    setRichView(editor.view)
+    return () => setRichView(null)
+  }, [editor])
 
   // 装好就把光标放到文末：这是"接着写"的场景，落在文首的话第一句话会插到最前面
   useEffect(() => {

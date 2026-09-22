@@ -9,6 +9,7 @@ import { Editor } from '@/components/Editor'
 import { Rail } from '@/components/Rail'
 import { ThemeSheet } from '@/components/ThemeSheet'
 import { Palette } from '@/components/Palette'
+import { SearchPanel } from '@/components/SearchPanel'
 import { PromoteCard } from '@/components/PromoteCard'
 import { RecycleBin } from '@/components/RecycleBin'
 import { Bookmarks } from '@/components/Bookmarks'
@@ -89,6 +90,7 @@ export default function App(): JSX.Element {
       if (e.code === 'Escape') {
         if (s.confirm) s.answerConfirm(false)
         else if (s.palette !== null) s.closePalette()
+        else if (s.searchOpen) s.closeSearch()
         else if (s.propConvert) s.setPropConvert(null)
         else if (s.topicRename !== null) s.setTopicRename(null)
         else if (s.tagRename !== null) s.setTagRename(null)
@@ -155,6 +157,7 @@ export default function App(): JSX.Element {
       <PropConvertCard />
       <VersionSheet />
       <Palette />
+      <SearchPanel />
       <ConfirmDialog />
       {toast && <div className="toast on">{toast}</div>}
     </>

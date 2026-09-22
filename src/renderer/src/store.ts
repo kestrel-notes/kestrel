@@ -39,6 +39,17 @@ export interface PropCrumb {
 }
 /** 同一个 Palette 组件的两种模式：一个找命令，一个找记录 */
 export type PaletteMode = 'command' | 'switch'
+/** 搜索面板点中一行后要干的事（期-03 §4.4）。两种编辑器各要一样，所以两样都带：
+ *  `pos` 是 Markdown 原文里的下标（源码模式用），`needle` 是命中的那串字
+ *  （所见即所得用——那边 DOM 里没有语法字符，偏移对不上）。
+ *  只命中标题时两个都是 null，那就是「只打开、不定位」 */
+export interface SearchJump {
+  entryId: number
+  pos: number | null
+  needle: string | null
+  /** 请求号。与 headingJump 同一个道理：连点同一行也要能再滚一次 */
+  at: number
+}
 /** 编辑器的两种模式。**只有源码模式是无损的**：所见即所得要经过
  *  Markdown → 富文本树 → Markdown 的往返，所以切过去要通过 roundTrip() 那道闸门。
  *  不持久化：它更像「当前这篇怎么编辑」而不是一条偏好，且遇到闸门过不去的文档
@@ -155,6 +166,14 @@ export interface AppState {
   /** 快速切换的候选池，打开时才拉 */
   switchRows: EntrySummary[]
 
+  /** 搜索面板（期-03 §4.1）。这里只存「开没开」与定位请求：查询串、防抖、
+   *  结果与轮询都是面板自己的事，与 Palette 把 query/cursor 放在组件里同一个口径。
+   *  往 store 搬一套只会多出第二份真相 */
+  searchOpen: boolean
+  /** 搜索结果的「定位到命中处」请求。`entryId` 用来拒绝上一篇文章的迟到请求，
+   *  `at` 与 headingJump 同样是请求号：连点同一行也要能再滚一次 */
+  searchJump: SearchJump | null
+
   /** 升格弹层（日记 → 文章） */
   promoteOpen: boolean
   /** 回收站：列表常驻内存，标题栏入口靠它的条数决定显不显示 */
@@ -246,6 +265,12 @@ export interface AppState {
 
   openPalette(mode: PaletteMode): Promise<void>
   closePalette(): void
+  /** `Ctrl+F`（期-03 §4.3）。与命令面板互斥地关掉对方：两个都是居中 sheet，同开会叠两层模糊 */
+  openSearch(): void
+  closeSearch(): void
+  /** 点开一行搜索结果：先换文档再报定位请求。§4.4 要求「定位失败不影响打开」，
+   *  所以这一步不接受任何来自编辑器的回执 */
+  openSearchHit(entryId: number, pos: number | null, needle: string | null): Promise<void>
   setPromoteOpen(open: boolean): void
   promoteCurrent(input: PromoteInput): Promise<void>
   setBinOpen(open: boolean): void
@@ -626,6 +651,8 @@ export const useStore = create<AppState>()((set, get) => {
 
     palette: null,
     switchRows: [],
+    searchOpen: false,
+    searchJump: null,
     promoteOpen: false,
     binOpen: false,
     binRows: [],
@@ -1191,7 +1218,8 @@ export const useStore = create<AppState>()((set, get) => {
 
     async openPalette(mode) {
       // 先开面板再拉数据：候选池是几百条，等它回来才显示浮层会有一拍空白
-      set({ palette: mode })
+      // 搜索面板一起关掉：两个都是居中 sheet，叠着会出两层模糊、两套键盘导航
+      set({ palette: mode, searchOpen: false })
       if (mode !== 'switch') return
       const rows = await window.kestrel.entries.recent(SWITCH_LIMIT)
       // 拉的过程中关掉了、或切去了命令模式，这份候选就作废
@@ -1201,6 +1229,25 @@ export const useStore = create<AppState>()((set, get) => {
 
     closePalette() {
       set({ palette: null })
+    },
+
+    /* ─ 搜索面板（期-03 §4.1） ─ */
+
+    openSearch() {
+      // 两个都是居中 sheet，同开会叠两层模糊、两套键盘导航，所以互斥。
+      // 反过来不关搜索：Palette.tsx 那条「跑命令前先 close()」已经把它关了
+      set({ searchOpen: true, palette: null })
+    },
+
+    closeSearch() {
+      set({ searchOpen: false })
+    },
+
+    async openSearchHit(entryId, pos, needle) {
+      set({ searchOpen: false })
+      await get().openEntry(entryId)
+      // 请求号在最后才发：编辑器认 entryId，切文档没落地时这条请求自然落空
+      set({ searchJump: { entryId, pos, needle, at: Date.now() } })
     },
 
     /* ─ 升格 ─ */

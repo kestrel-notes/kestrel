@@ -1,9 +1,11 @@
 import { app, BrowserWindow, ipcMain, shell } from 'electron'
 import { copyFileSync, existsSync, mkdirSync } from 'node:fs'
 import { join } from 'node:path'
-import { closeDatabase, openDatabase } from './db'
+import { closeDatabase, getDatabase, openDatabase } from './db'
 import * as entries from './db/entries'
+import * as fts from './db/fts'
 import { seedIfFirstRun } from './db/seed'
+import * as search from './db/search'
 import * as topics from './db/topics'
 import * as tags from './db/tags'
 import * as text from './db/text'
@@ -74,11 +76,20 @@ function createWindow(): BrowserWindow {
       nodeIntegration: false,
       // 渲染进程只通过 preload 暴露的领域方法碰数据，没有裸 SQL 通道
       sandbox: false,
+      // preload 侧拿不到 `app.isPackaged`（那是主进程的东西），而 `__dev` 这层壳在打包版
+      // 要**整个不存在**（期-03-设计 §10 第 12 项），所以把唯一的可信判断传过去。
+      // 真正的闸门仍在主进程：打包版连 `dev:sql` 这个 handler 都不注册。
+      additionalArguments: [`--kestrel-packaged=${app.isPackaged}`],
     },
   })
 
   // 首帧准备好再显示，避免先出白框再填内容
-  win.once('ready-to-show', () => win.show())
+  win.once('ready-to-show', () => {
+    win.show()
+    // 全文索引的回填排在窗口出现之后：它跑到第一批之前是同步的（最坏几百毫秒），
+    // 排在前面等于让大库升级后的首帧多白屏一截。回填本身可续，见 db/fts.ts 头注。
+    void fts.ensureIndex().catch((err) => console.error('[fts] 索引回填失败:', err))
+  })
 
   const emitMaximize = () => win.webContents.send(IPC.winMaximizeChanged, win.isMaximized())
   win.on('maximize', emitMaximize)
@@ -202,6 +213,40 @@ function registerIpc(): void {
 
   handle(IPC.settingsAll, () => settings.all())
   handle(IPC.settingsPatch, (patch: Partial<Settings>) => settings.patch(patch))
+
+  handle(IPC.searchRun, (query: string, limit?: number) => {
+    const t = Date.now()
+    const res = search.run(query, limit)
+    /** 开发版留一行「这次走了哪条路、几毫秒、发了几趟」。§10 第 7、8 两项的账都从这行数：
+     *  第 8 项要证明连打十个字没有排队，光看渲染层看不出发了几趟 IPC。 */
+    if (!app.isPackaged) {
+      console.log(`[search] ${Date.now() - t}ms · ${res.path} · ${res.rows.length}/${res.total} · ${query}`)
+    }
+    return res
+  })
+  handle(IPC.ftsStatus, () => fts.status())
+
+  /** 裸 SQL。只在开发版存在——不是"锁起来"而是这条通道根本不注册，
+   *  理由见 `IPC.devSql` 的注释与期-03-设计 §8-D6。
+   *
+   *  返回值就是行数组（§5.4 定的形状）。计时走 console，探针自己在 CDP 那一侧量。 */
+  if (!app.isPackaged) {
+    handle(IPC.devSql, (sql: string) => {
+      const t = Date.now()
+      const stmt = getDatabase().prepare(sql)
+      /** 判读写不能拿 `stmt.reader`：Electron 里那颗 node:sqlite 根本没这个属性
+       *  （实测 undefined，系统 node 的那颗才有），于是 SELECT 会走到 `run()` 那半边——
+       *  而 `run()` 在 SELECT 上**不抛错**，只把上一次写的 `{changes, lastInsertRowid}` 交回来，
+       *  探针读到的全是看着像结果的假行。`columns()` 是纯元数据：写作空数组、读作列出列名，
+       *  且两边都不会把语句执行一遍。 */
+      const isReader = (stmt.columns() as unknown[]).length > 0
+      const out = isReader
+        ? (stmt.all() as unknown[])
+        : [stmt.run() as unknown as Record<string, unknown>]
+      console.log(`[dev.sql] ${Date.now() - t}ms · ${out.length} 行 · ${sql.slice(0, 80)}`)
+      return out
+    })
+  }
 
   ipcMain.on(IPC.winMinimize, (event) => BrowserWindow.fromWebContents(event.sender)?.minimize())
   ipcMain.on(IPC.winToggleMaximize, (event) => {

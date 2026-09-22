@@ -1,9 +1,16 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import { IPC, type KestrelApi } from '../shared/types'
 
+/** 打包版这层壳**整个不存在**（期-03-设计 §10 第 12 项）。
+ *  主进程那边的 `dev:sql` handler 在打包版不注册，所以这里就算暴露了也只是把
+ *  「No handler registered」换成一次 reject——那不如不给界面一个能点的东西。
+ *  信号由主进程用 additionalArguments 传进来：preload 这一侧读不到 app.isPackaged。 */
+const packaged = process.argv.some((a) => a.startsWith('--kestrel-packaged=true'))
+
 /** 渲染进程能碰到的全部能力的边界。
  *  暴露的是**领域方法**（取某天的日记、存这篇内容），不是通用通道：
- *  一条 `query(sql)` 会让 contextIsolation 白设。 */
+ *  一条 `query(sql)` 会让 contextIsolation 白设。唯一的例外是 `__dev`：
+ *  它按上面的条件挂，打包版整个不存在。 */
 const api: KestrelApi = {
   entries: {
     listByDate: (date) => ipcRenderer.invoke(IPC.entryListByDate, date),
@@ -54,6 +61,12 @@ const api: KestrelApi = {
     graph: (entryId, depth) => ipcRenderer.invoke(IPC.linkGraph, entryId, depth),
     outgoing: (entryId) => ipcRenderer.invoke(IPC.linkOutgoing, entryId),
   },
+  search: {
+    run: (query, limit) => ipcRenderer.invoke(IPC.searchRun, query, limit),
+  },
+  fts: {
+    status: () => ipcRenderer.invoke(IPC.ftsStatus),
+  },
   settings: {
     all: () => ipcRenderer.invoke(IPC.settingsAll),
     patch: (patch) => ipcRenderer.invoke(IPC.settingsPatch, patch),
@@ -80,6 +93,15 @@ const api: KestrelApi = {
     },
     flushDone: () => ipcRenderer.send(IPC.winFlushed),
   },
+  // 条件挂载：见文件头 `packaged` 那条。开发版里 `await kestrel.__dev.sql('select …')`
+  // 直接查库，本期 §10 的性能红线与验收全靠它计时。
+  ...(packaged
+    ? {}
+    : {
+        __dev: {
+          sql: (query: string) => ipcRenderer.invoke(IPC.devSql, query) as Promise<unknown[]>,
+        },
+      }),
 }
 
 contextBridge.exposeInMainWorld('kestrel', api)
