@@ -215,9 +215,11 @@ a:hover {
   text-decoration: none;
 }
 
+/* 标题栏那枚红隼。图形与 resources/icon.svg 同源，只是没有背景方块——
+   旁边就写着「Kestrel」，不需要再套一层壳。 */
 .brand svg {
   display: block;
-  border-radius: var(--radius-sm);
+  filter: drop-shadow(0 0 6px var(--brand-soft));
 }
 
 .topbar-links {

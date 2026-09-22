@@ -11,6 +11,7 @@ import {
   IconStar,
   IconTheme,
 } from '@/components/Icons'
+import { KestrelMark } from '@/components/KestrelMark'
 
 export function TitleBar(): JSX.Element {
   const mode = useStore((s) => s.mode)
@@ -29,7 +30,7 @@ export function TitleBar(): JSX.Element {
   return (
     <header className="titlebar glass">
       <div className="brand">
-        <span className="brand-dot" />
+        <KestrelMark size={18} />
         Kestrel
       </div>
 

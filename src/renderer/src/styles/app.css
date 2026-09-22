@@ -40,26 +40,12 @@
   letter-spacing: -0.01em;
   flex-shrink: 0;
 }
-/* 标记用固定的品牌色，不跟 --accent：见 tokens.css 里 --brand 的说明。
-   图形是 resources/icon.svg 的 16px 版：圆角方块 + 居中奶油点，
-   圆角与点径都按 18/64、9.5/64 的同一比例折过来。 */
-.brand-dot {
-  position: relative;
-  width: 16px;
-  height: 16px;
-  border-radius: var(--radius-xs);
-  background: linear-gradient(135deg, var(--brand-deep), var(--brand-light));
-  box-shadow: 0 0 14px var(--brand-soft);
-}
-.brand-dot::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  margin: auto;
-  width: 4.75px;
-  height: 4.75px;
-  border-radius: 50%;
-  background: var(--brand-cream);
+/* 标题栏/启动页里那枚红隼。图形与 resources/icon.svg 同源（KestrelMark.tsx 内联），
+   颜色用固定的 brand 三色，不跟主题的 --accent 走——理由见 tokens.css 里 --brand 的说明。
+   外面这圈柔光是旧 .brand-dot 的遗产，让标记在玻璃标题栏上不至于陷进背景里。 */
+.kestrel-mark {
+  flex-shrink: 0;
+  filter: drop-shadow(0 0 6px var(--brand-soft));
 }
 
 .mode-switch {

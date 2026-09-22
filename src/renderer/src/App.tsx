@@ -13,6 +13,7 @@ import { SearchPanel } from '@/components/SearchPanel'
 import { PromoteCard } from '@/components/PromoteCard'
 import { RecycleBin } from '@/components/RecycleBin'
 import { Bookmarks } from '@/components/Bookmarks'
+import { KestrelMark } from '@/components/KestrelMark'
 import { TagRenameCard } from '@/components/TagRenameCard'
 import { TopicSheet } from '@/components/TopicSheet'
 import { TopicRenameCard } from '@/components/TopicRenameCard'
@@ -123,7 +124,7 @@ export default function App(): JSX.Element {
   if (!ready) {
     return (
       <div className="boot">
-        <span className="brand-dot" />
+        <KestrelMark size={22} />
         <span>正在打开库…</span>
       </div>
     )
