@@ -779,6 +779,24 @@ input.doc-title::placeholder {
 .md-prose li > ol {
   margin-bottom: 0;
 }
+/* 折叠（期-04 §4.7）：标题 / 带子列表的列表项左侧一颗三角。纯装饰，不进文档也不进 md */
+.md-prose .fold-chev {
+  display: inline-block;
+  width: 14px;
+  margin-right: 2px;
+  font-size: 0.72em;
+  line-height: 1;
+  color: var(--text-3);
+  cursor: pointer;
+  user-select: none;
+}
+.md-prose .fold-chev:hover {
+  color: var(--text-2);
+}
+/* 被折起来的那块内容：整节点不占位。!important 压过标题自身可能带的高优先级显示规则 */
+.md-prose .fold-hide {
+  display: none !important;
+}
 /* 待办：勾选框跟着强调色走，勾掉的那条淡下去 */
 .md-prose ul[data-type='taskList'] {
   list-style: none;
