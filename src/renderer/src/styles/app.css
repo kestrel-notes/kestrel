@@ -1824,6 +1824,58 @@ input[type='range'] {
   color: var(--text-3);
 }
 
+/* ── 斜杠命令菜单（期-04 §4.9）── 沿用 .palette-card 的玻璃与 .pal-row 的行语言，
+   只是挂在光标旁、更窄。fixed 定位，坐标由编辑器插件按 coordsAtPos 现算 */
+.slash-menu {
+  position: fixed;
+  z-index: 60;
+  width: 260px;
+  max-height: 348px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px;
+  background: var(--bg-glass-strong);
+  backdrop-filter: blur(28px) saturate(1.8);
+  -webkit-backdrop-filter: blur(28px) saturate(1.8);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-glass);
+}
+.slash-row {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  height: 32px;
+  padding: 0 10px;
+  border: none;
+  background: none;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-family: inherit;
+  color: var(--text-2);
+  text-align: left;
+  cursor: pointer;
+}
+.slash-row.on {
+  background: var(--accent-soft);
+  color: var(--text-1);
+}
+.slash-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.slash-hint {
+  flex-shrink: 0;
+  font-size: 11.5px;
+  font-family: var(--font-mono);
+  color: var(--text-3);
+}
+
 /* ── 站内搜索面板（期-03 §4.1）── 容器与列表沿用 .palette-card / .pal-*，
    这里只补「一行结果有三行信息」所需的那点排布。不新增颜色 token：
    高亮用 --accent 下划线 + --accent-soft 底（§6），元信息用 --text-3 */

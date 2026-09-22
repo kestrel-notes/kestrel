@@ -12,6 +12,7 @@ import { useEffect, useMemo, useRef } from 'react'
 import { useStore } from '@/store'
 import { setRichView, setRichEditor } from '@/editor/richView'
 import { buildExtensions, resolveLink, type LinkBridge } from '@/editor/markdown'
+import { SlashMenu, SlashPopup } from '@/editor/SlashMenu'
 
 export function RichEditor({ readOnly = false }: { readOnly?: boolean }): JSX.Element {
   const content = useStore((s) => s.content)
@@ -34,7 +35,8 @@ export function RichEditor({ readOnly = false }: { readOnly?: boolean }): JSX.El
     [entryDate]
   )
 
-  const extensions = useMemo(() => buildExtensions(bridge), [bridge])
+  // SlashMenu 只在编辑实例里挂；阅读实例即使复用了同一棵 PM，插件也会因 view.editable=false 而沉默
+  const extensions = useMemo(() => [...buildExtensions(bridge), SlashMenu], [bridge])
 
   /** 编辑器自己吐出去的那一版。和 store 里的相同 = 这次变化是自己造的，别回灌 */
   const emitted = useRef(content)
@@ -105,6 +107,7 @@ export function RichEditor({ readOnly = false }: { readOnly?: boolean }): JSX.El
   return (
     <div className="md-body">
       <EditorContent editor={editor} />
+      {readOnly ? null : <SlashPopup />}
     </div>
   )
 }
