@@ -46,7 +46,9 @@
     "@tiptap/pm": "^3.31.3",
     "@tiptap/react": "^3.31.3",
     "@tiptap/starter-kit": "^3.31.3",
+    "katex": "^0.18.7",
     "lowlight": "^3.3.0",
+    "mermaid": "^12.0.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "zustand": "^5.0.2"

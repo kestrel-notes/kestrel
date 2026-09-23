@@ -18,6 +18,9 @@ import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight'
 import { createLowlight, common } from 'lowlight'
 import { TagRefs } from '@/editor/tagRefs'
 import { Callout } from '@/editor/callout'
+import { MathBlock, MathInline } from '@/editor/math'
+import { FootnoteDef, FootnoteRef } from '@/editor/footnote'
+import { MermaidBlock } from '@/editor/mermaidBlock'
 import { normalizeLinkKey, resolveDateRef, splitLinkInner } from '../../../shared/links'
 import type { OutgoingLink } from '../../../shared/types'
 
@@ -247,7 +250,13 @@ const GuardedImage = Image.extend({
 })
 
 /** v1 要认的 Markdown 语法全在这里。StarterKit 自带粗体/标题/列表/引用/代码/分割线，
- *  另外三样要单独装：待办（TaskList）、表格（TableKit）、图片。 */
+ *  另外几样要单独装：待办（TaskList）、表格（TableKit）、图片、Callout，以及期-05 的
+ *  公式 / 脚注 / Mermaid。
+ *
+ *  **这一份同时是闸门的 schema**（下面的 `manager` 用的就是它）：新语法只要需要新节点，
+ *  就必须装在这里，不然 `MarkdownManager` 解析不出那种 token、闸门与编辑器会各自看到
+ *  一棵不同的树。只改渲染不改树的插件（SlashMenu / Folding / FootnoteNumbers）反过来
+ *  不进门，只挂在 `RichEditor` 上。 */
 export function buildExtensions(bridge: LinkBridge | null = null): AnyExtension[] {
   return [
     StarterKit.configure({ codeBlock: false, blockquote: false }),
@@ -257,6 +266,11 @@ export function buildExtensions(bridge: LinkBridge | null = null): AnyExtension[
     TableKit.configure({ table: { resizable: false } }),
     GuardedImage,
     Callout,
+    MathInline,
+    MathBlock,
+    FootnoteRef,
+    FootnoteDef,
+    MermaidBlock,
     WikiLink.configure({ bridge }),
     TagRefs.configure({ openTag: bridge ? (name) => bridge.openTag(name) : null }),
     Markdown.configure({ indentation: { style: 'space', size: 2 } }),

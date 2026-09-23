@@ -987,6 +987,105 @@ input.doc-title::placeholder {
   border-top-color: var(--accent);
 }
 
+/* ── 期-05：公式 / Mermaid / 脚注 ──
+   三样都是 NodeView 自己画的 DOM，所以这里只管「它长得像正文的一部分」和
+   「编辑位出现时别跳版式」。字号一律不写死：公式要跟着正文的 --fs-body 走。 */
+.md-prose .md-math {
+  white-space: nowrap;
+}
+.md-prose .md-math-block {
+  margin: 16px 0;
+  text-align: center;
+}
+/* 空公式 / 空图：占位得看得见，但要弱下去，别和真内容抢 */
+.md-prose .md-math-empty,
+.md-prose .mermaid-empty {
+  display: inline-block;
+  color: var(--text-3);
+  font-size: 12.5px;
+  padding: 2px 10px;
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-sm);
+}
+/* 双击进编辑位：宽度与字号都贴着原位置，免得一进一出整段文字上下跳 */
+.md-prose .md-math-input,
+.md-prose .md-mermaid-input {
+  width: 100%;
+  min-width: 220px;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text-1);
+  background: var(--bg-panel);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-sm);
+  padding: 6px 9px;
+  resize: vertical;
+}
+.md-prose .md-math-input {
+  min-width: 12em;
+  field-sizing: content;
+}
+.md-prose .md-mermaid-input {
+  min-height: 9em;
+}
+
+.md-prose .md-mermaid {
+  margin: 18px 0;
+  text-align: center;
+}
+.md-prose .md-mermaid svg {
+  max-width: 100%;
+  height: auto;
+}
+/* 图在懒加载 chunk 里，这段等待期不能是空白——空白会让人以为没渲染出来 */
+.md-prose .md-mermaid[data-state='loading'] {
+  min-height: 44px;
+  opacity: 0.45;
+}
+.md-prose .md-mermaid[data-state='error'],
+.md-prose .md-mermaid[data-state='empty'] {
+  text-align: left;
+}
+.md-prose .mermaid-source {
+  text-align: left;
+  font-size: 12.5px;
+  border-left: 2px solid var(--tag-5);
+}
+.md-prose .mermaid-error {
+  color: var(--tag-5);
+  font-family: var(--font-ui);
+}
+
+/* 脚注引用：正文里那颗上标。可点（点了跳定义，没定义就补一个），所以给 cursor */
+.md-prose .fn-ref {
+  white-space: nowrap;
+  color: var(--accent);
+  cursor: pointer;
+  font-size: 0.78em;
+  padding: 0 1px;
+}
+.md-prose .fn-ref.ProseMirror-selectednode .fn-num {
+  outline: 2px solid var(--accent-soft);
+  border-radius: var(--radius-xs);
+}
+/* 脚注定义：留在正文里它出现的位置（序号在渲染层算，md 里不存），所以视觉上
+   要退一档：小字、灰一点、挂一条左沿，读的时候自然归到「注」那一类。
+   序号是 `::before` 而不是真元素——它在 DOM 里不存在，光标进不去、ProseMirror 也看不见 */
+.md-prose .fn-def {
+  font-size: 13px;
+  color: var(--text-2);
+  border-left: 2px solid var(--border-strong);
+  padding-left: 10px;
+  margin: 10px 0 10px 4px;
+}
+.md-prose .fn-def::before {
+  content: attr(data-n) '[' ']';
+  color: var(--accent);
+  margin-right: 6px;
+  font-weight: 600;
+}
+
 /* ── 源码模式（CodeMirror 6）──
    原型里源码视图是 13px 等宽的纯文字，字符间距比正文密：同一块屏能多看几行，
    这是「要看语法」的模式该有的取舍。不改字号只改颜色，行高才不会在切换时跳。

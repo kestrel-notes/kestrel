@@ -7,6 +7,8 @@
  *  一条渲染管线（§2.3 结论；红线：renderer 不许有 innerHTML sink）。 */
 
 import { EditorContent, useEditor } from '@tiptap/react'
+import { isNodeSelection } from '@tiptap/core'
+import { TextSelection } from '@tiptap/pm/state'
 import type { JSX } from 'react'
 import { useEffect, useMemo, useRef } from 'react'
 import { useStore } from '@/store'
@@ -14,6 +16,7 @@ import { setRichView, setRichEditor } from '@/editor/richView'
 import { buildExtensions, resolveLink, type LinkBridge } from '@/editor/markdown'
 import { SlashMenu, SlashPopup } from '@/editor/SlashMenu'
 import { Folding } from '@/editor/folding'
+import { FootnoteNumbers } from '@/editor/footnote'
 import { Attachments } from '@/editor/assets'
 
 export function RichEditor({ readOnly = false }: { readOnly?: boolean }): JSX.Element {
@@ -38,9 +41,10 @@ export function RichEditor({ readOnly = false }: { readOnly?: boolean }): JSX.El
   )
 
   // SlashMenu 只在编辑实例里挂；阅读实例即使复用了同一棵 PM，插件也会因 view.editable=false 而沉默。
-  // Folding 两档都挂：折叠是「读」的本事。Attachments 靠 isEditable 守卫，阅读模式下不吞拖放/粘贴。
+  // Folding 两档都挂：折叠是「读」的本事。FootnoteNumbers 同理——序号是读出来的东西。
+  // Attachments 靠 isEditable 守卫，阅读模式下不吞拖放/粘贴。
   const extensions = useMemo(
-    () => [...buildExtensions(bridge), SlashMenu, Folding, Attachments],
+    () => [...buildExtensions(bridge), SlashMenu, Folding, FootnoteNumbers, Attachments],
     [bridge]
   )
 
@@ -106,8 +110,20 @@ export function RichEditor({ readOnly = false }: { readOnly?: boolean }): JSX.El
   // 装好就把光标放到文末：这是"接着写"的场景，落在文首的话第一句话会插到最前面。
   // 阅读模式不占光标，免得把 window 焦点从别处抢走。
   useEffect(() => {
-    if (readOnly) return
-    editor?.commands.focus('end')
+    if (!editor || readOnly) return
+    // Tiptap 的 `focus()` 命令把真正的 `view.focus()` 排进了 requestAnimationFrame（为
+    // iOS / Safari 的键盘调的）。窗口一被遮挡 rAF 就不跑，光标也就没落地，后面那两条选区
+    // 事务更没人往 DOM 里同步——先把焦点拿进来，选区才有地方落。
+    editor.view.focus()
+    editor.commands.focus('end')
+    // `focus('end')` 交出来的位置在文末可能是两块的**缝隙**上（文末那是公式 / 图那种原子块
+    // 时），或者干脆是整块选中。缝隙上没有光标，用户看到的是「我打的字跑到下面另起一段」；
+    // 整块选中更糟——第一个字符把刚看到的图整块换掉。两种都往回收一步：退回上一个文字块末尾。
+    const sel = editor.state.selection
+    if (isNodeSelection(sel) || !sel.$from.parent.isTextblock) {
+      const back = TextSelection.near(sel.$from, -1)
+      if (back.$from.parent.isTextblock) editor.commands.setTextSelection(back.from)
+    }
   }, [editor, readOnly])
 
   return (

@@ -11,9 +11,8 @@
  *  光标后又紧跟块尾**时才打开——等价于「在一个空段落里打 `/` 开头」。半句话中间打
  *  `/` 不会误触菜单。
  *
- *  菜单目录只列**当前装得上、且不弹系统文件框**的块级元素。§4.9 里还点名了公式 / 脚注 /
- *  Mermaid / 图片 / 附件——它们各自属于 #88（附件）与 #91（公式/脚注/Mermaid），依赖没装
- *  就不进这张表，避免留一堆点了报错的死项。 */
+ *  菜单目录只列**当前装得上、且不弹系统文件框**的块级元素。图片 / 附件走拖进来粘贴（#88），
+ *  不进这张表；行内公式与脚注引用是打字就打成的（InputRule），也不是块级元素。 */
 
 import { useEffect, useState, type JSX } from 'react'
 import { Extension, type Editor } from '@tiptap/core'
@@ -116,6 +115,41 @@ export const SLASH_ITEMS: SlashItem[] = [
     hint: '```',
     keywords: 'code block 代码 围栏',
     run: (ed, del) => ed.chain().focus().deleteRange(del).setCodeBlock().run(),
+  },
+  {
+    id: 'math',
+    title: '块级公式',
+    hint: '$$',
+    keywords: 'math formula latex katex 公式 latex',
+    // 空公式插进去是个看得见、双击就能写的块（NodeView 里画着提示字）。
+    // 后面必须跟一个空段落：只插原子块的话，Tiptap 交出来的是整块选中的 NodeSelection，
+    // 用户接着敲的第一个字符会把刚插的公式整块换掉（实测：敲 `a` → 公式没了、变成一段 `a`）。
+    run: (ed, del) =>
+      ed
+        .chain()
+        .focus()
+        .deleteRange(del)
+        .insertContent([
+          { type: 'mathBlock', attrs: { tex: '' } },
+          { type: 'paragraph' },
+        ])
+        .run(),
+  },
+  {
+    id: 'mermaid',
+    title: 'Mermaid 图',
+    hint: 'mermaid',
+    keywords: 'mermaid diagram flowchart graph 图 流程图 时序图',
+    run: (ed, del) =>
+      ed
+        .chain()
+        .focus()
+        .deleteRange(del)
+        .insertContent([
+          { type: 'mermaidBlock', attrs: { code: '' } },
+          { type: 'paragraph' },
+        ])
+        .run(),
   },
   {
     id: 'table',
