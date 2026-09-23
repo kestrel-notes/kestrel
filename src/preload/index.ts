@@ -77,6 +77,9 @@ const api: KestrelApi = {
     restore: (id) => ipcRenderer.invoke(IPC.revisionRestore, id),
     snapshot: (entryId) => ipcRenderer.invoke(IPC.revisionSnapshot, entryId),
   },
+  attachments: {
+    import: (name, data) => ipcRenderer.invoke(IPC.attachmentImport, name, data) as Promise<string>,
+  },
   win: {
     minimize: () => ipcRenderer.send(IPC.winMinimize),
     toggleMaximize: () => ipcRenderer.send(IPC.winToggleMaximize),

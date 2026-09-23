@@ -797,6 +797,27 @@ input.doc-title::placeholder {
 .md-prose .fold-hide {
   display: none !important;
 }
+/* 图片：附件以块级居中呈现，圆角跟着标尺走 */
+.md-prose img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 16px 0;
+  border-radius: var(--radius-md);
+}
+/* 附件失败位（期-04 §7）：灰底 + 虚线描边 + 一行说明，不用红叉。
+   GuardedImage 对非白名单 src 渲染这个 span，且**不发请求**，所以它是纯静态占位。 */
+.md-prose .asset-broken {
+  display: inline-block;
+  margin: 14px 0;
+  padding: 10px 14px;
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-md);
+  background: var(--bg-glass);
+  color: var(--text-3);
+  font-size: 0.85em;
+  line-height: 1.5;
+}
 /* 待办：勾选框跟着强调色走，勾掉的那条淡下去 */
 .md-prose ul[data-type='taskList'] {
   list-style: none;

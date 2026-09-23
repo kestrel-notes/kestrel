@@ -2,6 +2,7 @@ import { app, BrowserWindow, ipcMain, shell } from 'electron'
 import { copyFileSync, existsSync, mkdirSync } from 'node:fs'
 import { join } from 'node:path'
 import { closeDatabase, getDatabase, openDatabase } from './db'
+import { importAsset, mountAssetProtocol, registerAssetScheme } from './attachments'
 import * as entries from './db/entries'
 import * as fts from './db/fts'
 import { seedIfFirstRun } from './db/seed'
@@ -176,6 +177,8 @@ function registerIpc(): void {
   handle(IPC.revisionRestore, (id: number) => entries.restoreRevision(id))
   handle(IPC.revisionSnapshot, (entryId: number) => entries.snapshotRevision(entryId))
 
+  handle(IPC.attachmentImport, (name: string, data: Uint8Array) => importAsset(name, data))
+
   handle(IPC.topicList, () => topics.list())
   handle(IPC.topicCreate, (name: string) => topics.create(name))
   handle(IPC.topicUpdate, (id: number, patch: TopicPatch) => topics.update(id, patch))
@@ -260,6 +263,9 @@ function registerIpc(): void {
 
 app.setName('Kestrel')
 
+// 特权协议声明必须在 app 就绪之前（Electron 硬要求），所以放模块顶层、whenReady 之外
+registerAssetScheme()
+
 // 单实例：两个进程同时开着同一个 SQLite 库，写冲突虽然能被 WAL 挡住，
 // 但用户会看到两份不同步的界面，不如直接把焦点还给已有的那个
 if (!app.requestSingleInstanceLock()) {
@@ -279,6 +285,8 @@ if (!app.requestSingleInstanceLock()) {
     openDatabase(databasePath())
     // 空库（真正的第一次）才会种下示例笔记，判据见 db/seed.ts
     seedIfFirstRun()
+    // 协议 handler 装配排在就绪之后（声明在就绪之前，两半各守一半 Electron 的时序要求）
+    mountAssetProtocol()
     registerIpc()
     createWindow()
 

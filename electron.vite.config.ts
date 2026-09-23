@@ -14,7 +14,9 @@ function cspPlugin(): Plugin {
     "script-src 'self'",
     // React 的内联 style 属性与主题变量注入需要它
     "style-src 'self' 'unsafe-inline'",
-    "img-src 'self' data: blob:",
+    // 附件走自注册的 kestrel-asset: 协议（主进程受控读取 <userData>/attachments/）；
+    // 不放 file: 也不放 http(s):——离线与本地边界是产品红线，图片一律不外联
+    "img-src 'self' data: blob: kestrel-asset:",
     "font-src 'self' data:",
     "connect-src 'self'",
     "object-src 'none'",

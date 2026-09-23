@@ -215,6 +215,37 @@ const WikiLink = Node.create<{ bridge: LinkBridge | null }>({
 
 const lowlight = createLowlight(common)
 
+/** 图片 src 的渲染白名单：只认自家附件协议与 `data:image`。
+ *  其余一律显占位、**不发请求**（期-04 §5.3）——离线是产品红线，`file://` 还留着
+ *  本地文件存在性 oracle 的门（设计稿 A④），两条都不给。存储名的形状与主进程
+ *  `assetNameFromUrl` 保持同一套：`<40 位小写十六进制>.<2~5 位小写字母后缀>`。 */
+const ASSET_SRC = /^kestrel-asset:\/\/[0-9a-f]{40}\.[a-z]{2,5}$/
+const DATA_IMG = /^data:image\//i
+
+function assetLabel(src: string): string {
+  if (!src) return '附件丢失'
+  if (/^https?:\/\//i.test(src)) return '外链图片未加载（离线）'
+  if (/^file:/i.test(src)) return '本地文件未加载（越界）'
+  return '附件引用无效'
+}
+
+/** 只改渲染这一半：parse / serialize 全部沿用 Image，所以 Markdown 往返一字不动，
+ *  闸门（`roundTrip` 的 `sameTree`）看不见这里的差别。拦的是「发不发请求」，不是「存不存」。 */
+const GuardedImage = Image.extend({
+  renderHTML({ node }) {
+    const src = (node.attrs.src as string) ?? ''
+    if (ASSET_SRC.test(src) || DATA_IMG.test(src)) {
+      return ['img', mergeAttributes(node.attrs as Record<string, unknown>)]
+    }
+    const shown = src.split(/[\\/]/).filter(Boolean).pop() ?? ''
+    return [
+      'span',
+      { class: 'asset-broken', 'data-src': src, contenteditable: 'false' },
+      shown ? `${assetLabel(src)}：${shown}` : assetLabel(src),
+    ]
+  },
+})
+
 /** v1 要认的 Markdown 语法全在这里。StarterKit 自带粗体/标题/列表/引用/代码/分割线，
  *  另外三样要单独装：待办（TaskList）、表格（TableKit）、图片。 */
 export function buildExtensions(bridge: LinkBridge | null = null): AnyExtension[] {
@@ -224,7 +255,7 @@ export function buildExtensions(bridge: LinkBridge | null = null): AnyExtension[
     TaskList,
     TaskItem.configure({ nested: true }),
     TableKit.configure({ table: { resizable: false } }),
-    Image,
+    GuardedImage,
     Callout,
     WikiLink.configure({ bridge }),
     TagRefs.configure({ openTag: bridge ? (name) => bridge.openTag(name) : null }),
@@ -332,6 +363,21 @@ function countMatches(text: string, re: RegExp): number {
   return text.match(re)?.length ?? 0
 }
 
+/** 数正文里指向 `file://` 的图片（期-04 §10 第 ④ 项）。先摘掉围栏与行内代码：
+ *  用户在代码块里写一段 `![示例](file:///…)` 当文档，那是字面文本、不是要渲染的图。
+ *  用绝对存在性判据而不是 md 减 out：Image 会把 file:// 原样往返，两棵树相等、`sameTree`
+ *  看不出问题，但这张图根本不该进非源码视图——所以要拦在树相等之前。 */
+function countFileImages(md: string): number {
+  const bare = md
+    .replace(/```[\s\S]*?```/g, ' ')
+    .replace(/~~~[\s\S]*?~~~/g, ' ')
+    .replace(/`[^`\n]*`/g, ' ')
+  return (
+    countMatches(bare, /!\[[^\]]*\]\(\s*<?file:/gi) +
+    countMatches(bare, /<img\b[^>]*\ssrc\s*=\s*["']?file:/gi)
+  )
+}
+
 /** 比树时先抹掉的属性。`target`/`rel` 是 Link 扩展给裸 `<a>` 补的默认值，
  *  Markdown 里根本没有写法能表达它，也不是用户写进去的内容；`class`/`style`/`id`
  *  另有 STYLE_ATTR 那一关拦住，放行这里不会悄没声地丢东西。
@@ -405,6 +451,11 @@ function describeLoss(before: JSONContent, after: JSONContent): string[] {
 export function roundTrip(md: string): RoundTrip {
   const tree = manager.parse(md)
   const out = manager.serialize(tree)
+  // file:// 图片：即便树能原样往返也照样拦——它压根不该出现在非源码视图里（§10 第 ④ 项）
+  const fileImg = countFileImages(md)
+  if (fileImg > 0) {
+    return { out, lossless: false, notes: [], lost: [`${fileImg} 处本地文件图片（file://）`] }
+  }
   if (out === md) return { out, lossless: true, notes: [], lost: [] }
 
   const again = manager.parse(out)

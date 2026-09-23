@@ -14,6 +14,7 @@ import { setRichView, setRichEditor } from '@/editor/richView'
 import { buildExtensions, resolveLink, type LinkBridge } from '@/editor/markdown'
 import { SlashMenu, SlashPopup } from '@/editor/SlashMenu'
 import { Folding } from '@/editor/folding'
+import { Attachments } from '@/editor/assets'
 
 export function RichEditor({ readOnly = false }: { readOnly?: boolean }): JSX.Element {
   const content = useStore((s) => s.content)
@@ -37,8 +38,11 @@ export function RichEditor({ readOnly = false }: { readOnly?: boolean }): JSX.El
   )
 
   // SlashMenu 只在编辑实例里挂；阅读实例即使复用了同一棵 PM，插件也会因 view.editable=false 而沉默。
-  // Folding 两档都挂：折叠是「读」的本事，阅读模式下点三角一样能翻，且只发 meta、不改文档。
-  const extensions = useMemo(() => [...buildExtensions(bridge), SlashMenu, Folding], [bridge])
+  // Folding 两档都挂：折叠是「读」的本事。Attachments 靠 isEditable 守卫，阅读模式下不吞拖放/粘贴。
+  const extensions = useMemo(
+    () => [...buildExtensions(bridge), SlashMenu, Folding, Attachments],
+    [bridge]
+  )
 
   /** 编辑器自己吐出去的那一版。和 store 里的相同 = 这次变化是自己造的，别回灌 */
   const emitted = useRef(content)

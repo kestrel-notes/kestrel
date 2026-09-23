@@ -454,6 +454,13 @@ export interface KestrelApi {
     /** 手动存一版（Ctrl+S 走它），总是写 */
     snapshot(entryId: number): Promise<void>
   }
+  /** 附件（期-04 §5）。渲染进程碰不到裸 fs，落盘只在主进程这一侧做：
+   *  收字节 → sha1 → 扩展名白名单 → 写进 `<userData>/attachments/<sha1>.<ext>`，
+   *  回内容寻址后的文件名。同图重复导入靠 sha1 命中去重。 */
+  attachments: {
+    /** 导入一份附件，返回 `<sha1>.<ext>`。`name` 只用来取扩展名，正文里不留原始文件名 */
+    import(name: string, data: Uint8Array): Promise<string>
+  }
   /** 自绘标题栏后系统按钮没了，必须自己提供，否则窗口关不掉 */
   win: {
     minimize(): void
@@ -511,6 +518,9 @@ export const IPC = {
   revisionGet: 'revision:get',
   revisionRestore: 'revision:restore',
   revisionSnapshot: 'revision:snapshot',
+  /** 附件导入：字节进来、内容寻址后的文件名出去（期-04 §5.2）。只收字节，路径与
+   *  落盘全在主进程那一侧，渲染进程给不出目标路径。 */
+  attachmentImport: 'attachment:import',
   linkBacklinks: 'link:backlinks',
   linkGraph: 'link:graph',
   linkOutgoing: 'link:outgoing',
