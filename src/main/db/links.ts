@@ -12,6 +12,7 @@ import type {
   Backlink,
   DanglingLink,
   EntryKind,
+  GlobalGraph,
   GraphEdge,
   GraphNode,
   LinkKind,
@@ -433,5 +434,85 @@ export function graph(centerId: number, depth = 2): LocalGraph {
     nodes: [...nodes.values()].filter((n) => n.key !== center),
     edges,
     dangling,
+  }
+}
+
+/*  读：全局图谱（期-06a §5.1）  */
+
+/** 全库拓扑：两条查询拿完，**不逐节点查**（那会把一次 22ms 变成 3000 次往返）。
+ *
+ *  三条刻意的取舍：
+ *  1. **不取 `content`**。实测 3000 条的拓扑是 0.63 MB，带上正文就是几十 MB（设计稿决策 D5）。
+ *  2. **不画主题的归属边**。全库视角下主题的归属信息由节点颜色承载，画出来是每个主题一大把
+ *     放射线（设计稿 D8）。`target_type='topic'` 的 Link 行照旧存在，只是不进这张图。
+ *  3. **不返回坐标**。布局只在渲染层求解，resize 时本地重算包围盒就够（决策 D4）。 */
+export function graphAll(): GlobalGraph {
+  const db = getDatabase()
+
+  const nodeRows = db
+    .prepare(
+      `select e.id, e.kind, e.title, e.entry_date, e.topic_id,
+              (select count(*) from Link l
+                where l.target_type in ('entry','date') and l.target_id = e.id) as in_deg
+       from Entry e
+       where e.deleted_at is null`
+    )
+    .all() as unknown as {
+    id: number
+    kind: EntryKind
+    title: string | null
+    entry_date: string
+    topic_id: number | null
+    in_deg: number
+  }[]
+
+  const live = new Set(nodeRows.map((r) => entryKey(r.id)))
+
+  const linkRows = db
+    .prepare(
+      `select source_id, target_id, kind from Link
+       where source_type = 'entry' and target_type in ('entry','date') and target_id is not null`
+    )
+    .all() as unknown as { source_id: number; target_id: number; kind: LinkKind }[]
+
+  const edges: GraphEdge[] = []
+  const seen = new Set<string>()
+  for (const row of linkRows) {
+    const a = entryKey(row.source_id)
+    const b = entryKey(row.target_id)
+    // 两端都得活着：软删除的那半条边画出去就是个指向虚无的线
+    if (!live.has(a) || !live.has(b) || a === b) continue
+    // 与 graph() 同一条去重：A→B 和 B→A 是同一条线，不去重就会线上叠线
+    const pair = [a, b].sort().join('~')
+    const id = `${pair}:${row.kind}`
+    if (seen.has(id)) continue
+    seen.add(id)
+    edges.push({ source: a, target: b, kind: row.kind })
+  }
+
+  const topicRows = db
+    .prepare(
+      `select t.id, t.name, count(e.id) as count
+       from Topic t left join Entry e on e.topic_id = t.id and e.deleted_at is null
+       where t.id in (select distinct topic_id from Entry where deleted_at is null and topic_id is not null)
+       group by t.id`
+    )
+    .all() as unknown as { id: number; name: string; count: number }[]
+
+  const dangling = db
+    .prepare('select count(*) as c from Link where target_id is null')
+    .get() as unknown as { c: number }
+
+  return {
+    nodes: nodeRows.map((r) => ({
+      key: entryKey(r.id),
+      type: r.kind,
+      label: labelOf(r.kind, r.title, r.entry_date),
+      topicKey: r.topic_id === null ? null : topicKey(r.topic_id),
+      inDeg: r.in_deg,
+    })),
+    edges,
+    topics: topicRows.map((t) => ({ key: topicKey(t.id), label: t.name, count: t.count })),
+    danglingCount: dangling.c,
   }
 }

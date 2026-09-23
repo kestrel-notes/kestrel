@@ -1358,6 +1358,15 @@ svg.graph {
   fill: transparent;
   stroke-dasharray: 2 2;
 }
+/* 折叠计数点（期-06a §5.3）：被折掉的那几个邻居不是一个真实存在的节点，
+   所以画成空心虚线圈、不参与放大也不接受点击（点了没有目标可跳）。
+   r 由基础 .g-node 给（5px）——别再叠 .dangling，那条把 r 压到 3.4 是为了悬空短枝。 */
+.g-node.overflow {
+  stroke: var(--text-3);
+  fill: transparent;
+  stroke-dasharray: 2 2;
+  cursor: default;
+}
 /* :not(.center) —— 中心节点本来就是最大的那个（r=8），悬停反而该缩小，索性不参与放大。
    :not(.dangling) —— 悬空短枝的点不是可点的东西（只有一个 tooltip），而且 r=3.4 放大到 7
    之后墨迹直径变成 (14+1.6)*0.88 = 13.7px，比 12 的间距还大：鼠标一停上去，
@@ -1430,6 +1439,185 @@ svg.graph {
   height: 8px;
   border-radius: 50%;
   background: var(--accent);
+}
+
+/* ── 全屏图谱覆盖层（期-06a）──
+   强玻璃，与命令面板 / 外观面板同级：底下透出的是编辑区实色，正好满足
+   「玻璃必须有可模糊的底纹」那条硬约束（视觉设计系统 §五）。 */
+.graph-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: none;
+  flex-direction: column;
+  background: var(--bg-glass-strong);
+  backdrop-filter: blur(28px) saturate(1.8);
+  -webkit-backdrop-filter: blur(28px) saturate(1.8);
+}
+.graph-overlay.open {
+  display: flex;
+}
+/* 降级与省电：移除 backdrop-filter 后必须换成实心，否则整张图压在正文上糊成一片 */
+body.no-glass .graph-overlay {
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  background: var(--bg-base);
+}
+
+.go-head {
+  flex: 0 0 46px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 0 8px 0 18px;
+  border-bottom: 1px solid var(--border);
+}
+.go-title {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.go-count {
+  font-style: normal;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-3);
+}
+.go-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.go-progress {
+  font-size: 11px;
+  color: var(--text-3);
+  font-variant-numeric: tabular-nums;
+}
+
+.go-canvas {
+  flex: 1 1 auto;
+  min-height: 0;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+.go-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  cursor: grab;
+  touch-action: none;
+}
+.go-svg:active {
+  cursor: grabbing;
+}
+
+/* 全屏图的边比右栏那条粗一点：右栏是 300px 画布，这里是 1400px，
+   同一根 1px 线在两边不是一种东西。
+   **虚线要抹平**：`.g-edge.k-wiki` 那条 `stroke-dasharray: 3 3` 是为右栏十几条线设计的
+   （虚线在那里表示"这是双链"），搬到全库图上就是一团毛边——实机截图里整个网像炸开的棉絮。
+   全库图里边的类型不靠线型表达，节点形状已经承担了日记/文章之分。 */
+.go-svg .g-edge {
+  stroke-width: 1.4;
+  stroke-dasharray: none;
+  transition: opacity 0.15s;
+}
+.go-svg .g-edge.dim {
+  opacity: 0.12;
+}
+
+.go-node {
+  stroke-width: 1.4;
+  cursor: pointer;
+  fill: var(--tc, color-mix(in srgb, var(--text-3) 30%, transparent));
+  transition: opacity 0.15s;
+}
+.go-node.n-diary {
+  stroke: color-mix(in srgb, var(--text-3) 55%, transparent);
+}
+.go-node.n-article {
+  stroke: var(--tc, var(--accent));
+  fill: var(--tc, color-mix(in srgb, var(--accent) 30%, transparent));
+}
+/* 日记与文章靠形状分（圆 vs 圆角方块），不靠线型——8px 的点上看不出双线（决策 D7） */
+.go-node.dim {
+  opacity: 0.3;
+}
+.go-node.is-center {
+  stroke: var(--accent);
+  stroke-width: 2.6;
+  filter: drop-shadow(0 0 6px color-mix(in srgb, var(--accent) 45%, transparent));
+}
+.go-node.is-sel {
+  stroke: var(--accent);
+  stroke-width: 2.2;
+}
+.go-node:focus-visible {
+  outline: none;
+  stroke: var(--accent);
+  stroke-width: 2.6;
+}
+.go-node.n-agg {
+  fill: color-mix(in srgb, var(--tc, var(--text-3)) 18%, transparent);
+  stroke: var(--tc, var(--text-3));
+  stroke-width: 1.6;
+  stroke-dasharray: 4 3;
+}
+.go-agg-count {
+  font-family: var(--font-ui);
+  font-size: 9px;
+  fill: var(--text-2);
+  text-anchor: middle;
+  pointer-events: none;
+}
+.go-label {
+  font-family: var(--font-ui);
+  font-size: 9px;
+  fill: var(--text-2);
+  text-anchor: middle;
+  pointer-events: none;
+  paint-order: stroke;
+  stroke: var(--bg-glass-strong);
+  stroke-width: 2.6px;
+  stroke-linejoin: round;
+}
+
+.go-foot {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 7px 18px 9px;
+  font-size: 10.5px;
+  color: var(--text-3);
+  border-top: 1px solid var(--border);
+}
+.go-warn {
+  color: var(--danger, var(--accent));
+}
+.go-empty {
+  max-width: 420px;
+  padding: 0 24px;
+  text-align: center;
+  font-size: 13px;
+  line-height: 1.75;
+  color: var(--text-3);
+}
+.go-empty code {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  padding: 1px 5px;
+  border-radius: var(--radius-xs);
+  background: var(--hover);
+  border: 1px solid var(--border);
 }
 
 .bl-list {

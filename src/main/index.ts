@@ -212,6 +212,7 @@ function registerIpc(): void {
 
   handle(IPC.linkBacklinks, (entryId: number) => links.backlinks(entryId))
   handle(IPC.linkGraph, (entryId: number, depth: number) => links.graph(entryId, depth))
+  handle(IPC.linkGraphAll, () => links.graphAll())
   handle(IPC.linkOutgoing, (entryId: number) => links.outgoing(entryId))
 
   handle(IPC.settingsAll, () => settings.all())

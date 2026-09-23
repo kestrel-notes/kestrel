@@ -141,6 +141,14 @@ export const COMMANDS: Command[] = [
     run: (s) => s.openSearch(),
   },
   {
+    id: 'view.graph',
+    title: '打开全局图谱',
+    group: '视图',
+    // Ctrl+G 已核：注册表里没占用（期-06a §5.4）。与输入法撞了就退回只走命令面板（§七 反转条件）
+    keys: ['Ctrl+G'],
+    run: (s) => s.setGraphOpen(true),
+  },
+  {
     id: 'tag.focus',
     title: '焦点给标签树',
     group: '跳转',

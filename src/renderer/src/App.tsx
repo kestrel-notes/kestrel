@@ -10,6 +10,7 @@ import { Rail } from '@/components/Rail'
 import { ThemeSheet } from '@/components/ThemeSheet'
 import { Palette } from '@/components/Palette'
 import { SearchPanel } from '@/components/SearchPanel'
+import { GraphOverlay } from '@/components/GraphOverlay'
 import { PromoteCard } from '@/components/PromoteCard'
 import { RecycleBin } from '@/components/RecycleBin'
 import { Bookmarks } from '@/components/Bookmarks'
@@ -159,6 +160,7 @@ export default function App(): JSX.Element {
       <VersionSheet />
       <Palette />
       <SearchPanel />
+      <GraphOverlay />
       <ConfirmDialog />
       {toast && <div className="toast on">{toast}</div>}
     </>

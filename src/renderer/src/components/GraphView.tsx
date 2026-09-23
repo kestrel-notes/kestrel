@@ -1,5 +1,6 @@
 import type { JSX } from 'react'
 import type { DanglingLink, GraphNode, LocalGraph } from '../../../shared/types'
+import { fitLabel, textWidth as textWidthOf } from './graphLabel'
 
 /** 环半径照抄原型（R1=56 / R2=82），画布比原型大一圈：原型是 234×186，这里是 300×216。
  *  原型不改——234 宽塞不下环外的标签（R2 到画布边只剩 26px，最长标签要 49px，
@@ -14,10 +15,14 @@ const CY = H / 2
 const R1 = 56
 const R2 = 82
 
-/** 节点上限，照设计稿「上限约 12 节点」。
- *  超出就不画了——环上塞太多点会糊成一团线，图就不再是「一眼看懂关系」的工具。
+/** 节点上限，照设计稿「上限约 12 节点」。环上塞太多点会糊成一团线，图就不再是「一眼看懂关系」的工具。
  *  深度 1 优先留下：远亲不如近邻。
- *  （设计稿还写了「超出折叠为计数」，原型和这里都还没做，见 docs/知识网络设计.md） */
+ *
+ *  **超出不再静默丢弃**（期-06a §5.3，这条以前是 bug）：折成一个计数点画在最外环，
+ *  tooltip 写清「还有 N 个，都在第几跳外」。判据是守恒——可见单元承载的条目数必须等于
+ *  `graph.nodes.length`，一个都不许悄悄消失。
+ *  与全屏图谱共用的是**计数节点这个形状与守恒判据**，不是同一个分组键：这里按跳数折
+ *  （`LocalGraph` 的节点本来就带 `depth`），全库按主题折（`shared/graph.ts` 的 `aggregateByTopic`）。 */
 const MAX_NODES = 12
 /** 悬空短枝画成一束：一根从圆心出去的虚线柄 + 一条竖向虚线脊 + 挂在脊上的点。
  *  原型是「每条悬空目标各画一根从圆心出去的虚线 + 一个点」，点间距 9、半径 3.4。
@@ -54,10 +59,21 @@ interface Placed {
 }
 
 /** 同心环静态布局。刻意不做力导向每帧重排：一帧几毫秒的 CPU 换来的是一张
- *  每次刷新都长得不一样的图，用户记不住「上次那个点在哪儿」。 */
-function layout(graph: LocalGraph): Placed[] {
+ *  每次刷新都长得不一样的图，用户记不住「上次那个点在哪儿」。
+ *
+ *  返回值里的 `overflow` 是被折掉的那些：`count` 个数字、最深在 `maxDepth` 跳。
+ *  丢弃它的旧写法是 bug（见上面 MAX_NODES 那段）。 */
+function layout(graph: LocalGraph): { placed: Placed[]; overflow: { count: number; maxDepth: number } } {
+  const sorted = [...graph.nodes].sort((a, b) => a.depth - b.depth)
+  const keep = sorted.slice(0, MAX_NODES)
+  const dropped = sorted.slice(MAX_NODES)
+  const overflow = {
+    count: dropped.length,
+    maxDepth: dropped.reduce((m, n) => Math.max(m, n.depth), 0),
+  }
+
   const rings = new Map<number, GraphNode[]>()
-  for (const n of [...graph.nodes].sort((a, b) => a.depth - b.depth).slice(0, MAX_NODES)) {
+  for (const n of keep) {
     const arr = rings.get(n.depth) ?? []
     arr.push(n)
     rings.set(n.depth, arr)
@@ -72,27 +88,11 @@ function layout(graph: LocalGraph): Placed[] {
       out.push({ node, x: CX + radius * Math.cos(angle), y: CY + radius * Math.sin(angle), angle, radius })
     })
   }
-  return out
+  return { placed: out, overflow }
 }
 
 function labelOf(text: string): string {
   return fitLabel(text, 13)
-}
-
-/** 宽字符：汉字、CJK 标点（「」——…）、全角形式。emoji 不算在内，它是特例，不值得为它加分支 */
-const WIDE = /[\u2e80-\u9fff\u3000-\u303f\uff00-\uff60\u2014\u2018-\u201d\u2026]/
-
-/** 按显示宽度截断：宽字算 2 格、窄字算 1 格。
- *  按字符数截会把「9 月 16 日」从数字中间切成「9 月 16…」，看着像坏了。 */
-function fitLabel(text: string, budget: number): string {
-  let width = 0
-  let out = ''
-  for (const ch of text) {
-    width += WIDE.test(ch) ? 2 : 1
-    if (width > budget) return `${out}…`
-    out += ch
-  }
-  return out
 }
 
 const FONT_SIZE = 7
@@ -104,12 +104,10 @@ const PAD = 1.5
 
 type Anchor = 'start' | 'middle' | 'end'
 
-/** 估算文本宽度，只用来判断「会不会顶到画布边」。
- *  这是纯函数，拿不到 SVG 的 getBBox，粗略够用。 */
+/** 这张 300×216 画布自己的度量。截断与估宽的**规则**在 `graphLabel.ts`，与全屏图谱共用一份：
+ *  两处各写一份的话，同一个标题会在一边被切成「9 月 1…」、另一边切成「9 月 16…」 */
 function textWidth(text: string): number {
-  let width = 0
-  for (const ch of text) width += WIDE.test(ch) ? WIDE_PX : NARROW_PX
-  return width
+  return textWidthOf(text, WIDE_PX, NARROW_PX)
 }
 
 function anchorOf(angle: number): Anchor {
@@ -172,7 +170,7 @@ export function GraphView({
   graph: LocalGraph
   onOpen: (key: string) => void
 }): JSX.Element {
-  const placed = layout(graph)
+  const { placed, overflow } = layout(graph)
   // 中心不在 placed 里（它永远画在正中央），但边要能查到它的坐标——
   // 漏掉这一步，所有连到中心的边都会被当成「两端不全」而静默丢掉，
   // 图上就只剩一圈孤零零的点和几根悬空短枝。
@@ -241,6 +239,26 @@ export function GraphView({
               {`+${hiddenStubs}`}
             </text>
           )}
+
+          {/* 被折掉的那些邻居：画成一个空心虚线圈 + `+N`，不可点（没有目标可跳）。
+              位置定在最外环外的右上 45°，与悬空短枝（右下那束）分处两侧，不会读成同一类东西 */}
+          {overflow.count > 0 &&
+            (() => {
+              const angle = -Math.PI / 4
+              const radius = R2 + 16
+              const x = CX + radius * Math.cos(angle)
+              const y = CY + radius * Math.sin(angle)
+              return (
+                <g>
+                  <circle className="g-node overflow" cx={x} cy={y} r={5}>
+                    <title>{`还有 ${overflow.count} 个，都在第 ${overflow.maxDepth} 跳外`}</title>
+                  </circle>
+                  <text className="g-label" x={x + 9} y={y + 2.4} textAnchor="start">
+                    {`+${overflow.count}`}
+                  </text>
+                </g>
+              )
+            })()}
 
           <circle
             className={`g-node ${NODE_CLASS[graph.center.type]} center`}

@@ -208,6 +208,30 @@ export interface LocalGraph {
   dangling: DanglingLink[]
 }
 
+/** 全局图谱（期-06a）的节点：**没有 `depth`**。
+ *
+ *  全库图不存在"距中心几跳"这回事，复用 `GraphNode` 只会逼我们填一个假 0。
+ *  `inDeg` 是入度（被多少条链接指向），它决定节点半径——`3 + 6·min(1,√inDeg/3)`。
+ *  **刻意不带正文**：`content` 一上 IPC，3000 条就是几十 MB（实测拓扑本身 0.63 MB）。 */
+export interface GraphNodeLite {
+  key: string
+  type: EntryKind
+  label: string
+  /** 归属主题。null = 没归主题，着色回落到 `--text-3` */
+  topicKey: string | null
+  inDeg: number
+}
+
+/** 全库拓扑。坐标不在这里——布局只在渲染层算，不过 IPC（决策 D4）。 */
+export interface GlobalGraph {
+  nodes: GraphNodeLite[]
+  edges: GraphEdge[]
+  /** 主题清单，聚合与着色都认它 */
+  topics: { key: string; label: string; count: number }[]
+  /** 悬空链接条数。不画成节点，只在状态条报数（决策 D9） */
+  danglingCount: number
+}
+
 /** 侧栏标签树的一个节点。`name` 是归一后的完整路径（`工作/项目a`），
  *  `display` 只是这一级自己的写法——树上一层显示一段，不必把整串摊给用户看。
  *
@@ -429,6 +453,8 @@ export interface KestrelApi {
     backlinks(entryId: number): Promise<Backlink[]>
     /** 当前记录 N 跳内的邻居，右栏那个同心环图 */
     graph(entryId: number, depth: number): Promise<LocalGraph>
+    /** 全库拓扑，期-06a 那个全屏图谱。**只回拓扑不回坐标**，布局在渲染层求解 */
+    graphAll(): Promise<GlobalGraph>
     /** 这篇指向谁：正文里每一条链接落到了哪，编辑器照着分型着色 */
     outgoing(entryId: number): Promise<OutgoingLink[]>
   }
@@ -523,6 +549,7 @@ export const IPC = {
   attachmentImport: 'attachment:import',
   linkBacklinks: 'link:backlinks',
   linkGraph: 'link:graph',
+  linkGraphAll: 'link:graphAll',
   linkOutgoing: 'link:outgoing',
   settingsAll: 'settings:all',
   settingsPatch: 'settings:patch',
