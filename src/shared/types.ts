@@ -256,24 +256,6 @@ export interface ChronicleRow {
   sortAt: string
 }
 
-/** 跨年同日关联出的一张卡（期-06b-2 §二）。
- *
- *  判据是「共享标签或共享主题」，不是「去年那天有东西」——三年库里 42% 的日子都有
- *  一个去年今天，那样等于天天弹（§0.3：真共享标签的只有 29%、共享主题的 1%）。 */
-export interface CrossYearHit {
-  /** 那年今天那一条 */
-  entryId: number
-  /** 相隔几年：1 = 去年今天，2 = 前年今天 */
-  years: number
-  /** 那一条自己的日期 */
-  date: string
-  kind: EntryKind
-  title: string | null
-  topicName: string | null
-  /** 凭什么说相关。标签优先（比主题具体），多个共享只报第一个 */
-  why: { kind: 'tag' | 'topic'; name: string }
-}
-
 /** 跨年同日关联的一行（期-06b-2 §二）。
  *
  *  判据不是「去年那天有东西」——三年库里 42% 的日子都满足，那等于天天弹（§0.3）。
@@ -293,6 +275,58 @@ export interface CrossYearHit {
   topicName: string | null
   /** 共享的东西：标签名（含父级路径）或主题。多个只报第一个，卡上一行放不下 */
   why: { kind: 'tag' | 'topic'; name: string }
+}
+
+/** 查询块的一行结果（期-07 §三）。
+ *
+ *  **没有 `content`**：§0.2 量过同一条件 100 行，不带正文 3KB、带正文 35KB，
+ *  而表格里那一列本来就没地方读。属性整块带回来（几十十字节），
+ *  `table props.字数` 这种列由渲染层从里面挑。 */
+export interface QueryRow {
+  id: number
+  kind: EntryKind
+  title: string | null
+  entryDate: string
+  createdAt: string
+  updatedAt: string
+  promotedAt: string | null
+  topicName: string | null
+  props: Record<string, unknown>
+}
+
+/** 一次查询的结果。`truncated` 靠多取一条判出来的，不是再来一次 count */
+export interface QueryResult {
+  view: 'table' | 'list' | 'cards' | 'calendar' | 'timeline'
+  /** 渲染层要显示的列，`props.字数` 这种写法原样带着 */
+  cols: string[]
+  rows: QueryRow[]
+  truncated: boolean
+  /** 主进程里的执行时间，不含 IPC：让"这次查得慢"看得见 */
+  ms: number
+  /** 不是错但该说一句的事，例如全文索引还在建所以退回了 LIKE */
+  notes: string[]
+}
+
+/** 存下来的一条查询（期-07 §四）。用法是**把语句插进正文**，不是插引用（决策 D10） */
+export interface SavedQuery {
+  id: number
+  name: string
+  body: string
+  view: 'table' | 'list' | 'cards' | 'calendar' | 'timeline'
+  createdAt: string
+  usedAt: string | null
+}
+
+/** 模板（期-07 §五）。`body` 里是带 `{{date:…}}` 这类标记的原文，
+ *  展开只发生在"套用"那一刻，之后那就是普通正文（决策 D11） */
+export interface Template {
+  id: number
+  name: string
+  scope: 'diary' | 'article'
+  body: string
+  isDefault: boolean
+  createdAt: string
+  updatedAt: string
 }
 
 /** 侧栏标签树的一个节点。`name` 是归一后的完整路径（`工作/项目a`），
@@ -466,6 +500,9 @@ export interface KestrelApi {
     listPromotedOn(date: string): Promise<EntrySummary[]>
     /** 某个主题的编年史（期-06b-2 §一）：原料与成品按时间串成一条线 */
     chronicle(topicId: number): Promise<ChronicleRow[]>
+    /** 严格早于 `date` 的那一篇日记（期-07 §五：`{{last_entry}}` 要的就是它）。
+     *  一篇都没有返回 null，界面上说「这是第一篇」 */
+    prevDiary(date: string): Promise<EntrySummary | null>
   }
   topics: {
     list(): Promise<Topic[]>
@@ -540,6 +577,28 @@ export interface KestrelApi {
   /** 索引引擎的进度。只有轮询没有推送：回调跨不过 IPC（§5.2） */
   fts: {
     status(): Promise<FtsStatus>
+  }
+  /** 查询块（期-07）。渲染层只递语句原文、只收行：
+   *  解析与 SQL 都在主进程，界面上也没有地方能拼出一句 SQL 来 */
+  query: {
+    run(body: string): Promise<{ result: QueryResult } | { error: { line: number; col: number; msg: string } }>
+  }
+  saved: {
+    list(): Promise<SavedQuery[]>
+    create(name: string, body: string): Promise<SavedQuery>
+    update(id: number, patch: { name?: string; body?: string }): Promise<SavedQuery>
+    remove(id: number): Promise<void>
+    /** 只是把 `used_at` 推到今天，让「最近用的排在前面」这条排序有意义 */
+    used(id: number): Promise<void>
+  }
+  templates: {
+    list(): Promise<Template[]>
+    create(t: { name: string; scope: Template['scope']; body: string; isDefault?: boolean }): Promise<Template>
+    update(
+      id: number,
+      patch: { name?: string; body?: string; isDefault?: boolean }
+    ): Promise<Template>
+    remove(id: number): Promise<void>
   }
   settings: {
     all(): Promise<Settings>
@@ -631,6 +690,20 @@ export const IPC = {
   settingsPatch: 'settings:patch',
   searchRun: 'search:run',
   ftsStatus: 'fts:status',
+  /** 查询块跑一次（期-07 §二）。传**语句原文**，解析与翻译都在主进程：
+   *  渲染进程拿不到 SQL 文本，也就塞不进 SQL 文本 */
+  queryRun: 'query:run',
+  savedList: 'saved:list',
+  savedCreate: 'saved:create',
+  savedUpdate: 'saved:update',
+  savedRemove: 'saved:remove',
+  savedUsed: 'saved:used',
+  tplList: 'tpl:list',
+  tplCreate: 'tpl:create',
+  tplUpdate: 'tpl:update',
+  tplRemove: 'tpl:remove',
+  /** 上一篇日记（`{{last_entry}}` 要的那一条）。按 entry_date 严格早于给定日期 */
+  entryPrevDiary: 'entry:prevDiary',
   /** 裸 SQL 通道。**只在非打包版注册**（期-03-设计 §8-D6）：本期所有 FTS 的 DDL 与
    *  探针只能在 Electron 主进程那份 SQLite 上跑（§2.1：系统 node 的 3.47 没有 FTS5），
    *  要有自动验收就得能跑建表和 pragma。打包版这个 handler 不是"锁起来"，是不存在。 */

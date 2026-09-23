@@ -3502,3 +3502,410 @@ input[type='range'] {
   font-style: normal;
   color: var(--text-3);
 }
+
+/* ═════════ 查询块的结果（期-07 §一、§三）═════════
+   这块 DOM 是装饰器挂在围栏**外面**的，不在 ProseMirror 的树里。
+   样式上也要一眼分得开：正文是纸，结果是贴在纸边的一张便签——所以左侧一条竖线、
+   底色比正文深一档、字号小一档。不给一整圈边框，那会让它看起来像正文里的表格。 */
+.md-prose .qres {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  margin: -2px 0 14px;
+  padding: 6px 10px 8px;
+  border-left: 2px solid var(--accent-soft);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  background: var(--hover);
+  color: var(--text-2);
+  font-family: var(--font-ui);
+  font-size: 12.5px;
+  line-height: 1.6;
+}
+.md-prose .qres[data-state='ready'],
+.md-prose .qres[data-state='error'] {
+  border-left-color: var(--accent);
+}
+.md-prose .qres[data-state='error'] {
+  border-left-color: var(--tag-5);
+  background: var(--brand-soft);
+}
+/* 空围栏那一句提示不该占地方：它只在光标进到那块时才有意义 */
+.md-prose .qres[data-state='idle'] {
+  border-left-style: dashed;
+  border-left-color: var(--border-strong);
+  background: none;
+}
+.md-prose .qres-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+.md-prose .qres-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--accent);
+  opacity: 0.5;
+}
+.md-prose .qres[data-state='loading'] .qres-dot {
+  animation: qres-pulse 0.9s ease-in-out infinite alternate;
+}
+@keyframes qres-pulse {
+  from {
+    opacity: 0.2;
+  }
+  to {
+    opacity: 0.9;
+  }
+}
+.md-prose .qres-meta {
+  flex: 1;
+  color: var(--text-3);
+  font-size: 11.5px;
+  font-variant-numeric: tabular-nums;
+}
+.md-prose .qres-hint,
+.md-prose .qres-empty,
+.md-prose .qres-note,
+.md-prose .qres-more {
+  color: var(--text-3);
+  font-size: 11.5px;
+}
+.md-prose .qres-note {
+  /* 「全文索引还在建，这次按字面查」这类让步：要说出来，但不该像错误那样红 */
+  font-style: italic;
+  margin: 2px 0;
+}
+.md-prose .qres-empty,
+.md-prose .qres-hint {
+  padding: 2px 0;
+}
+.md-prose .qres-err {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.md-prose .qres-src,
+.md-prose .qres-caret {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  white-space: pre;
+  overflow-x: auto;
+  color: var(--text-2);
+}
+.md-prose .qres-caret {
+  color: var(--tag-5);
+}
+.md-prose .qres-why {
+  margin-top: 3px;
+  color: var(--tag-5);
+}
+.md-prose .qres-save {
+  padding: 1px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xs);
+  background: var(--bg-glass);
+  color: var(--text-3);
+  font-family: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+.md-prose .qres-save:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+.md-prose .qres-savebox {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.md-prose .qres-savebox input {
+  width: 150px;
+  padding: 1px 6px;
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-xs);
+  background: var(--bg-panel);
+  color: var(--text-1);
+  font-family: inherit;
+  font-size: 11.5px;
+}
+.md-prose .qres-savebox button {
+  padding: 1px 7px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xs);
+  background: none;
+  color: var(--text-2);
+  font-family: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+.md-prose .qres-savebox em {
+  color: var(--text-3);
+  font-size: 11px;
+  font-style: normal;
+}
+
+/* 结果里的跳转点：与反链面板同一个入口，长得也要是一类东西 */
+.md-prose .qres-link {
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.md-prose .qres-link:hover {
+  text-decoration: underline;
+}
+
+.md-prose .qres-table-wrap {
+  overflow-x: auto;
+}
+.md-prose .qres-table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 12px;
+}
+.md-prose .qres-table th,
+.md-prose .qres-table td {
+  padding: 2px 10px 2px 0;
+  text-align: left;
+  vertical-align: top;
+  border-bottom: 1px solid var(--border);
+}
+.md-prose .qres-table th {
+  color: var(--text-3);
+  font-weight: 500;
+  font-size: 11px;
+}
+.md-prose .qres-table tr:last-child td {
+  border-bottom: none;
+}
+
+.md-prose .qres-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.md-prose .qres-list li {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: 0;
+  padding: 1px 0;
+}
+.md-prose .qres-list em,
+.md-prose .qres-card em {
+  margin-left: auto;
+  color: var(--text-3);
+  font-size: 11px;
+  font-style: normal;
+  white-space: nowrap;
+}
+.md-prose .qres-list.tight {
+  font-size: 12px;
+}
+.md-prose .qres-dow {
+  color: var(--text-3);
+  font-variant-numeric: tabular-nums;
+  min-width: 2em;
+}
+
+.md-prose .qres-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 6px;
+}
+.md-prose .qres-card {
+  padding: 5px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-glass);
+}
+.md-prose .qres-card em {
+  display: block;
+  margin-left: 0;
+}
+
+.md-prose .qres-cal {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.md-prose .qres-mon {
+  min-width: 150px;
+}
+.md-prose .qres-mon h6 {
+  margin: 0 0 3px;
+  color: var(--text-3);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+.md-prose .qres-days {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  gap: 4px;
+}
+.md-prose .qres-day {
+  padding: 3px 6px;
+  border-top: 1px solid var(--border);
+}
+.md-prose .qres-day b {
+  display: block;
+  color: var(--text-3);
+  font-size: 11px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+.md-prose .qres-day .qres-link {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  font-size: 11.5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.md-prose .qres-tl .qres-mon {
+  min-width: 0;
+  margin-bottom: 6px;
+}
+/* 减弱动效那条红线（期-04 §4.6 同一个口径）：跳动的点要停下来，状态字留在原地 */
+@media (prefers-reduced-motion: reduce) {
+  .md-prose .qres[data-state='loading'] .qres-dot {
+    animation: none;
+    opacity: 0.6;
+  }
+}
+
+/* ═════════ 查询与模板面板（期-07 §四、§五）═════════ */
+.lib-card {
+  width: min(680px, 92vw);
+}
+.lib-scroll {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  max-height: 62vh;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+.lib-scroll h4 {
+  margin: 0 0 6px;
+  color: var(--text-2);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+}
+.lib-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.lib-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-glass);
+}
+.lib-main {
+  flex: 1;
+  min-width: 0;
+}
+.lib-main b {
+  display: block;
+  color: var(--text-1);
+  font-size: 13px;
+  font-weight: 600;
+}
+.lib-body {
+  margin: 2px 0 0;
+  /* 按整行截（3 行），不按像素截：截在半行上看着像重叠 */
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  overflow: hidden;
+  color: var(--text-3);
+  font-size: 11.5px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.lib-vars {
+  display: block;
+  margin-top: 2px;
+  color: var(--text-3);
+  font-size: 11px;
+}
+.lib-tag {
+  color: var(--text-3);
+  font-size: 11px;
+  white-space: nowrap;
+}
+.lib-new {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 10px;
+  padding: 8px;
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-sm);
+}
+.lib-new > div {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+.lib-name {
+  flex: 1;
+  min-width: 0;
+  padding: 3px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xs);
+  background: var(--bg-panel);
+  color: var(--text-1);
+  font-family: inherit;
+  font-size: 12.5px;
+}
+.lib-new select {
+  padding: 3px 6px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xs);
+  background: var(--bg-panel);
+  color: var(--text-2);
+  font-family: inherit;
+  font-size: 12px;
+}
+.lib-edit {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 5px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xs);
+  background: var(--bg-panel);
+  color: var(--text-1);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.6;
+  resize: vertical;
+}
+.lib-new input:focus,
+.lib-new select:focus,
+.lib-edit:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+.lib-new-foot {
+  justify-content: space-between;
+}
+.lib-new-foot .lib-vars {
+  display: inline;
+  margin: 0;
+}

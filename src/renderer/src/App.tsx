@@ -14,6 +14,7 @@ import { GraphOverlay } from '@/components/GraphOverlay'
 import { PromoteCard } from '@/components/PromoteCard'
 import { RecycleBin } from '@/components/RecycleBin'
 import { Bookmarks } from '@/components/Bookmarks'
+import { Library } from '@/components/Library'
 import { KestrelMark } from '@/components/KestrelMark'
 import { TagRenameCard } from '@/components/TagRenameCard'
 import { TopicSheet } from '@/components/TopicSheet'
@@ -100,6 +101,7 @@ export default function App(): JSX.Element {
         else if (s.topicSheetOpen) s.setTopicSheetOpen(false)
         else if (s.bookmarkOpen) s.setBookmarkOpen(false)
         else if (s.binOpen) s.setBinOpen(false)
+        else if (s.libraryOpen) s.setLibraryOpen(false)
         else if (s.versionOf) s.closeVersion()
         else if (s.sheetOpen) s.setSheetOpen(false)
         else if (s.focus) s.toggleFocus()
@@ -153,6 +155,7 @@ export default function App(): JSX.Element {
       <PromoteCard />
       <RecycleBin />
       <Bookmarks />
+      <Library />
       <TagRenameCard />
       <TopicSheet />
       <TopicRenameCard />

@@ -229,4 +229,49 @@ export const MIGRATIONS: Migration[] = [
       insert or replace into Setting(key, value) values('fts.backfill', '"pending"');
     `,
   },
+  {
+    version: 6,
+    name: 'query: SavedQuery + Template（查询块与模板，期-07 §六）',
+    sql: `
+      -- 存下来的查询。**存的是语句，不是结果**：结果是查出来的，存下来就是一份过期副本。
+      -- 用法是把 body 插进正文变成一个查询块（期-07 决策 D10）——如果存的是"引用"
+      -- （\`{{query:名字}}\` 那种），导出的 md 在别人手里就是死链，
+      -- 而"查询块写进正文"这条决策也白给了。
+      --
+      -- body 与正文里那截围栏逐字同源，所以它过的是同一套解析（shared/queryLang.ts）。
+      create table SavedQuery(
+        id         integer primary key,
+        name       text not null unique,
+        body       text not null,
+        view       text not null check(view in ('table','list','cards','calendar','timeline')),
+        created_at text not null,
+        -- 只在"从命令面板插进正文"那一刻推到今天。给排序用，不做统计界面
+        used_at    text
+      );
+
+      -- 模板。body 里是带 \`{{date:…}}\` 标记的**原文**：展开只发生在套用那一刻，
+      -- 之后那就是普通正文（决策 D11）——不留"变量还活着"的状态机。
+      --
+      -- vars 这一列先占着不用（登记这条模板用到哪些变量，给界面做提示）。
+      -- 现在能靠解析现场数出来，等真需要"缺哪个变量"的报错时再填。
+      create table Template(
+        id         integer primary key,
+        name       text not null,
+        scope      text not null check(scope in ('diary','article')),
+        body       text not null,
+        vars       text not null default '{}' check(json_valid(vars)),
+        is_default integer not null default 0,
+        created_at text not null,
+        updated_at text not null
+      );
+
+      create index idx_template_scope on Template(scope, updated_at desc);
+
+      -- 「每个 scope 最多一条默认模板」是模型不变量，用部分唯一索引钉住，
+      -- 与 idx_entry_diary_date 同风格。实测（scratch/p7-cost.mjs）：违反时抛的是
+      -- \`UNIQUE constraint failed: Template.scope\`——报**列名**而不是索引名，
+      -- 断言别去匹配索引名。
+      create unique index idx_template_default on Template(scope) where is_default = 1;
+    `,
+  },
 ]

@@ -15,6 +15,10 @@ import * as props from './db/props'
 import * as bookmarks from './db/bookmarks'
 import * as revisions from './db/revision'
 import * as settings from './db/settings'
+import * as savedQueries from './db/savedQueries'
+import * as templates from './db/templates'
+import * as queryBlock from './db/queryBlock'
+import { parseQueryBlock } from '../shared/queryLang'
 import {
   IPC,
   type BookmarkKind,
@@ -173,6 +177,7 @@ function registerIpc(): void {
   handle(IPC.entryPurge, (id: number) => entries.purge(id))
   handle(IPC.entryListPromotedOn, (date: string) => entries.listPromotedOn(date))
   handle(IPC.entryChronicle, (topicId: number) => entries.chronicle(topicId))
+  handle(IPC.entryPrevDiary, (date: string) => entries.prevDiary(date))
 
   handle(IPC.revisionList, (entryId: number) => revisions.list(entryId))
   handle(IPC.revisionGet, (id: number) => revisions.get(id))
@@ -234,6 +239,36 @@ function registerIpc(): void {
     return res
   })
   handle(IPC.ftsStatus, () => fts.status())
+
+  /** 查询块（期-07）。渲染层递过来的是**语句原文**：解析与翻译都在这一侧，
+   *  所以 SQL 文本从来不过 IPC 那道边界。
+   *  语法错不是异常，是一个正常的返回值（`{error}`），所以这里不 catch——
+   *  `parseQueryBlock` 自己永不抛错。 */
+  handle(IPC.queryRun, (body: string) => {
+    const parsed = parseQueryBlock(body)
+    if ('error' in parsed) return { error: parsed.error }
+    const res = queryBlock.runQuery(parsed.plan)
+    if (!app.isPackaged)
+      console.log(`[query] ${res.ms}ms · ${res.view} ${res.rows.length} 行 · ${body.replace(/\s+/g, ' ')}`)
+    return { result: res }
+  })
+
+  handle(IPC.savedList, () => savedQueries.list())
+  handle(IPC.savedCreate, (name: string, body: string) => savedQueries.create(name, body))
+  handle(IPC.savedUpdate, (id: number, patch: { name?: string; body?: string }) =>
+    savedQueries.update(id, patch)
+  )
+  handle(IPC.savedRemove, (id: number) => savedQueries.remove(id))
+  handle(IPC.savedUsed, (id: number) => savedQueries.markUsed(id))
+
+  handle(IPC.tplList, () => templates.list())
+  handle(IPC.tplCreate, (input: { name: string; scope: string; body: string; isDefault?: boolean }) =>
+    templates.create(input)
+  )
+  handle(IPC.tplUpdate, (id: number, patch: { name?: string; body?: string; isDefault?: boolean }) =>
+    templates.update(id, patch)
+  )
+  handle(IPC.tplRemove, (id: number) => templates.remove(id))
 
   /** 裸 SQL。只在开发版存在——不是"锁起来"而是这条通道根本不注册，
    *  理由见 `IPC.devSql` 的注释与期-03-设计 §8-D6。

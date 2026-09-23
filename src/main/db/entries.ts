@@ -302,6 +302,22 @@ export function listPromotedOn(date: string): EntrySummary[] {
 
 /* ─ 回收站 ─ */
 
+/** 严格早于 `date` 的那一篇日记（期-07 §五：`{{last_entry}}`）。
+ *
+ *  判据是 `entry_date` 而不是 `created_at`：模板要说的是"前一天写了什么"，
+ *  而补写会让 created_at 晚于 entry_date（补上个月的日记时，那一行是今天建的）。
+ *  回收站里的不算——那一篇用户已经不要了，接它干什么。 */
+export function prevDiary(date: string): EntrySummary | null {
+  const row = getDatabase()
+    .prepare(
+      `select ${SUMMARY_SELECT} from Entry
+       where kind = 'diary' and deleted_at is null and entry_date < ?
+       order by entry_date desc limit 1`
+    )
+    .get(date) as SummaryRow | undefined
+  return row ? toSummary(row) : null
+}
+
 /** 按删除时间倒序：刚删的排最前，最可能被找回 */
 export function listDeleted(): EntrySummary[] {
   const rows = getDatabase()

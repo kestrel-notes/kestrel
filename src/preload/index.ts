@@ -28,6 +28,7 @@ const api: KestrelApi = {
     purge: (id) => ipcRenderer.invoke(IPC.entryPurge, id),
     listPromotedOn: (date) => ipcRenderer.invoke(IPC.entryListPromotedOn, date),
     chronicle: (topicId) => ipcRenderer.invoke(IPC.entryChronicle, topicId),
+    prevDiary: (date) => ipcRenderer.invoke(IPC.entryPrevDiary, date),
   },
   topics: {
     list: () => ipcRenderer.invoke(IPC.topicList),
@@ -68,6 +69,22 @@ const api: KestrelApi = {
   },
   fts: {
     status: () => ipcRenderer.invoke(IPC.ftsStatus),
+  },
+  query: {
+    run: (body) => ipcRenderer.invoke(IPC.queryRun, body),
+  },
+  saved: {
+    list: () => ipcRenderer.invoke(IPC.savedList),
+    create: (name, body) => ipcRenderer.invoke(IPC.savedCreate, name, body),
+    update: (id, patch) => ipcRenderer.invoke(IPC.savedUpdate, id, patch),
+    remove: (id) => ipcRenderer.invoke(IPC.savedRemove, id),
+    used: (id) => ipcRenderer.invoke(IPC.savedUsed, id),
+  },
+  templates: {
+    list: () => ipcRenderer.invoke(IPC.tplList),
+    create: (input) => ipcRenderer.invoke(IPC.tplCreate, input),
+    update: (id, patch) => ipcRenderer.invoke(IPC.tplUpdate, id, patch),
+    remove: (id) => ipcRenderer.invoke(IPC.tplRemove, id),
   },
   settings: {
     all: () => ipcRenderer.invoke(IPC.settingsAll),

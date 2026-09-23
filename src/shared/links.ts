@@ -71,6 +71,21 @@ export function resolveDateRef(raw: string, from: string): string | null {
   return null
 }
 
+/** 行首的「容器外壳」：≤3 个空格的缩进，以及引用前缀 `>`（可叠 `> >`）。 */
+const CONTAINER = /^(?:\s{0,3}|>\s?)+/
+const FENCE_OPEN = /^(`{3,}|~{3,})/
+const FENCE_CLOSE = /^(`{3,}|~{3,})\s*$/
+
+/** 把行首那层容器标记脱掉，围栏的两条判据脱完之后再看。
+ *
+ *  不脱这一层的话，**写在 Callout / 引用里的 ```query 围栏不算围栏**，
+ *  里面那句 `from #网络` 就会被 `parseTags` 认成一个真标签、被 `parseLinks` 认成锚点。
+ *  期-07 实机验收第 5 项撞出来的：库里因此凭空多一行 EntryTag。 */
+function unwrap(line: string): string {
+  const m = CONTAINER.exec(line)
+  return m ? line.slice(m[0].length) : line
+}
+
 /** 把代码区（围栏代码块 + 行内代码）换成等长的空格。
  *
  *  返回的字符串与原文**逐字符等长**，所以正则匹配到的下标可以直接拿去切原文。
@@ -91,11 +106,11 @@ export function maskCode(text: string): string {
     const line = text.slice(i, end)
 
     if (fence) {
-      const close = /^\s{0,3}(`{3,}|~{3,})\s*$/.exec(line)
+      const close = FENCE_CLOSE.exec(unwrap(line))
       if (close && close[1][0] === fence.ch && close[1].length >= fence.len) fence = null
       blank(i, end)
     } else {
-      const open = /^\s{0,3}(`{3,}|~{3,})/.exec(line)
+      const open = FENCE_OPEN.exec(unwrap(line))
       if (open) {
         fence = { ch: open[1][0], len: open[1].length }
         blank(i, end)

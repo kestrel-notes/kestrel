@@ -12,13 +12,16 @@
  *  `/` 不会误触菜单。
  *
  *  菜单目录只列**当前装得上、且不弹系统文件框**的块级元素。图片 / 附件走拖进来粘贴（#88），
- *  不进这张表；行内公式与脚注引用是打字就打成的（InputRule），也不是块级元素。 */
+ *  不进这张表；行内公式与脚注引用是打字就打成的（InputRule），也不是块级元素。
+ *  两个例外是期-07 加的：`/查询` 插一截空的 ```query 围栏，`/模板` 只是把管理面板开起来
+ *  （挑哪条模板要看正文，不是这一层的事）。 */
 
 import { useEffect, useState, type JSX } from 'react'
 import { Extension, type Editor } from '@tiptap/core'
 import { Plugin, PluginKey, type EditorState, type Transaction } from '@tiptap/pm/state'
 import type { EditorView } from '@tiptap/pm/view'
 import { matchScore } from '@/fuzzy'
+import { useStore } from '@/store'
 
 /** 一条斜杠项。`run` 自己负责先把 `/query` 那截删掉（`del`）再接插入命令，
  *  这样一个意图只落一个事务，不会闪一下空段再变表格。 */
@@ -163,6 +166,36 @@ export const SLASH_ITEMS: SlashItem[] = [
         .deleteRange(del)
         .insertTable({ rows: 3, cols: 3, withHeaderRow: true })
         .run(),
+  },
+  {
+    id: 'query',
+    title: '查询块',
+    hint: 'query',
+    keywords: 'query dataview 查询 语句 结果 表',
+    // 插一个空的 ```query 围栏。空着是有意的：结果区那句「第一行写视图名」就是说明书，
+    // 比预先塞一条查不出东西的语句要好（塞了还得先删干净才能写自己的）
+    run: (ed, del) =>
+      ed
+        .chain()
+        .focus()
+        .deleteRange(del)
+        .insertContent([
+          { type: 'codeBlock', attrs: { language: 'query' } },
+          { type: 'paragraph' },
+        ])
+        .run(),
+  },
+  {
+    id: 'template',
+    title: '模板…',
+    hint: 'tpl',
+    keywords: 'template 模板 套用 插入 日记模板',
+    // 不在这里挑模板：那张表要能看到正文才知道是哪一篇、也要能改要能删，
+    // 塞进这十行的浮层里放不下。开管理面板，那里有「套用」这一列
+    run: (ed, del) => {
+      ed.chain().focus().deleteRange(del).run()
+      void useStore.getState().setLibraryOpen(true)
+    },
   },
   {
     id: 'hr',

@@ -4,7 +4,9 @@ import { normalizeLinkKey, parseLinks } from '../../shared/links'
 import { crossYearHits, type PastCandidate } from '../../shared/chronicle'
 import { isTagName, normalizeTagKey } from '../../shared/tags'
 import { PROP_TYPE_LABEL, type PropValue } from '../../shared/props'
+import { expandTemplate } from '../../shared/template'
 import { roundTrip } from '@/editor/markdown'
+import { getRichEditor } from '@/editor/richView'
 import type { PropConversion, PropType } from '../../shared/types'
 import {
   DEFAULT_SETTINGS,
@@ -23,9 +25,11 @@ import {
   type RenameImpact,
   type Revision,
   type RevisionSummary,
+  type SavedQuery,
   type SearchOrder,
   type Settings,
   type TagNode,
+  type Template,
   type Topic,
   type TopicPatch,
 } from '../../shared/types'
@@ -212,6 +216,13 @@ export interface AppState {
    *  一边写一边重算会把用户刚敲进去的标签当成新提示反复弹，那就不是静默卡了 */
   crossYear: CrossYearHit[]
 
+  /** 存查询与模板两份列表（期-07 §四、§五）。两张表都是几十行的量级，一次取全，
+   *  不做分页也不做缓存失效判断——管理面板开着时改一条就整个重取 */
+  savedQueries: SavedQuery[]
+  templates: Template[]
+  /** 「查询与模板」管理面板 */
+  libraryOpen: boolean
+
   /** 大纲点击 → 编辑器滚动。存的是自增的请求号，编辑器听着它滚一次 */
   headingJump: { index: number; at: number } | null
   /** 编辑器回报的「当前所在的标题序号」，右栏用它高亮 */
@@ -303,6 +314,27 @@ export interface AppState {
    *  （期-06b-2 §二）。**不直接写 Link 表**——那条表是正文的派生物，绕开正文写进去的边，
    *  下一次保存就会被 `reparseEntry` 整删整插抹掉。 */
   connectCrossYear(hit: CrossYearHit): Promise<void>
+
+  /* ── 查询块与模板（期-07） ── */
+
+  /** 重取存查询与模板两份列表。库里两张新表都是几十行的量级，一次取全 */
+  refreshLibrary(): Promise<void>
+  /** 把正文里那截围栏存成一条查询。返回而不是抛错：这一步是控件里的一个按钮，
+   *  名字撞了要就地回一句话，不是弹一个栈追踪 */
+  saveQuery(name: string, body: string): Promise<{ ok: boolean; msg: string }>
+  removeSaved(id: number): Promise<void>
+  /** 插进正文：rich / reading 档走编辑器命令（落在光标处），源码档只能追加到末尾。
+   *  `savedId` 只用来顺手把 `used_at` 推上去 */
+  insertQuery(body: string, savedId?: number): Promise<void>
+  createTemplate(input: { name: string; scope: 'diary' | 'article'; body: string; isDefault?: boolean }): Promise<void>
+  updateTemplate(
+    id: number,
+    patch: { name?: string; body?: string; isDefault?: boolean }
+  ): Promise<void>
+  removeTemplate(id: number): Promise<void>
+  /** 套用一条模板：先展开变量，再落到光标处（正文本来就空时就是整篇的开头） */
+  applyTemplate(id: number): Promise<void>
+  setLibraryOpen(open: boolean): void
   /** 收藏 / 取消收藏某一样东西（当前这篇、sheet 里的某一行都走这一条）。
    *  `title` 只在新增那一次落库，是收藏那一刻的名字快照（§4.1） */
   toggleBookmark(kind: BookmarkKind, ref: number, title: string): Promise<void>
@@ -410,6 +442,8 @@ export const useStore = create<AppState>()((set, get) => {
     // 跨年同日：只在打开**日记**时算一次（§二）。不跟着每次保存重算——
     // 那件事正在被用户写着，一边写一边改他右栏那张卡是打扰，不是提示。
     void refreshCrossYear(entry)
+    // 新建的那一篇自动套默认模板（期-07 §五「套用的时机」第一条）
+    void autoApplyDefault(entry)
     // 这一篇的 props 里可能有从没登记过的名字（导入进来的），读一次登记表就补上了（§4.3）。
     // 人正停在属性那一格时，计数与当前这级的列表也要跟着换
     if (get().mode === 'prop') void refreshPropSide()
@@ -582,6 +616,27 @@ export const useStore = create<AppState>()((set, get) => {
     }
   }
 
+  /** 本会话已经判过「要不要自动套」的那几篇 id。判过就不判第二次，哪怕判的结果是没套 */
+  const autoTplDone = new Set<number>()
+
+  /** 新建那一篇自动套上 `scope` 对应的那条默认模板（期-07 §五）。
+   *
+   *  三条判据缺一不可：正文为空（套上去不覆盖任何东西）、`createdAt === updatedAt`
+   *  （从没存过，也就是这一刻刚建出来）、这一篇本会话没套过（用户把模板内容删掉、
+   *  留下一片空白再重开，那是他主动要的空白，不该又被塞回去）。 */
+  async function autoApplyDefault(entry: Entry): Promise<void> {
+    if (entry.content.trim() !== '' || entry.createdAt !== entry.updatedAt) return
+    if (autoTplDone.has(entry.id)) return
+    autoTplDone.add(entry.id)
+    // 这一条判据用不得缓存：默认模板可能就是刚刚才建的那一条，而常驻那份是开应用时取的。
+    // 「这一刻刚建出来的一篇」是罕见事件，为它多一趟 IPC 不亏
+    await get().refreshLibrary()
+    if (get().currentId !== entry.id) return
+    const def = get().templates.find((t) => t.scope === entry.kind && t.isDefault)
+    if (!def) return
+    await get().applyTemplate(def.id)
+  }
+
   async function refreshHeat(): Promise<void> {
     const to = todayKey()
     const from = addDays(to, -HEAT_WEEKS * 7 + 1)
@@ -736,6 +791,9 @@ export const useStore = create<AppState>()((set, get) => {
     versionOf: null,
     promotedOnDate: [],
     crossYear: [],
+    savedQueries: [],
+    templates: [],
+    libraryOpen: false,
     headingJump: null,
     activeHeading: null,
     recentLimit: RECENT_LIMIT,
@@ -1393,6 +1451,156 @@ export const useStore = create<AppState>()((set, get) => {
       // 立刻落库：这条动作是用户点出来的，不是敲出来的，不该等 500ms 的自动保存
       await s.flush()
       s.notify(`已在正文末尾连上「${label}」`)
+    },
+
+    /* ─ 查询块与模板（期-07） ─ */
+
+    async refreshLibrary() {
+      try {
+        const [savedQueries, templates] = await Promise.all([
+          window.kestrel.saved.list(),
+          window.kestrel.templates.list(),
+        ])
+        set({ savedQueries, templates })
+      } catch (err) {
+        get().notify(errorMessage(err))
+      }
+    },
+
+    setLibraryOpen(open) {
+      set({ libraryOpen: open })
+      if (open) void get().refreshLibrary()
+    },
+
+    async saveQuery(name, body) {
+      try {
+        const sq = await window.kestrel.saved.create(name, body)
+        await get().refreshLibrary()
+        return { ok: true, msg: `已存为「${sq.name}」` }
+      } catch (err) {
+        // 名字撞了、这条查询本身跑不通——都是要就地回一句话的失败，不是栈追踪
+        return { ok: false, msg: errorMessage(err) }
+      }
+    },
+
+    async removeSaved(id) {
+      try {
+        await window.kestrel.saved.remove(id)
+        await get().refreshLibrary()
+      } catch (err) {
+        get().notify(errorMessage(err))
+      }
+    },
+
+    async insertQuery(body, savedId) {
+      const s = get()
+      if (s.editorMode === 'reading') {
+        s.notify('阅读模式下不插入，先切回编辑')
+        return
+      }
+      const text = String(body ?? '').replace(/\s+$/, '')
+      if (!text) return
+      const editor = s.editorMode === 'rich' ? getRichEditor() : null
+      if (editor?.isEditable) {
+        // 走 PM 事务而不是改 Markdown 原文：后者会把整篇重新解析一遍，光标掉回文首。
+        // 插完之后 onUpdate 自己会序列化回 store，这里不必再 setContent
+        editor
+          .chain()
+          .focus()
+          .insertContent({
+            type: 'codeBlock',
+            attrs: { language: 'query' },
+            content: [{ type: 'text', text }],
+          })
+          .run()
+      } else {
+        const base = s.content.replace(/\s+$/, '')
+        const fence = '```query\n' + text + '\n```'
+        s.setContent(base ? `${base}\n\n${fence}\n` : `${fence}\n`)
+        void s.flush()
+      }
+      if (savedId !== undefined) {
+        // used_at 只服务「最近用的排前面」那一条排序，掉了不该影响插入本身
+        void window.kestrel.saved
+          .used(savedId)
+          .then(() => get().refreshLibrary())
+          .catch(() => {})
+      }
+      s.notify('已插入查询块')
+    },
+
+    async createTemplate(input) {
+      try {
+        const tpl = await window.kestrel.templates.create(input)
+        await get().refreshLibrary()
+        get().notify(`已新建模板「${tpl.name}」`)
+      } catch (err) {
+        get().notify(errorMessage(err))
+      }
+    },
+
+    async updateTemplate(id, patch) {
+      try {
+        await window.kestrel.templates.update(id, patch)
+        await get().refreshLibrary()
+      } catch (err) {
+        get().notify(errorMessage(err))
+      }
+    },
+
+    async removeTemplate(id) {
+      try {
+        await window.kestrel.templates.remove(id)
+        await get().refreshLibrary()
+      } catch (err) {
+        get().notify(errorMessage(err))
+      }
+    },
+
+    async applyTemplate(id) {
+      const s = get()
+      const tpl = s.templates.find((t) => t.id === id)
+      if (!tpl) {
+        s.notify('这条模板已经不在了')
+        return
+      }
+      if (s.editorMode === 'reading') {
+        s.notify('阅读模式下不套用，先切回编辑')
+        return
+      }
+      const entry = s.entry
+      if (!entry) {
+        s.notify('先打开一篇再套模板')
+        return
+      }
+      // 以**这一篇的那天**为准，不是墙上今天：补记 3 月 5 日时要拿到 3 月 5 日
+      const [y, m, d] = entry.entryDate.split('-').map(Number)
+      const lastEntry = await window.kestrel.entries
+        .prevDiary(entry.entryDate)
+        .then((p) => (p ? { title: p.title, entryDate: p.entryDate } : null))
+        .catch(() => null)
+      const exp = expandTemplate(tpl.body, {
+        date: new Date(y, m - 1, d, 12, 0, 0),
+        lastEntry,
+        topic: s.topics.find((t) => t.id === entry.topicId)?.name,
+      })
+      const text = exp.text.replace(/\s+$/, '')
+      if (!text) {
+        s.notify('这条模板展开后是空的')
+        return
+      }
+      // 模板正文是任意 Markdown，`insertContent` 只认 HTML / PM JSON（没有 contentType
+      // 这一档），所以走 store 那条已经验证过的路：写进 content，由 RichEditor 的
+      // `contentType: 'markdown'` 回灌解析。代价是光标回文首——套用模板本来就是要从头写
+      const base = s.content.replace(/\s+$/, '')
+      s.setContent(base ? `${base}\n\n${text}\n` : `${text}\n`)
+      void s.flush()
+      const notes: string[] = []
+      if (exp.unknownVars.length) notes.push(`没认出的变量：${exp.unknownVars.map((v) => `{{${v}}}`).join('、')}`)
+      if (exp.missing.length) notes.push(`缺值：${exp.missing.join('、')}`)
+      if (exp.unknownMarkers.length) notes.push(`没认出的日期标记：${exp.unknownMarkers.join('、')}`)
+      // 原样留在正文里的那些 `{{…}}` 必须说出来：用户看不见就等于被吞掉了
+      s.notify(notes.length ? `已套用「${tpl.name}」—— ${notes.join('；')}` : `已套用「${tpl.name}」`)
     },
 
     /* ─ 收藏（§3.4） ─ */

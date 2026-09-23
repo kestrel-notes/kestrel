@@ -300,12 +300,27 @@ export const COMMANDS: Command[] = [
     },
   },
   {
+    id: 'query.block',
+    title: '插入查询块',
+    group: '编辑器',
+    // 斜杠命令 `/查询` 插的是**空**围栏（那边光标就在块里，空着正好开始写）；
+    // 这条给源码档用——那边没有斜杠菜单，而且空围栏在源码档什么也不显示
+    enabled: (s) => s.currentId !== null,
+    run: (s) => void s.insertQuery('table title, entry_date\nlimit 20'),
+  },
+  {
     id: 'view.bookmarks',
     title: '收藏列表',
     group: '视图',
     // 空的时候也要能进来：两条浮层自己都有空态可看，而把命令藏掉会让
     // 「Ctrl+K 搜回收站」这类引导话术落空（首次启动种下的示例正文就是这么写的）
     run: (s) => s.setBookmarkOpen(true),
+  },
+  {
+    id: 'view.library',
+    title: '查询与模板 · 存查询 / 模板管理',
+    group: '视图',
+    run: (s) => s.setLibraryOpen(true),
   },
   {
     id: 'topic.manage',

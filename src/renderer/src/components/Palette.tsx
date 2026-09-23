@@ -26,14 +26,35 @@ const PAGE = 10
 
 function buildCommandRows(): Row[] {
   const s = useStore.getState()
-  // 不满足条件的命令**直接不列**：面板里一条点了没反应的项比不显示更让人困惑
-  return COMMANDS.filter((c) => !c.enabled || c.enabled(s)).map((c) => ({
+  const rows: Row[] = COMMANDS.filter((c) => !c.enabled || c.enabled(s)).map((c) => ({
     key: c.id,
     title: c.title,
     hint: c.keys?.map(keyLabel).join(' / '),
     group: c.group,
     run: () => void c.run(useStore.getState()),
   }))
+
+  // 存查询与模板直接排在命令列表里（期-07 §四：命令面板列出存查询 → 回车在当前光标处插入）。
+  // 插的是语句本身不是引用（决策 D10）——存的若是 `{{query:名字}}`，导出的 md 在别人手里就是死链
+  for (const q of s.savedQueries) {
+    rows.push({
+      key: `q:${q.id}`,
+      title: q.name,
+      hint: `插入查询 · ${q.view}`,
+      group: '存查询',
+      run: () => void useStore.getState().insertQuery(q.body, q.id),
+    })
+  }
+  for (const t of s.templates) {
+    rows.push({
+      key: `T:${t.id}`,
+      title: t.name,
+      hint: `套用模板 · ${t.scope === 'diary' ? '日记' : '文章'}`,
+      group: '模板',
+      run: () => void useStore.getState().applyTemplate(t.id),
+    })
+  }
+  return rows
 }
 
 function buildSwitchRows(): Row[] {
@@ -83,6 +104,10 @@ function dateRow(query: string): Row | null {
 export function Palette(): JSX.Element | null {
   const mode = useStore((s) => s.palette)
   const pool = useStore((s) => s.switchRows)
+  // 只有开关与输入会让列表重算，那不够：`Ctrl+K` 打开时正好存查询刚被改过，
+  // 面板里就该立刻看到新那条（所以这两个也要进 rows 的依赖）
+  const savedQueries = useStore((s) => s.savedQueries)
+  const templates = useStore((s) => s.templates)
   const close = useStore((s) => s.closePalette)
   const [query, setQuery] = useState('')
   const [cursor, setCursor] = useState(0)
@@ -94,13 +119,14 @@ export function Palette(): JSX.Element | null {
     if (!mode) return
     setQuery('')
     setCursor(0)
+    if (mode === 'command') void useStore.getState().refreshLibrary()
     inputRef.current?.focus()
     return () => {
       // 面板里跑的命令经常就是「再开一个浮层」（升格 / 回收站 / 设置）。
       // 那时浮层的输入框刚在 commit 里拿到 autoFocus，这里再把焦点抢回正文，
       // 打字就打到身后的文档上去了——实测标题没改、正文反被选中替换掉。
       const s = useStore.getState()
-      if (s.palette || s.searchOpen || s.promoteOpen || s.binOpen || s.sheetOpen || s.versionOf) return
+      if (s.palette || s.searchOpen || s.promoteOpen || s.binOpen || s.sheetOpen || s.libraryOpen || s.versionOf) return
       focusEditor()
     }
   }, [mode])
@@ -129,7 +155,7 @@ export function Palette(): JSX.Element | null {
         a.at - b.at
     )
     return hits.map((h) => h.row)
-  }, [mode, query, pool])
+  }, [mode, query, pool, savedQueries, templates])
 
   // 结果变了就把光标收回第一行，否则会停在一个已经不存在的位置上
   useEffect(() => setCursor(0), [query, pool])

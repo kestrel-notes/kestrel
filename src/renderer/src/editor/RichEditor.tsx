@@ -18,6 +18,7 @@ import { SlashMenu, SlashPopup } from '@/editor/SlashMenu'
 import { Folding } from '@/editor/folding'
 import { FootnoteNumbers } from '@/editor/footnote'
 import { Attachments } from '@/editor/assets'
+import { QueryBlocks } from '@/editor/queryBlock'
 
 export function RichEditor({ readOnly = false }: { readOnly?: boolean }): JSX.Element {
   const content = useStore((s) => s.content)
@@ -43,8 +44,10 @@ export function RichEditor({ readOnly = false }: { readOnly?: boolean }): JSX.El
   // SlashMenu 只在编辑实例里挂；阅读实例即使复用了同一棵 PM，插件也会因 view.editable=false 而沉默。
   // Folding 两档都挂：折叠是「读」的本事。FootnoteNumbers 同理——序号是读出来的东西。
   // Attachments 靠 isEditable 守卫，阅读模式下不吞拖放/粘贴。
+  // QueryBlocks 两档都挂：查询结果是**读**出来的，且它是纯装饰器（不进 schema、不进 md），
+  // 挂进 buildExtensions() 反而会把这份名单污染成闸门的 schema（期-07 §一）。
   const extensions = useMemo(
-    () => [...buildExtensions(bridge), SlashMenu, Folding, FootnoteNumbers, Attachments],
+    () => [...buildExtensions(bridge), SlashMenu, Folding, FootnoteNumbers, Attachments, QueryBlocks],
     [bridge]
   )
 
