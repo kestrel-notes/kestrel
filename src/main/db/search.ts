@@ -23,10 +23,12 @@ import {
 } from '../../shared/query'
 import type {
   FtsStatus,
+  SearchOrder,
   SearchPath,
   SearchResult,
   SearchResultRow,
 } from '../../shared/types'
+import { todayKey } from '../../shared/date'
 import { isReady, status as ftsStatus } from './fts'
 import { getDatabase } from './index'
 
@@ -43,6 +45,32 @@ const CANDIDATE_CAP = 2000
 const LIKE_CAP = 300
 
 const DEFAULT_LIMIT = 50
+
+/** 默认档。三档里只有「综合」需要用户先理解"名次与日期怎么合"，所以不让他从零选（§三）。
+ *  要纯相关度就切「相关度」档——那一档真的不带任何时间项，验收第 6 项钉的就是这条。 */
+const DEFAULT_ORDER: SearchOrder = 'blend'
+
+/** 「综合」里日期那一项的半衰期：**两年**，是 §0.5 扫八组参数扫出来的，不是拍的。
+ *  第一版随手写 90 天，结果与「最近」档前十 10/10 重合——那是"综合"这个名字的假货。 */
+const HALF_LIFE = 730
+
+/** LIKE 档相关度的三个权重（§0.4）。标题命中一次就顶正文 40 次：面板上标题独占一行，
+ *  它命中了用户就该看到；正文复读机靠封顶 12 次挤不进前十。 */
+const TITLE_HIT = 40
+const TITLE_OCC = 8
+const CONTENT_OCC_CAP = 12
+
+/** 一条 `length(replace())` 数出现次数的相关度，写给 EntryFts 这张虚表用（§0.4）。
+ *
+ *  为什么可以在虚表上算而不去碰原表：虚表的 `title` 建表时就被触发器 `coalesce(…, '')` 过
+ *  （`fts.ts:45`），所以这里不必防 NULL；`content` 那一列在原表是 `not null default ''`。
+ *  四个 `?` 全是同一个词（分子两次、除数两次），绑定而不是拼串——词来自用户输入。
+ *  权重是模块常量，直接落进串里；别名写在 select 列表、`order by` 引用它，
+ *  那是 SQLite 的扩展而不是标准 SQL。 */
+const LIKE_SCORE_SELECT = `       (length(title) - length(replace(title, ?, ''))) / length(?) as tocc,
+       (length(content) - length(replace(content, ?, ''))) / length(?) as occ`
+
+const LIKE_SCORE_ORDER = `order by (case when tocc > 0 then ${TITLE_HIT} else 0 end) + tocc * ${TITLE_OCC} + min(occ, ${CONTENT_OCC_CAP}) desc, rowid desc`
 
 /** 回表时多取几倍 id：第 ③ 段的 kind / date 谓词会刷掉一批，一次取满比翻next-page便宜。 */
 const FETCH_SLACK = 3
@@ -104,14 +132,20 @@ function byTerm(term: SearchTerm, useIndex: boolean): Candidates {
 
   if (useIndex) {
     // 1~2 字词：同一张虚表上的 LIKE，走 trigram 附带的 LIKE 优化（§2.4）。
-    // 排序没有 bm25 可用（LIKE 路径没有位置信息），按 rowid 倒序 = 新建在前（§8-D4）。
+    // 排序没有 bm25 可用（LIKE 路径没有位置信息），所以自己算一个便宜的相关度。
     // 上限用 LIKE_CAP 而不是 CANDIDATE_CAP：这一档的钱花在"取多少行"上，见那个常量的注释。
+    //
+    // 参数顺序跟着 SQL 文本走：select 列表里那四个词在 `where` 的那个 pattern 之前。
     return union(
       cols.map((col) => {
         const { sql, value } = likeClause(col, term.text)
         return pluck(
-          `select rowid as id from EntryFts where ${sql} order by rowid desc limit ?`,
-          [value],
+          `select rowid as id, ${LIKE_SCORE_SELECT}
+             from EntryFts
+            where ${sql}
+             ${LIKE_SCORE_ORDER}
+             limit ?`,
+          [term.text, term.text, term.text, term.text, value],
           LIKE_CAP
         )
       })
@@ -312,8 +346,51 @@ function toRow(r: EntryRow, terms: SearchTerm[]): SearchResultRow {
   return out
 }
 
+const DAY = 86_400_000
+
+/** 候选的 `entry_date`。`recent` / `blend` 两档要它，而第 ③ 段的回表取的是正文——
+ *  回表那边 150 行的预算是给正文字符串花的，这里只取两列，所以窗口不必跟着它收窄。
+ *  `id` 是 INTEGER PRIMARY KEY，所以这条 `in` 是逐行主键查找，不是扫描。 */
+function datesOf(ids: number[]): Map<number, string> {
+  if (!ids.length) return new Map()
+  const rows = getDatabase()
+    .prepare(
+      `select id, entry_date from Entry where id in (${ids.map(() => '?').join(', ')})`
+    )
+    .all(...(ids as never[])) as unknown as { id: number; entry_date: string }[]
+  return new Map(rows.map((r) => [r.id, r.entry_date]))
+}
+
+/** 名次与日期合成一个分。半衰期与"名次取 log"这两件事都是 §0.5 扫出来的：
+ *  线性名次在几百个候选里只有 10 倍跨度，日期分却有 3 个数量级，乘法里跨度大的那个说话。 */
+function blendScore(rank: number, ageDays: number): number {
+  return (1 / Math.log2(2 + rank)) * Math.pow(0.5, ageDays / HALF_LIFE)
+}
+
+/** 把第 ② 段算好的名次序换成 `recent` / `blend` 档要的序。
+ *
+ *  名次 = 换序之前的位置，所以「综合」档仍然让相关度参与打分，而不是从头另起一套无关规则
+ *  （判据：验收第 7 项——它与另两档的前十重合都要落在 3~8）。
+ *  回落顺序写成三级：同分 → 名次 → id 倒序。三档都必须是确定序，否则同一句查询刷两次
+ *  换个样子，用户会以为数据动了。 */
+function reorder(ids: number[], order: SearchOrder, today: number): number[] {
+  const dates = datesOf(ids)
+  const scored = ids.map((id, i) => {
+    const ms = Date.parse(`${dates.get(id) ?? ''}T00:00:00Z`)
+    // 读不到日期或日期在未来 → 按 0 天算。给负数的话 `blend` 会奖励"还没到的那天"
+    const age = Number.isNaN(ms) ? 0 : Math.max(0, (today - ms) / DAY)
+    return { id, i, v: order === 'recent' ? -age : blendScore(i, age) }
+  })
+  scored.sort((a, b) => b.v - a.v || a.i - b.i || b.id - a.id)
+  return scored.map((s) => s.id)
+}
+
 /** 一次搜索。渲染层只管发字符串、画回执，三段式怎么走的都在这里。 */
-export function run(query: string, limit = DEFAULT_LIMIT): SearchResult {
+export function run(
+  query: string,
+  limit = DEFAULT_LIMIT,
+  order: SearchOrder = DEFAULT_ORDER
+): SearchResult {
   const parsed = parseQuery(query)
   const status: FtsStatus = ftsStatus()
   const useIndex = isReady()
@@ -328,7 +405,7 @@ export function run(query: string, limit = DEFAULT_LIMIT): SearchResult {
 
   // 空串在这之前就该被面板拦掉（§10 第 8 项：空 MATCH 串会让 FTS5 抛 syntax error）。
   // 这里再兜一道，是为了 dev.sql 和探针直接调进来的情形。
-  if (parsed.empty) return { rows: [], total: 0, capped: false, path, status }
+  if (parsed.empty) return { rows: [], total: 0, capped: false, path, order, status }
 
   let capped = false
   const track = (c: Candidates): Candidates => {
@@ -372,10 +449,14 @@ export function run(query: string, limit = DEFAULT_LIMIT): SearchResult {
   }
 
   const total = ordered.length
-  const top = ordered.slice(0, limit * FETCH_SLACK)
+  // 三档分岔口：`relevance` 就是第 ①② 段算好的名次序，另两档拿日期换一遍（期-06b-2 §三）。
+  // 换序发生在截断**之前**，所以「最近」档看得见那条命中排在 151 名之后、但日期是昨天的记录——
+  // 只对回表那 150 行重排会做出一个名不副实的"最近"。
+  const ranked = order === 'relevance' ? ordered : reorder(ordered, order, Date.parse(`${todayKey()}T00:00:00Z`))
+  const top = ranked.slice(0, limit * FETCH_SLACK)
   const fetched = fetchRows(top, parsed.filters)
 
-  // SQL 的 `in` 按 rowid 回来，第 ① 段算好的相关性序得在这里复位。
+  // SQL 的 `in` 按 rowid 回来，第 ②③ 段算好的序得在这里复位。
   // 先按名次截到 limit 行、再算上下文：§10-7 在 6 万条上量出来，给 150 行算上下文比给 50 行
   // 贵三倍，而多出来的那 100 行根本不会出现在面板上——它们是这条路径上最大的一笔白花钱。
   const rank = new Map<number, number>()
@@ -385,7 +466,7 @@ export function run(query: string, limit = DEFAULT_LIMIT): SearchResult {
     .slice(0, limit)
     .map((r) => toRow(r, positives))
 
-  return { rows, total, capped, path, status }
+  return { rows, total, capped, path, order, status }
 }
 
 /** 只给探针与 §10 计时用：这条查询串会走哪条路，不发查询就能答。 */

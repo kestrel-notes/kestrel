@@ -6,6 +6,8 @@ import { GraphView } from '@/components/GraphView'
 import { Backlinks } from '@/components/Backlinks'
 import { RailBlock } from '@/components/RailBlock'
 import { PropsPanel } from '@/components/PropsPanel'
+import { Chronicle } from '@/components/Chronicle'
+import { CrossYearCard } from '@/components/CrossYearCard'
 
 export function Rail(): JSX.Element {
   const entry = useStore((s) => s.entry)
@@ -39,6 +41,10 @@ export function Rail(): JSX.Element {
 
   return (
     <aside className="rail glass">
+      {/* 跨年同日那一行（期-06b-2 §二）。摊在最上面是因为它要人动手（点「连」），
+          而下面那几块都是读现状；没有可提的共享时它整个不渲染，不留空位 */}
+      <CrossYearCard />
+
       <RailBlock title="大纲">
         {outline.length === 0 ? (
           <div className="empty-hint">正文里写了 # 标题，这里会自动列出来。</div>
@@ -85,6 +91,10 @@ export function Rail(): JSX.Element {
       <RailBlock title="反向链接" count={backlinks.length}>
         <Backlinks backlinks={backlinks} onOpen={(key) => void openNode(key)} />
       </RailBlock>
+
+      {/* 编年史与上面那两块是同一件事的两个轴：反链与局部图谱看"谁连着这一篇"（空间轴），
+          这一条看"这一篇是怎么长出来的"（时间轴）。没有归属主题时整块不渲染 */}
+      <Chronicle />
 
       <PropsPanel />
 

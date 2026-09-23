@@ -28,6 +28,21 @@ export function addDays(key: string, delta: number): string {
   return dateKey(d)
 }
 
+/** 同年同月同日往前 N 年（期-06b-2 §二「去年今天」）。
+ *
+ *  刻意不是 `addDays(key, -365*N)`：那是"365 天前"，閏年会错一天，而且"去年今天"
+ *  说的是日历上那个日子，不是相差的天数。2/29 在平年落到 2/28 ——
+ *  `new Date(2025, 1, 29)` 会滚成 3/3，那是两天之后不是去年今天，所以滚出二月就退到月末。
+ *  无解（日期本身读不出来）返回 null，让调用方决定"没有去年"怎么显示。 */
+export function shiftYears(key: string, years: number): string | null {
+  const d = parseDateKey(key)
+  if (!d) return null
+  const month = d.getMonth()
+  const t = new Date(d.getFullYear() + years, month, d.getDate())
+  if (t.getMonth() !== month) t.setDate(0)
+  return dateKey(t)
+}
+
 const WEEKDAYS = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六']
 
 export function weekdayZh(key: string): string {

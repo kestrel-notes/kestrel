@@ -27,6 +27,7 @@ const api: KestrelApi = {
     restore: (id) => ipcRenderer.invoke(IPC.entryRestore, id),
     purge: (id) => ipcRenderer.invoke(IPC.entryPurge, id),
     listPromotedOn: (date) => ipcRenderer.invoke(IPC.entryListPromotedOn, date),
+    chronicle: (topicId) => ipcRenderer.invoke(IPC.entryChronicle, topicId),
   },
   topics: {
     list: () => ipcRenderer.invoke(IPC.topicList),
@@ -63,7 +64,7 @@ const api: KestrelApi = {
     outgoing: (entryId) => ipcRenderer.invoke(IPC.linkOutgoing, entryId),
   },
   search: {
-    run: (query, limit) => ipcRenderer.invoke(IPC.searchRun, query, limit),
+    run: (query, limit, order) => ipcRenderer.invoke(IPC.searchRun, query, limit, order),
   },
   fts: {
     status: () => ipcRenderer.invoke(IPC.ftsStatus),

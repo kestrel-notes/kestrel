@@ -22,6 +22,7 @@ import {
   type EntryPatch,
   type PromoteInput,
   type PropType,
+  type SearchOrder,
   type Settings,
   type TopicPatch,
 } from '../shared/types'
@@ -171,6 +172,7 @@ function registerIpc(): void {
   handle(IPC.entryRestore, (id: number) => entries.restore(id))
   handle(IPC.entryPurge, (id: number) => entries.purge(id))
   handle(IPC.entryListPromotedOn, (date: string) => entries.listPromotedOn(date))
+  handle(IPC.entryChronicle, (topicId: number) => entries.chronicle(topicId))
 
   handle(IPC.revisionList, (entryId: number) => revisions.list(entryId))
   handle(IPC.revisionGet, (id: number) => revisions.get(id))
@@ -218,13 +220,16 @@ function registerIpc(): void {
   handle(IPC.settingsAll, () => settings.all())
   handle(IPC.settingsPatch, (patch: Partial<Settings>) => settings.patch(patch))
 
-  handle(IPC.searchRun, (query: string, limit?: number) => {
+  handle(IPC.searchRun, (query: string, limit?: number, order?: SearchOrder) => {
     const t = Date.now()
-    const res = search.run(query, limit)
+    const res = search.run(query, limit, order)
     /** 开发版留一行「这次走了哪条路、几毫秒、发了几趟」。§10 第 7、8 两项的账都从这行数：
-     *  第 8 项要证明连打十个字没有排队，光看渲染层看不出发了几趟 IPC。 */
+     *  第 8 项要证明连打十个字没有排队，光看渲染层看不出发了几趟 IPC。
+     *  6b-2 起把档名也带上——三档排出来的前十重合是验收判据，日志得能自证发了哪一档。 */
     if (!app.isPackaged) {
-      console.log(`[search] ${Date.now() - t}ms · ${res.path} · ${res.rows.length}/${res.total} · ${query}`)
+      console.log(
+        `[search] ${Date.now() - t}ms · ${res.path}/${res.order} · ${res.rows.length}/${res.total} · ${query}`
+      )
     }
     return res
   })

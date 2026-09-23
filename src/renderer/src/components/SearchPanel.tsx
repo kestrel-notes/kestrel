@@ -8,7 +8,7 @@ import type { JSX, KeyboardEvent as ReactKeyboardEvent, ReactNode } from 'react'
 import { useEffect, useRef, useState } from 'react'
 import { useStore, entryLabel } from '@/store'
 import { focusEditor } from '@/dom'
-import type { FtsStatus, SearchResult, SearchResultRow } from '../../../shared/types'
+import type { FtsStatus, SearchOrder, SearchResult, SearchResultRow } from '../../../shared/types'
 
 /** 输入即搜的防抖（§4.1）。180ms 是「打字停一下就能看见结果」与
  *  「连打十个字不要发十趟查询」之间的折中。 */
@@ -25,6 +25,22 @@ const PATH_LABEL: Record<SearchResult['path'], string> = {
   like: '短词',
   scan: '逐行扫描',
 }
+
+/** 三档的名字（期-06b-2 §三）。段控件上就写这三个字，title 里说清各自怎么排的——
+ *  「综合」那档的参数是扫出来的，不写出来的话用户没法知道它凭什么把某条排到前面 */
+const ORDER_LABEL: Record<SearchOrder, string> = {
+  relevance: '相关度',
+  recent: '最近',
+  blend: '综合',
+}
+
+const ORDER_HINT: Record<SearchOrder, string> = {
+  relevance: '只看相关度，一点日期都不掺',
+  recent: '只看日期，最新的在前',
+  blend: '相关度 × 日期（两年半衰）——默认这一档',
+}
+
+const ORDERS: SearchOrder[] = ['relevance', 'recent', 'blend']
 
 /** 命中区间 → 高亮片段。IPC 上跑的是区间而不是拼好的 `<b>` 字符串，
  *  样式（`--accent` 下划线 + 底色）由这里决定（§6） */
@@ -49,6 +65,8 @@ export function SearchPanel(): JSX.Element | null {
   const close = useStore((s) => s.closeSearch)
   const openHit = useStore((s) => s.openSearchHit)
   const notify = useStore((s) => s.notify)
+  const order = useStore((s) => s.searchOrder)
+  const setOrder = useStore((s) => s.setSearchOrder)
 
   const [query, setQuery] = useState('')
   const [result, setResult] = useState<SearchResult | null>(null)
@@ -95,7 +113,7 @@ export function SearchPanel(): JSX.Element | null {
     const timer = setTimeout(() => {
       const my = ++seq.current
       void window.kestrel
-        .search.run(q)
+        .search.run(q, undefined, order)
         .then((res) => {
           if (my !== seq.current) return
           setResult(res)
@@ -110,7 +128,7 @@ export function SearchPanel(): JSX.Element | null {
     }, DEBOUNCE)
 
     return () => clearTimeout(timer)
-  }, [open, query, nonce, notify])
+  }, [open, query, order, nonce, notify])
 
   // 索引进度：只在面板开着时问，问到 ready 就停。ready 之后没有会变的东西了
   useEffect(() => {
@@ -265,16 +283,41 @@ export function SearchPanel(): JSX.Element | null {
           ))}
         </div>
 
-        {result && rows.length > 0 && (
-          <div className="search-foot">
-            <span>
-              {/* §4.1 底部那行：走哪条路 + 上限。capped 时说「2000+」而不是「2000」——
-                  候选集就是在那个封顶前停下的（§5.3） */}
-              {PATH_LABEL[result.path]}
-              {capped ? ` · 命中 ${total}+` : ` · 命中 ${total}`} · 显示 {rows.length} 条
-            </span>
-          </div>
-        )}
+        {/* 脚这一行常驻（没结果也在）：三档是要在打字之前就挑得见的东西，
+            藏在"有结果才出现"的里面就等于告诉用户"先蒙一次再说" */}
+        <div className="search-foot">
+          <span>
+            {result && rows.length > 0 ? (
+              <>
+                {/* §4.1 底部那行：走哪条路 + 上限。capped 时说「2000+」而不是「2000」——
+                    候选集就是在那个封顶前停下的（§5.3） */}
+                {PATH_LABEL[result.path]}
+                {capped ? ` · 命中 ${total}+` : ` · 命中 ${total}`} · 显示 {rows.length} 条
+              </>
+            ) : (
+              <em className="sr-foot-hint">排序档</em>
+            )}
+          </span>
+          {/* 三档段控件（6b-2 §三）。刻意贴在结果脚上而不是设置页：换档要看的就是这批行。
+              回显读 `result.order` 而不是 `order`——两者不一样时说明发出去的档名半路丢了，
+              这时候让界面跟着 state 走就会把线接错这件事盖住 */}
+          <span className="sr-orders" role="group" aria-label="排序档">
+            {ORDERS.map((o) => {
+              const on = (result?.order ?? order) === o
+              return (
+                <button
+                  key={o}
+                  className={`sr-order ${on ? 'on' : ''}`}
+                  title={ORDER_HINT[o]}
+                  aria-pressed={on}
+                  onClick={() => setOrder(o)}
+                >
+                  {ORDER_LABEL[o]}
+                </button>
+              )
+            })}
+          </span>
+        </div>
       </div>
     </div>
   )

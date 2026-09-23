@@ -237,6 +237,64 @@ export interface GlobalGraph {
   danglingCount: number
 }
 
+/** 主题编年史的一行（期-06b-2 §一）。
+ *
+ *  一行 = 一个条目。**升格来的那行自带两个时间点**（原料日 `entryDate` 与成文时刻 `promotedAt`），
+ *  不拆成两行：升格是原地改 `kind`（`main/db/entries.ts` 的 `promote`），库里只有一行。
+ *  排序键 `sortAt` 在主进程算：`promoted_at ?? created_at`。用 `created_at` 排会把
+ *  「三年前记下、上个月才成文」的文章错放回三年前——实测编年史库里那批 p50 差 110 天。 */
+export interface ChronicleRow {
+  id: number
+  kind: EntryKind
+  title: string | null
+  /** 原料那天（`Entry.entry_date`，升格不动它） */
+  entryDate: string
+  /** 行建起来那天。日记就是那天敲的字 */
+  createdAt: string
+  promotedAt: string | null
+  /** `promoted_at ?? created_at`，时间线按它排 */
+  sortAt: string
+}
+
+/** 跨年同日关联出的一张卡（期-06b-2 §二）。
+ *
+ *  判据是「共享标签或共享主题」，不是「去年那天有东西」——三年库里 42% 的日子都有
+ *  一个去年今天，那样等于天天弹（§0.3：真共享标签的只有 29%、共享主题的 1%）。 */
+export interface CrossYearHit {
+  /** 那年今天那一条 */
+  entryId: number
+  /** 相隔几年：1 = 去年今天，2 = 前年今天 */
+  years: number
+  /** 那一条自己的日期 */
+  date: string
+  kind: EntryKind
+  title: string | null
+  topicName: string | null
+  /** 凭什么说相关。标签优先（比主题具体），多个共享只报第一个 */
+  why: { kind: 'tag' | 'topic'; name: string }
+}
+
+/** 跨年同日关联的一行（期-06b-2 §二）。
+ *
+ *  判据不是「去年那天有东西」——三年库里 42% 的日子都满足，那等于天天弹（§0.3）。
+ *  要求共享标签或共享主题，满足才出一行。命中靠什么共享的，`why` 里写着，卡上原样显示：
+ *  这条卡是在提议连一条线，用户有权知道它凭什么觉得自己相关。
+ *  `tag` 只用来显示，不用来查库：标签集是渲染进程从两边正文里 `parseTags` 出来的，
+ *  与 `EntryTag` 那套派生行同一个来源，所以不必为这一行卡再多开一条 IPC。 */
+export interface CrossYearHit {
+  /** 那年今天那一条 */
+  entryId: number
+  /** 隔了几年。1 = 去年今天，2 = 前年今天 */
+  years: number
+  /** 那天那一条的日期（'YYYY-MM-DD'） */
+  date: string
+  kind: EntryKind
+  title: string | null
+  topicName: string | null
+  /** 共享的东西：标签名（含父级路径）或主题。多个只报第一个，卡上一行放不下 */
+  why: { kind: 'tag' | 'topic'; name: string }
+}
+
 /** 侧栏标签树的一个节点。`name` 是归一后的完整路径（`工作/项目a`），
  *  `display` 只是这一级自己的写法——树上一层显示一段，不必把整串摊给用户看。
  *
@@ -342,6 +400,12 @@ export interface FtsStatus {
  *  `scan` = 索引还没追平，整条查询打到原表 `Entry`（期-03-设计 §5.2）。 */
 export type SearchPath = 'match' | 'like' | 'scan'
 
+/** 三档排序（期-06b-2 §三）。三档说的是"怎么排"，与 `SearchPath` 的"怎么找"正交：
+ *  - `relevance` 不带任何时间项。MATCH 档就是 bm25，LIKE 档用那条便宜的相关度
+ *  - `recent` 按 `entry_date` 倒序
+ *  - `blend` = `1/log2(2+名次) × 0.5^(age/730)`，半衰期是扫出来的（§0.5），不是拍的 */
+export type SearchOrder = 'relevance' | 'recent' | 'blend'
+
 /** 一行搜索结果。上下文与命中区间在主进程算好后交过来（期-03-设计 §5.3）：
  *  高亮是 `--accent` 下划线 + 底色，不是 `<mark>`，所以 IPC 上跑的是**区间**而不是 HTML
  *  ——把 `<b>` 拼好再送过来，等于把渲染层的样式决定搬进了数据库。 */
@@ -368,6 +432,9 @@ export interface SearchResult {
   /** 撞了候选上限：面板该说「命中 2000+」而不是「命中 2000」 */
   capped: boolean
   path: SearchPath
+  /** 这批行是按哪档排的，原样回显。面板底部那句、以及验收里"三档确实换了序"的判据都读它，
+   *  不读面板自己的 state——那样至少能发现"发了 blend 拿回 relevance"这一类接错线的错 */
+  order: SearchOrder
   status: FtsStatus
 }
 
@@ -397,6 +464,8 @@ export interface KestrelApi {
     purge(id: number): Promise<void>
     /** 某天升格出来的文章。日记页那条「已升格」横幅靠它 */
     listPromotedOn(date: string): Promise<EntrySummary[]>
+    /** 某个主题的编年史（期-06b-2 §一）：原料与成品按时间串成一条线 */
+    chronicle(topicId: number): Promise<ChronicleRow[]>
   }
   topics: {
     list(): Promise<Topic[]>
@@ -466,7 +535,7 @@ export interface KestrelApi {
   /** 全文搜索（期-03）。查询串的语法只有一份实现：`shared/query.ts`。
    *  空串**不该发过来**（面板自己拦，见 §10 第 8 项），主进程再兜一道。 */
   search: {
-    run(query: string, limit?: number): Promise<SearchResult>
+    run(query: string, limit?: number, order?: SearchOrder): Promise<SearchResult>
   }
   /** 索引引擎的进度。只有轮询没有推送：回调跨不过 IPC（§5.2） */
   fts: {
@@ -526,6 +595,8 @@ export const IPC = {
   entryRestore: 'entry:restore',
   entryPurge: 'entry:purge',
   entryListPromotedOn: 'entry:listPromotedOn',
+  /** 主题编年史（期-06b-2 §一）：一个主题下的条目按 `promoted_at ?? created_at` 排成的时间线 */
+  entryChronicle: 'entry:chronicle',
   topicList: 'topic:list',
   topicCreate: 'topic:create',
   topicUpdate: 'topic:update',

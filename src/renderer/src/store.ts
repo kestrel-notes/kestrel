@@ -1,5 +1,7 @@
 import { create } from 'zustand'
-import { addDays, dateKey, formatDateZh, todayKey } from '../../shared/date'
+import { addDays, dateKey, formatDateZh, shiftYears, todayKey } from '../../shared/date'
+import { normalizeLinkKey, parseLinks } from '../../shared/links'
+import { crossYearHits, type PastCandidate } from '../../shared/chronicle'
 import { isTagName, normalizeTagKey } from '../../shared/tags'
 import { PROP_TYPE_LABEL, type PropValue } from '../../shared/props'
 import { roundTrip } from '@/editor/markdown'
@@ -9,6 +11,7 @@ import {
   type Backlink,
   type Bookmark,
   type BookmarkKind,
+  type CrossYearHit,
   type DayCount,
   type Entry,
   type EntrySummary,
@@ -20,6 +23,7 @@ import {
   type RenameImpact,
   type Revision,
   type RevisionSummary,
+  type SearchOrder,
   type Settings,
   type TagNode,
   type Topic,
@@ -171,6 +175,10 @@ export interface AppState {
    *  结果与轮询都是面板自己的事，与 Palette 把 query/cursor 放在组件里同一个口径。
    *  往 store 搬一套只会多出第二份真相 */
   searchOpen: boolean
+  /** 三档排序（期-06b-2 §三）。放在 store 而不是面板里：面板一关就卸载，
+   *  而"我习惯看哪一档"这件事不该每次进来重挑。刻意不落 Setting——
+   *  §三 说的是"面板上一个可点的段控件"，做成设置项就变成两层界面才能改的东西 */
+  searchOrder: SearchOrder
   /** 搜索结果的「定位到命中处」请求。`entryId` 用来拒绝上一篇文章的迟到请求，
    *  `at` 与 headingJump 同样是请求号：连点同一行也要能再滚一次 */
   searchJump: SearchJump | null
@@ -199,6 +207,10 @@ export interface AppState {
 
   /** 某天升格出来的文章。日记页那条「已升格」横幅靠它 */
   promotedOnDate: EntrySummary[]
+
+  /** 跨年同日的卡（期-06b-2 §二）。只在**打开日记那一刻**算一次：
+   *  一边写一边重算会把用户刚敲进去的标签当成新提示反复弹，那就不是静默卡了 */
+  crossYear: CrossYearHit[]
 
   /** 大纲点击 → 编辑器滚动。存的是自增的请求号，编辑器听着它滚一次 */
   headingJump: { index: number; at: number } | null
@@ -274,6 +286,7 @@ export interface AppState {
   closePalette(): void
   /** `Ctrl+F`（期-03 §4.3）。与命令面板互斥地关掉对方：两个都是居中 sheet，同开会叠两层模糊 */
   openSearch(): void
+  setSearchOrder(order: SearchOrder): void
   closeSearch(): void
   /** 点开一行搜索结果：先换文档再报定位请求。§4.4 要求「定位失败不影响打开」，
    *  所以这一步不接受任何来自编辑器的回执 */
@@ -286,6 +299,10 @@ export interface AppState {
   setBookmarkOpen(open: boolean): void
   setGraphOpen(open: boolean): void
   setGraphMode(mode: 'force' | 'time'): void
+  /** 跨年同日那张卡上的「连」：在正文末尾补一行 `[[那年那条]]`，走正常保存与重解析
+   *  （期-06b-2 §二）。**不直接写 Link 表**——那条表是正文的派生物，绕开正文写进去的边，
+   *  下一次保存就会被 `reparseEntry` 整删整插抹掉。 */
+  connectCrossYear(hit: CrossYearHit): Promise<void>
   /** 收藏 / 取消收藏某一样东西（当前这篇、sheet 里的某一行都走这一条）。
    *  `title` 只在新增那一次落库，是收藏那一刻的名字快照（§4.1） */
   toggleBookmark(kind: BookmarkKind, ref: number, title: string): Promise<void>
@@ -390,6 +407,9 @@ export const useStore = create<AppState>()((set, get) => {
     // 历史版本与「已升格」横幅也只看当前这一篇，一起重取
     void refreshVersions()
     void refreshPromotedOn()
+    // 跨年同日：只在打开**日记**时算一次（§二）。不跟着每次保存重算——
+    // 那件事正在被用户写着，一边写一边改他右栏那张卡是打扰，不是提示。
+    void refreshCrossYear(entry)
     // 这一篇的 props 里可能有从没登记过的名字（导入进来的），读一次登记表就补上了（§4.3）。
     // 人正停在属性那一格时，计数与当前这级的列表也要跟着换
     if (get().mode === 'prop') void refreshPropSide()
@@ -518,6 +538,47 @@ export const useStore = create<AppState>()((set, get) => {
       set({ promotedOnDate: rows })
     } catch {
       set({ promotedOnDate: [] })
+    }
+  }
+
+  /** 跨年同日（期-06b-2 §二）：打开日记时算一次，只在共享标签或共享主题时出卡。
+   *
+   *  两次 `listByDate` 换掉一条新 IPC：判据要看两边的正文（标签就从正文里 `parseTags` 出来，
+   *  与 `EntryTag` 同源），而正文本来就没有第二条更便宜的路能拿到。
+   *  去年那天的条目若恰好就是这一篇（补记撞上同月同日）不提，自己提议连自己不是提示。 */
+  async function refreshCrossYear(entry: Entry): Promise<void> {
+    if (entry.kind !== 'diary') {
+      set({ crossYear: [] })
+      return
+    }
+    const back = [1, 2]
+      .map((y) => ({ years: y, date: shiftYears(entry.entryDate, -y) }))
+      .filter((x): x is { years: number; date: string } => x.date !== null)
+    try {
+      const lists = await Promise.all(back.map((x) => window.kestrel.entries.listByDate(x.date)))
+      // 查的过程中已经切走了，这一份属于上一篇
+      if (get().currentId !== entry.id) return
+      const topics = get().topics
+      const past: PastCandidate[] = lists
+        .flatMap((rows, i) =>
+          rows.map((e) => ({
+            entryId: e.id,
+            years: back[i].years,
+            date: e.entryDate,
+            kind: e.kind,
+            title: e.title,
+            topicId: e.topicId,
+            topicName: topics.find((t) => t.id === e.topicId)?.name ?? null,
+            content: e.content,
+          }))
+        )
+        .filter((p) => p.entryId !== entry.id)
+      set({
+        crossYear: crossYearHits({ content: entry.content, topicId: entry.topicId }, past),
+      })
+    } catch {
+      // 与反链同一口径：右栏的附加信息查不出来不该打断写作
+      set({ crossYear: [] })
     }
   }
 
@@ -662,6 +723,7 @@ export const useStore = create<AppState>()((set, get) => {
     palette: null,
     switchRows: [],
     searchOpen: false,
+    searchOrder: 'blend',
     searchJump: null,
     promoteOpen: false,
     binOpen: false,
@@ -673,6 +735,7 @@ export const useStore = create<AppState>()((set, get) => {
     versions: [],
     versionOf: null,
     promotedOnDate: [],
+    crossYear: [],
     headingJump: null,
     activeHeading: null,
     recentLimit: RECENT_LIMIT,
@@ -1254,6 +1317,10 @@ export const useStore = create<AppState>()((set, get) => {
       set({ searchOpen: true, palette: null })
     },
 
+    setSearchOrder(order) {
+      set({ searchOrder: order })
+    },
+
     closeSearch() {
       set({ searchOpen: false })
     },
@@ -1305,6 +1372,27 @@ export const useStore = create<AppState>()((set, get) => {
     },
     setGraphMode(mode) {
       set({ graphMode: mode })
+    },
+
+    /* ─ 跨年同日（期-06b-2 §二） ─ */
+
+    async connectCrossYear(hit) {
+      const s = get()
+      // 链接文字用"给人看的那个名字"：文章是标题，日记是日期。
+      // 这两条恰好也是 `parseLinks` 各自的认法（日期走 `resolveDateRef`，标题走规范化键），
+      // 所以追加进去的那一行下一次重解析必被认领——写别的就会留一条悬空边
+      const label = hit.title ?? hit.date
+      const key = normalizeLinkKey(label)
+      // 幂等判在正文而不是判界面：两次点击之间 `outgoing` 还没刷新，光靠卡消不消失拦不住第二笔
+      if (parseLinks(s.content, s.entry?.entryDate ?? '').some((l) => l.key === key)) {
+        s.notify(`这篇里已经连着「${label}」了`)
+        return
+      }
+      const body = s.content.replace(/\s+$/, '')
+      s.setContent(body ? `${body}\n\n[[${label}]]` : `[[${label}]]`)
+      // 立刻落库：这条动作是用户点出来的，不是敲出来的，不该等 500ms 的自动保存
+      await s.flush()
+      s.notify(`已在正文末尾连上「${label}」`)
     },
 
     /* ─ 收藏（§3.4） ─ */

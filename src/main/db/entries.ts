@@ -1,4 +1,5 @@
 import type {
+  ChronicleRow,
   CreateEntryInput,
   DayCount,
   Entry,
@@ -450,6 +451,47 @@ export function listByPropValue(
     .all(...(page as never[])) as unknown as SummaryRow[]
 
   return rows.map(toSummary)
+}
+
+/* ─ 编年史（期-06b-2 §一） ─ */
+
+/** 一个主题的时间线：原料（日记）与成品（文章）按同一把钥匙串起来。
+ *
+ *  排序键是 `promoted_at ?? created_at`，**不是 `created_at`、也不是 `entry_date`**：
+ *  升格原地改行（见 `promote`），所以一行的 `created_at`/`entry_date` 是"记下那天"，
+ *  `promoted_at` 才是"成文那一刻"。编年史要回答的是"理解什么时候成形"，
+ *  拿前者排会让一篇沉淀了三个多月的文章错回到原料那天（实测 p50=110 天）。
+ *
+ *  不取 `content`：这块只画日期与标题，主题下几十条正文一起过 IPC 纯属白给。 */
+export function chronicle(topicId: number): ChronicleRow[] {
+  const rows = getDatabase()
+    .prepare(
+      `select id, kind, title, entry_date, created_at, promoted_at,
+              coalesce(promoted_at, created_at) as sort_at
+       from Entry
+       where topic_id = ? and deleted_at is null
+       order by sort_at asc, id asc`
+    )
+    .all(topicId) as unknown as ChronicleRowRaw[]
+  return rows.map((r) => ({
+    id: r.id,
+    kind: r.kind,
+    title: r.title,
+    entryDate: r.entry_date,
+    createdAt: r.created_at,
+    promotedAt: r.promoted_at,
+    sortAt: r.sort_at,
+  }))
+}
+
+interface ChronicleRowRaw {
+  id: number
+  kind: 'diary' | 'article'
+  title: string | null
+  entry_date: string
+  created_at: string
+  promoted_at: string | null
+  sort_at: string
 }
 
 function toSummary(r: SummaryRow): EntrySummary {

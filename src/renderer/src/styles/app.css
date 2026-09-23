@@ -3287,3 +3287,218 @@ input[type='range'] {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+/* ── 6b-2：编年史、跨年同日卡、搜索三档 ── */
+
+/* 编年史的副标题那一行：主题名 + 「几条 · N 段成文 · 这条线跨了 X 天」。
+   两块之间留 6px 而不是并成一句，是因为主题名可能很长，得让它自己截断 */
+.ch-sub {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: 6px;
+  font-size: 11.5px;
+  color: var(--text-3);
+}
+.ch-sub .net-cur {
+  margin-left: 0;
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ch-list {
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+/* 一行 = 一个条目。日期那一列用等宽，不然「2024-03-12 → 2024-07-30」这种
+   带箭头的长串会把下面的行逐格挤歪，扫读时看不出是一列 */
+.ch-line {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  width: 100%;
+  padding: 4px 6px;
+  border: none;
+  border-left: 2px solid transparent;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--text-2);
+  font-family: inherit;
+  font-size: 12px;
+  text-align: left;
+}
+.ch-line:hover {
+  background: var(--hover);
+  color: var(--text-1);
+}
+/* 就是当前正在写的那一篇：左边一道竖条。不加粗，加粗会顶动行宽 */
+.ch-line.on {
+  border-left-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--text-1);
+}
+.ch-when {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-3);
+  flex-shrink: 0;
+}
+.ch-line.is-written .ch-when {
+  color: var(--accent);
+}
+.ch-what {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+  min-width: 0;
+}
+.ch-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ch-tag {
+  font-style: normal;
+  font-size: 10.5px;
+  flex-shrink: 0;
+  padding: 0 4px;
+  border-radius: var(--radius-xs);
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.ch-tag.dim {
+  background: var(--hover);
+  color: var(--text-3);
+}
+.ch-more {
+  align-self: flex-start;
+  margin: 4px 0;
+  padding: 2px 6px;
+  border: none;
+  border-radius: var(--radius-xs);
+  background: none;
+  color: var(--text-3);
+  font-family: inherit;
+  font-size: 11px;
+  text-align: left;
+}
+.ch-more:hover {
+  color: var(--accent);
+  background: var(--hover);
+}
+
+/* 跨年同日的静默卡。刻意不做卡片底色：它是一行提示，不是一块要读的内容区 */
+.cy-lines {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 10px;
+}
+.cy-line {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 5px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--hover);
+}
+.cy-what {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+  flex: 1;
+  padding: 0;
+  border: none;
+  background: none;
+  font-family: inherit;
+  font-size: 12px;
+  text-align: left;
+  color: var(--text-2);
+}
+.cy-what b {
+  flex-shrink: 0;
+  color: var(--text-1);
+  font-weight: 600;
+}
+.cy-what span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cy-what em {
+  font-style: normal;
+  flex-shrink: 0;
+  font-size: 11px;
+  color: var(--accent);
+}
+.cy-do,
+.cy-x {
+  border: none;
+  border-radius: var(--radius-xs);
+  background: none;
+  color: var(--text-3);
+  font-family: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+.cy-do {
+  padding: 2px 7px;
+  border: 1px solid var(--border-strong);
+  color: var(--text-1);
+}
+.cy-do:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.cy-x {
+  padding: 2px 5px;
+  font-size: 13px;
+  line-height: 1;
+}
+.cy-x:hover {
+  color: var(--text-1);
+  background: var(--hover);
+}
+
+/* 三档段控件。贴在结果脚上，与「走哪条路」同一行 */
+.search-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.sr-orders {
+  display: flex;
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--hover);
+}
+.sr-order {
+  padding: 2px 8px;
+  border: none;
+  border-radius: var(--radius-xs);
+  background: none;
+  color: var(--text-3);
+  font-family: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+.sr-order:hover {
+  color: var(--text-1);
+}
+.sr-order.on {
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-weight: 600;
+}
+/* 没结果时脚上那句占位：让段控件有个名字，不至于三颗孤零零的按钮 */
+.sr-foot-hint {
+  font-style: normal;
+  color: var(--text-3);
+}
