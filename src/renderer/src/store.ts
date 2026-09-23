@@ -187,8 +187,10 @@ export interface AppState {
   bookmarks: Bookmark[]
 
   /** 全屏图谱覆盖层（期-06a）。拓扑**不进 store**：开层现查（实测全库 22ms），
-   *  进来就要管「保存一条就脏」的失效，不划算（设计稿决策 D10） */
+   *  进来就要管「保存一条就脏」的失效，不划算（设计稿决策 D10）。
+   *  `graphMode` 是例外：它是用户挑的看法，不是数据 */
   graphOpen: boolean
+  graphMode: 'force' | 'time'
 
   /** 当前这篇的历史版本（列表不带正文） */
   versions: RevisionSummary[]
@@ -283,6 +285,7 @@ export interface AppState {
   purgeEntry(id: number): Promise<void>
   setBookmarkOpen(open: boolean): void
   setGraphOpen(open: boolean): void
+  setGraphMode(mode: 'force' | 'time'): void
   /** 收藏 / 取消收藏某一样东西（当前这篇、sheet 里的某一行都走这一条）。
    *  `title` 只在新增那一次落库，是收藏那一刻的名字快照（§4.1） */
   toggleBookmark(kind: BookmarkKind, ref: number, title: string): Promise<void>
@@ -665,6 +668,7 @@ export const useStore = create<AppState>()((set, get) => {
     binRows: [],
     bookmarkOpen: false,
     graphOpen: false,
+    graphMode: 'force',
     bookmarks: [],
     versions: [],
     versionOf: null,
@@ -1295,9 +1299,12 @@ export const useStore = create<AppState>()((set, get) => {
 
     /* ─ 全屏图谱（期-06a） ─ */
 
-    // 只有开关，没有数据：拓扑开层时现查（设计稿 D10）
+    // 只有开关与"哪一档"，没有数据：拓扑开层时现查（设计稿 D10）
     setGraphOpen(open) {
       set({ graphOpen: open })
+    },
+    setGraphMode(mode) {
+      set({ graphMode: mode })
     },
 
     /* ─ 收藏（§3.4） ─ */

@@ -1255,12 +1255,41 @@ input.doc-title::placeholder {
   transition: opacity 0.3s;
 }
 .rail-block h5 {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   font-size: 10.5px;
   font-weight: 600;
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--text-3);
   margin-bottom: 9px;
+}
+/* 标题行右边的小动作位：`margin-left: auto` 把它顶到行尾，计数还留在标题旁边 */
+.rail-action {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+}
+.rail-btn {
+  font: inherit;
+  /* 中文标题是大写小字号，按钮上的符号得回到正文字号才看得清 */
+  font-size: 13px;
+  line-height: 1;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--text-3);
+  background: none;
+  border: 1px solid transparent;
+  border-radius: var(--radius-xs);
+  width: 20px;
+  height: 20px;
+  cursor: pointer;
+}
+.rail-btn:hover {
+  color: var(--accent);
+  background: var(--hover);
+  border-color: var(--border);
 }
 
 /* ─ 右栏：知识网络 ── */
@@ -1463,6 +1492,13 @@ body.no-glass .graph-overlay {
   -webkit-backdrop-filter: none;
   background: var(--bg-base);
 }
+/* 轴沟的底色跟着覆盖层走：玻璃版透一层，实心版换实心，
+   否则格子从轴沟底下透出来，正好把主题名糊住 */
+body.no-glass .go-cols,
+body.no-glass .go-lanes,
+body.no-glass .go-members {
+  background: var(--bg-base);
+}
 
 .go-head {
   flex: 0 0 46px;
@@ -1618,6 +1654,262 @@ body.no-glass .graph-overlay {
   border-radius: var(--radius-xs);
   background: var(--hover);
   border: 1px solid var(--border);
+}
+
+/* ── 6b：时间轴模式与过滤条 ── */
+
+.go-modes {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--hover);
+}
+.go-modes .tb-btn {
+  border: none;
+  background: transparent;
+  font-size: 11px;
+  padding: 3px 9px;
+}
+.go-modes .tb-btn.active {
+  background: var(--accent-soft, var(--hover));
+  color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--border);
+}
+/* 控件挤的时候优先保控件不折行——顶栏一折行画布就矮掉一行，图谱当场看不出关系 */
+.go-right {
+  flex-wrap: nowrap;
+}
+.go-bin {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  font-size: 10.5px;
+  color: var(--text-3);
+}
+.go-bin select {
+  font: inherit;
+  font-size: 11px;
+  color: var(--text-1);
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xs);
+  padding: 2px 4px;
+  max-width: 108px;
+}
+.go-chips {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  max-width: 280px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.go-chips::-webkit-scrollbar {
+  display: none;
+}
+.go-chip {
+  flex: 0 0 auto;
+  font: inherit;
+  font-size: 10.5px;
+  line-height: 1;
+  color: var(--text-3);
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 3px 7px 3px 5px;
+  cursor: pointer;
+}
+.go-chip::before {
+  content: '';
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-right: 4px;
+  border-radius: 50%;
+  background: var(--tc, var(--text-3));
+  vertical-align: 1px;
+}
+.go-chip.on {
+  color: var(--text-1);
+  border-color: var(--tc, var(--accent));
+  background: var(--hover);
+}
+.go-clear {
+  font-size: 10.5px;
+  color: var(--accent);
+}
+.go-filtering {
+  color: var(--accent);
+}
+.go-link {
+  font: inherit;
+  color: var(--accent);
+  background: none;
+  border: none;
+  border-bottom: 1px solid var(--accent);
+  cursor: pointer;
+  padding: 0;
+}
+
+/* 主题轨迹与焦点弧：都是"线"，但比 6a 那张网的边更轻——
+   时间轴上密度是主角，线是配角，重了就会把格子盖住 */
+.go-svg .go-traj {
+  stroke: var(--tc, var(--border));
+  stroke-width: 1.2;
+  opacity: 0.42;
+  fill: none;
+  pointer-events: none;
+}
+.go-svg .go-traj.gap {
+  stroke-dasharray: 2 5;
+  opacity: 0.26;
+}
+.go-svg .go-arc {
+  stroke: var(--accent);
+  stroke-width: 1.3;
+  fill: none;
+  opacity: 0.7;
+  pointer-events: none;
+}
+.go-svg .go-arc.dim {
+  opacity: 0.14;
+}
+
+/* 轴在屏幕空间：列名贴着顶沟，主题名贴着左沟，平移缩放都不跟着走 */
+.go-axis {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  font-size: 10.5px;
+  color: var(--text-3);
+}
+.go-cols {
+  position: absolute;
+  /* 从主题沟的右边起算：列名的坐标是相对这条量的，沟里的部分天生不会被写进去 */
+  left: 108px;
+  right: 0;
+  top: 0;
+  height: 22px;
+  overflow: hidden;
+  /* 压在左轴之上：两条沟在左上角交汇，日期那一条得盖住，否则角上一块变成主题名的底色 */
+  z-index: 1;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-glass-strong);
+}
+.go-col {
+  position: absolute;
+  top: 5px;
+  transform: translateX(-50%);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.go-col.edge {
+  transform: none;
+}
+.go-lanes {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 106px;
+  border-right: 1px solid var(--border);
+  background: var(--bg-glass-strong);
+}
+.go-lane {
+  position: absolute;
+  left: 0;
+  width: 104px;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 5px;
+  padding: 1px 7px;
+  font: inherit;
+  font-size: 10.5px;
+  color: var(--text-2);
+  background: none;
+  border: none;
+  border-left: 3px solid var(--tc, var(--border));
+  text-align: left;
+  cursor: pointer;
+  pointer-events: auto;
+}
+.go-lane em {
+  font-style: normal;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-3);
+}
+.go-lane:hover {
+  background: var(--hover);
+}
+.go-lane.on {
+  color: var(--text-1);
+  background: var(--hover);
+}
+
+.go-members {
+  position: absolute;
+  right: 14px;
+  top: 14px;
+  bottom: 14px;
+  width: 258px;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-glass-strong);
+  box-shadow: var(--shadow-glass);
+  overflow-y: auto;
+}
+.go-members header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  font-size: 11.5px;
+  color: var(--text-2);
+  padding: 0 2px 6px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 4px;
+}
+.go-member {
+  display: grid;
+  grid-template-columns: 46px 30px 1fr;
+  gap: 6px;
+  align-items: baseline;
+  font: inherit;
+  font-size: 11.5px;
+  text-align: left;
+  color: var(--text-1);
+  background: none;
+  border: none;
+  border-radius: var(--radius-xs);
+  padding: 4px 5px;
+  cursor: pointer;
+}
+.go-member:hover {
+  background: var(--hover);
+}
+.go-member .m-date,
+.go-member .m-kind {
+  color: var(--text-3);
+  font-variant-numeric: tabular-nums;
+}
+.go-member .m-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.go-more {
+  font-size: 10.5px;
+  color: var(--text-3);
+  padding: 4px 5px;
 }
 
 .bl-list {

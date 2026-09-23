@@ -220,6 +220,11 @@ export interface GraphNodeLite {
   /** 归属主题。null = 没归主题，着色回落到 `--text-3` */
   topicKey: string | null
   inDeg: number
+  /** `Entry.entry_date`。6b 的时间轴认这一列，不认 `created_at`：
+   *  时间轴要回答的是"什么时候开始关心这件事"，而 created_at 回答的是"什么时候敲的字"
+   *  （某篇 2024 的补记可能今年才写）。实测两列在合成库里 100% 分歧、真库里 0% 分歧，
+   *  所以哪一列都必须写死，不能靠"反正一样"混过去。 */
+  date: string
 }
 
 /** 全库拓扑。坐标不在这里——布局只在渲染层算，不过 IPC（决策 D4）。 */

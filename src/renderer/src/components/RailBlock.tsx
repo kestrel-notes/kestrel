@@ -10,6 +10,7 @@ import { useEffect, useState } from 'react'
 export function RailBlock({
   title,
   count,
+  action,
   foldable,
   defaultOpen = true,
   resetKey,
@@ -18,6 +19,9 @@ export function RailBlock({
   title: ReactNode
   /** 标题右边那个计数。0 或省略都不画——「0 条」不是信息 */
   count?: number
+  /** 标题行最右边的小按钮。6a 的全屏图谱只有 `Ctrl+G` 一个入口，
+   *  实机验收时发现"知道有这功能的人才会用"——功能等于没做完 */
+  action?: ReactNode
   /** 不给就不能折叠，标题就是一行普通 `h5` */
   foldable?: boolean
   defaultOpen?: boolean
@@ -30,6 +34,17 @@ export function RailBlock({
   useEffect(() => setOpen(defaultOpen), [resetKey, defaultOpen])
 
   const badge = count ? <em className="net-count">{count}</em> : null
+  // 折叠标题整行是个 role=button，动作按钮不拦一下点击就会顺手把块收起来
+  const act = action ? (
+    <span
+      className="rail-action"
+      onClick={(e) => e.stopPropagation()}
+      onKeyDown={(e) => e.stopPropagation()}
+      role="presentation"
+    >
+      {action}
+    </span>
+  ) : null
 
   return (
     <div className="rail-block">
@@ -52,11 +67,13 @@ export function RailBlock({
           </i>
           {title}
           {badge}
+          {act}
         </h5>
       ) : (
         <h5>
           {title}
           {badge}
+          {act}
         </h5>
       )}
       {(!foldable || open) && children}

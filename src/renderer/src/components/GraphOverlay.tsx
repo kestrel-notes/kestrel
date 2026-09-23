@@ -3,9 +3,20 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { forceCenter, forceCollide, forceLink, forceManyBody, forceSimulation, forceX, forceY } from 'd3-force'
 import type { SimulationLinkDatum, SimulationNodeDatum } from 'd3-force'
 import { useStore } from '@/store'
-import { aggregateByTopic, conservedCount } from '../../../shared/graph'
-import type { VisibleUnit } from '../../../shared/graph'
+import {
+  NO_FILTER,
+  aggregateByTopic,
+  binLabel,
+  binOf,
+  buildTimeCells,
+  conservedCount,
+  filterGraph,
+  isFilterActive,
+  pickBinUnit,
+} from '../../../shared/graph'
+import type { BinUnit, GraphFilter, VisibleUnit } from '../../../shared/graph'
 import type { GlobalGraph } from '../../../shared/types'
+import { todayKey } from '../../../shared/date'
 import { fitLabel } from './graphLabel'
 
 /** 可见单元的上限，实测定的（`docs/期-06a-设计.md` 决策 D1）：
@@ -28,6 +39,21 @@ const LABEL_ZOOM = 1.2
  *  小库要的是"看得清"，不是"铺满"。 */
 const FIT_MAX = 1.6
 
+/** 时间视图的格距（6b §三）。列 46px 是"月"标签 `2026-09` 在 1× 下刚好不重叠的下沿；
+ *  行 30px 由格子半径上限 ×2 反推（r ≤ 13 → 26px + 4px 缝）。 */
+const COL_W = 46
+const ROW_H = 30
+/** 时间视图的轴沟宽度：左边留给主题名，上边留给日期。轴画在屏幕空间，平移缩放都不动它 */
+const GUT_L = 108
+const GUT_T = 26
+/** 一格里最多画多少个成员名。超出就只报数，别把整格摊成一列清单 */
+const CELL_LIST_MAX = 12
+
+/** 格子半径：成员数开方。13px 封顶是被 ROW_H 逼出来的，不是审美选择 */
+function cellRadius(count: number): number {
+  return Math.min(13, 3 + Math.sqrt(count) * 2.6)
+}
+
 interface SimNode extends SimulationNodeDatum {
   key: string
   r: number
@@ -45,7 +71,8 @@ function radiusOf(inDeg: number): number {
 
 function unitRadius(u: VisibleUnit): number {
   if (u.kind === 'node') return radiusOf(u.node.inDeg)
-  // 聚合节点按成员数开方，10–22px
+  // 时间视图的格子（带 `bin`）按格距封顶；主题折叠节点没有这个约束，可以画到 22px
+  if (u.bin !== undefined) return cellRadius(u.count)
   return Math.min(22, 10 + Math.sqrt(u.count) * 1.6)
 }
 
@@ -53,14 +80,47 @@ function unitLabel(u: VisibleUnit): string {
   return u.kind === 'node' ? u.node.label : u.label
 }
 
-/** 主题着色：`--tag-1 … --tag-8`，下标 = 主题 id % 8（§四）。
+/** 主题着色：`--tag-1 … --tag-8`，下标 = 主题 id % 8（6a §四）。
  *  与标签色板共用 token 但哈希输入不同（标签按名字、主题按 id）。 */
-function topicVar(u: VisibleUnit): string | undefined {
-  const key = u.kind === 'node' ? u.node.topicKey : u.topicKey
+function topicVarOf(key: string | null | undefined): string | undefined {
   if (!key) return undefined
   const id = Number(key.slice(2))
   if (!Number.isFinite(id)) return undefined
   return `var(--tag-${(id % 8) + 1})`
+}
+
+function topicVar(u: VisibleUnit): string | undefined {
+  return topicVarOf(u.kind === 'node' ? u.node.topicKey : u.topicKey)
+}
+
+/** 顶栏「主题」那一排 chip。超过 8 个主题就折成一行可滚的，不做下拉——
+ *  下拉会把"我筛掉了什么"藏起来，而筛着的状态必须一直看得见 */
+function TopicChips({
+  topics,
+  value,
+  onChange,
+}: {
+  topics: { key: string; label: string; count: number }[]
+  value: string[]
+  onChange: (next: string[]) => void
+}): JSX.Element | null {
+  if (topics.length === 0) return null
+  const on = new Set(value)
+  return (
+    <span className="go-chips" role="group" aria-label="按主题筛选">
+      {topics.map((t) => (
+        <button
+          key={t.key}
+          className={`go-chip${on.has(t.key) ? ' on' : ''}`}
+          style={{ '--tc': topicVarOf(t.key) } as React.CSSProperties}
+          onClick={() => onChange(on.has(t.key) ? value.filter((k) => k !== t.key) : [...value, t.key])}
+          title={`${t.count} 条`}
+        >
+          {t.label}
+        </button>
+      ))}
+    </span>
+  )
 }
 
 export function GraphOverlay(): JSX.Element | null {
@@ -89,16 +149,64 @@ export function GraphOverlay(): JSX.Element | null {
   const unitsRef = useRef<VisibleUnit[]>([])
   const [coords, setCoords] = useState<Map<string, { x: number; y: number }>>(new Map())
 
-  const base = useMemo(() => {
-    if (!data) return null
-    return aggregateByTopic(data.nodes, data.edges, VISIBLE_LIMIT)
-  }, [data])
+  /** 视图模式。`time` 那一档是 6b 加的：力导向回答"谁连着谁"，时间轴回答"什么时候开始关心"。
+   *  两档共用同一套单元、同一套过滤、同一个缩放器，只有坐标的来路不同。
+   *  存在 store 而不是组件里，是为了 `Ctrl+Shift+G` 能直接开到时间轴那一档 */
+  const mode = useStore((s) => s.graphMode)
+  const setMode = useStore((s) => s.setGraphMode)
+  /** 过滤器只活在组件里，**不落 Setting**（6b 决策 D3）：落了盘的下一次 Ctrl+G 会开出一个
+   *  被藏掉九成的图，而用户不记得自己筛过什么。关窗不丢（覆盖层常驻），刷新才丢。 */
+  const [filter, setFilter] = useState<GraphFilter>(NO_FILTER)
+  const [binPick, setBinPick] = useState<'auto' | BinUnit>('auto')
 
-  /** 展开过的主题把聚合节点换回成员。成员坐标还没有，所以先在父位置周围铺一圈 */
+  const topicName = useCallback(
+    (key: string | null): string => {
+      if (key === null) return '未归主题'
+      return data?.topics.find((t) => t.key === key)?.label ?? key
+    },
+    [data]
+  )
+
+  /** 先过滤，后折叠（6b §四）。反了就会报出"显示 240 / 共 3001"这种分母筛前、分子筛后的假数 */
+  const shown = useMemo(
+    () => (data ? filterGraph(data.nodes, data.edges, filter, todayKey()) : { nodes: [], edges: [] }),
+    [data, filter]
+  )
+
+  /** 时间轴的列宽档：`auto` 时按跨度选，24 列是"1× 下不横向挤"的上沿（46px × 24 = 1104px） */
+  const binUnit: BinUnit = useMemo(() => {
+    if (binPick !== 'auto') return binPick
+    let lo = ''
+    let hi = ''
+    for (const n of shown.nodes) {
+      if (!n.date) continue
+      if (lo === '' || n.date < lo) lo = n.date
+      if (n.date > hi) hi = n.date
+    }
+    if (lo === '') return 'month'
+    return pickBinUnit(Math.round((Date.parse(`${hi}T00:00:00Z`) - Date.parse(`${lo}T00:00:00Z`)) / 86400000), 24)
+  }, [binPick, shown.nodes])
+
+  /** 时间视图的折叠单元：主题 × 时间箱。折不动的时候（格子比条目还多）它就退化成散点 */
+  const cells = useMemo(
+    () =>
+      mode === 'time' && shown.nodes.length > 0
+        ? buildTimeCells(shown.nodes, shown.edges, binUnit, topicName)
+        : null,
+    [mode, shown, binUnit, topicName]
+  )
+
+  const base = useMemo(() => {
+    if (mode === 'time') return cells
+    if (shown.nodes.length === 0) return null
+    return aggregateByTopic(shown.nodes, shown.edges, VISIBLE_LIMIT, (k) => topicName(k))
+  }, [mode, cells, shown, topicName])
+
+  /** 展开过的主题把聚合节点换回成员。成员坐标还没有，所以先在父位置周围铺一圈。
+   *  只对力导向有意义：时间格子的"展开"是点上去看成员清单，不是把格子打散回轴上 */
   const units = useMemo<VisibleUnit[]>(() => {
-    if (!base || !data) return []
-    if (expanded.size === 0) return base.units
-    const byKey = new Map(data.nodes.map((n) => [n.key, n]))
+    if (!base || mode === 'time' || expanded.size === 0) return base?.units ?? []
+    const byKey = new Map(shown.nodes.map((n) => [n.key, n]))
     const out: VisibleUnit[] = []
     for (const u of base.units) {
       if (u.kind === 'agg' && u.topicKey && expanded.has(u.topicKey)) {
@@ -109,17 +217,33 @@ export function GraphOverlay(): JSX.Element | null {
       } else out.push(u)
     }
     return out
-  }, [base, expanded, data])
+  }, [base, expanded, shown.nodes, mode])
 
   const edges = useMemo(() => {
-    if (!base || !data) return []
-    if (expanded.size === 0) return base.edges
+    if (!base) return []
+    if (mode === 'time' || expanded.size === 0) return base.edges
     // 展开之后原先挂在聚合节点上的边要改指向成员。整图重算一遍聚合，
     // 而不是手写边的搬运——`aggregateByTopic` 幂等，喂回未折的集合就是同一套规则
     const keep = new Set(units.map(unitKeyOf))
-    const flat = data.nodes.filter((n) => keep.has(n.key))
-    return aggregateByTopic(flat, data.edges, Number.MAX_SAFE_INTEGER).edges
-  }, [base, data, expanded, units])
+    const flat = shown.nodes.filter((n) => keep.has(n.key))
+    return aggregateByTopic(flat, shown.edges, Number.MAX_SAFE_INTEGER).edges
+  }, [base, shown, expanded, units, mode])
+
+  /** 时间视图的坐标：格子在哪一列哪一行是数据本身决定的，不求解（6b §3.2）。
+   *  这条路子顺带解决了 6a 的一个毛病——力导向每次开图都要重解一遍、点位会晃，
+   *  时间轴上同一个格子永远在同一个位置。 */
+  const timeCoords = useMemo(() => {
+    if (!cells) return null
+    const colOf = new Map(cells.bins.map((b, i) => [b, i]))
+    const rowOf = new Map(cells.lanes.map((l, i) => [l, i]))
+    const out = new Map<string, { x: number; y: number }>()
+    for (const u of cells.units) {
+      const lane = u.kind === 'node' ? (u.node.topicKey ?? 'untouched') : (u.topicKey ?? 'untouched')
+      const bin = u.kind === 'agg' ? (u.bin ?? '') : binOf(u.node.date, cells.unit)
+      out.set(unitKeyOf(u), { x: (colOf.get(bin) ?? 0) * COL_W, y: (rowOf.get(lane) ?? 0) * ROW_H })
+    }
+    return out
+  }, [cells])
 
   useEffect(() => {
     if (!open) return
@@ -274,12 +398,20 @@ export function GraphOverlay(): JSX.Element | null {
     [edges, stopSim]
   )
 
-  // 拓扑到手 / 主题展开 → 重解一次（仅此两处，跑完即停）
+  // 拓扑到手 / 主题展开 → 重解一次（仅此两处，跑完即停）。
+  // 时间轴不在这条路上：它的坐标由 (主题, 箱) 直接算出来，一次求解都不做（§3.2）
   useEffect(() => {
     if (!data) return
+    if (mode === 'time') {
+      stopSim()
+      setCoords(timeCoords ?? new Map())
+      setPhase('ready')
+      setProgress(1)
+      return
+    }
     solve(units)
     return stopSim
-  }, [data, units, expanded, solve, stopSim])
+  }, [data, mode, units, timeCoords, solve, stopSim])
 
   /** fit-all：把布局包围盒等比塞进画布。求解期与收敛后都用它兜住"不要飞出屏幕" */
   const fit = useCallback(() => {
@@ -287,16 +419,20 @@ export function GraphOverlay(): JSX.Element | null {
     if (!el || coords.size === 0) return
     const xs = [...coords.values()].map((p) => p.x)
     const ys = [...coords.values()].map((p) => p.y)
-    const pad = 40
-    const w = el.clientWidth - pad * 2
-    const h = el.clientHeight - pad * 2
-    const bw = Math.max(1, Math.max(...xs) - Math.min(...xs))
-    const bh = Math.max(1, Math.max(...ys) - Math.min(...ys))
+    // 时间轴要绕开两条轴沟：左边放主题名、上边放日期，包围盒挤进去就会压在字上
+    const padL = mode === 'time' ? GUT_L : 40
+    const padT = mode === 'time' ? GUT_T : 40
+    const w = el.clientWidth - padL - 40
+    const h = el.clientHeight - padT - 40
+    const minX = Math.min(...xs)
+    const maxX = Math.max(...xs)
+    const minY = Math.min(...ys)
+    const maxY = Math.max(...ys)
+    const bw = Math.max(1, maxX - minX)
+    const bh = Math.max(1, maxY - minY)
     const k = Math.min(FIT_MAX, Math.max(0.2, Math.min(w / bw, h / bh)))
-    const cx = (Math.max(...xs) + Math.min(...xs)) / 2
-    const cy = (Math.max(...ys) + Math.min(...ys)) / 2
-    setView({ k, x: el.clientWidth / 2 - cx * k, y: el.clientHeight / 2 - cy * k })
-  }, [coords])
+    setView({ k, x: padL + (w - bw * k) / 2 - minX * k, y: padT + (h - bh * k) / 2 - minY * k })
+  }, [coords, mode])
 
   useEffect(() => {
     if (phase === 'ready' && coords.size > 0) fit()
@@ -344,8 +480,14 @@ export function GraphOverlay(): JSX.Element | null {
     const jump = (dx: number, dy: number): void => setView((v) => ({ ...v, x: v.x + dx, y: v.y + dy }))
     switch (e.key) {
       case 'Escape':
+        // 一层层退：选中 → 过滤 → 关闭。筛空了又直接关掉，用户会以为图不见了
         if (selected) setSelected(null)
+        else if (isFilterActive(filter)) setFilter(NO_FILTER)
         else setOpen(false)
+        break
+      case 't':
+      case 'T':
+        setMode(mode === 'force' ? 'time' : 'force')
         break
       case '+':
       case '=':
@@ -377,9 +519,15 @@ export function GraphOverlay(): JSX.Element | null {
         // 有焦点在节点上时才跳：焦点在背景上不动作
         const el = document.activeElement as Element | null
         const key = el?.getAttribute('data-key')
-        if (key && !key.startsWith('agg:')) {
+        if (!key) break
+        const u = units.find((x) => unitKeyOf(x) === key)
+        // 格子与折叠节点都能跳：进这一格的**第一篇**（成员 key 形如 `e:12`，数值序 = 时间序）。
+        // 6a 时折叠节点按 Enter 什么都不做，只能点一下摊开——时间轴上格子多、摊开又只是把
+        // 同一列打散，跳进去才是用户要的
+        const target = u?.kind === 'node' ? u.node.key : u?.members[0]
+        if (target && target.startsWith('e:')) {
           e.preventDefault()
-          void openNode(key)
+          void openNode(target)
           setOpen(false)
         }
         break
@@ -402,19 +550,86 @@ export function GraphOverlay(): JSX.Element | null {
     return set
   }, [hover, selected, edges, data])
 
+  /** 时间视图只画"焦点弧"。前置实测（`scratch/p6b-cell-shape.mjs`）：3000 库里折到月格
+   *  之后单元之间仍有 4994 条边（原始 5660）——**折叠救不了全边画弧**，所以这一档
+   *  平时只画密度，点中某一格才画它自己的连线（那一格被连的边数实测 p90=48、max=159）。 */
+  const focusEdges = useMemo(() => {
+    if (mode !== 'time') return []
+    const focus = selected ?? hover
+    if (!focus) return []
+    return edges.filter((e) => e.source === focus || e.target === focus)
+  }, [mode, edges, selected, hover])
+
+  /** 每主题一条轨迹线：把该行占了的格子按时间顺序连起来。
+   *  验收第 2 项"某主题从稀疏到密集"看的就是这条线加格子半径。
+   *  跨了空档的那一段画成虚线——空的那几个月是真没写，不是画不下 */
+  const trajectories = useMemo(() => {
+    if (mode !== 'time' || !cells) return []
+    const colOf = new Map(cells.bins.map((b, i) => [b, i]))
+    const out: { x1: number; y1: number; x2: number; y2: number; gap: boolean; topicKey: string | null }[] = []
+    for (const lane of cells.lanes) {
+      const row = cells.lanes.indexOf(lane) * ROW_H
+      const cols = cells.units
+        .map((u) => {
+          const unitLane = u.kind === 'node' ? (u.node.topicKey ?? 'untouched') : (u.topicKey ?? 'untouched')
+          if (unitLane !== lane) return null
+          const bin = u.kind === 'agg' ? (u.bin ?? '') : binOf(u.node.date, cells.unit)
+          const col = colOf.get(bin)
+          return col === undefined ? null : col
+        })
+        .filter((c): c is number => c !== null)
+        .sort((a, b) => a - b)
+      for (let i = 1; i < cols.length; i++)
+        out.push({
+          x1: cols[i - 1] * COL_W,
+          y1: row,
+          x2: cols[i] * COL_W,
+          y2: row,
+          gap: cols[i] - cols[i - 1] > 1,
+          topicKey: lane === 'untouched' ? null : lane,
+        })
+    }
+    return out
+  }, [mode, cells])
+
+  /** 选中格子的成员清单。没有这一段，点进一格只能跳"第一篇"，其余成员就成了二等公民 */
+  const memberList = useMemo(() => {
+    if (mode !== 'time' || !selected || !data) return null
+    const u = units.find((x) => unitKeyOf(x) === selected)
+    if (!u || u.kind !== 'agg') return null
+    const byKey = new Map(data.nodes.map((n) => [n.key, n]))
+    const list = u.members
+      .map((k) => byKey.get(k))
+      .filter((n): n is NonNullable<typeof n> => Boolean(n))
+      .sort((a, b) => (a.date === b.date ? a.key.localeCompare(b.key, undefined, { numeric: true }) : a.date.localeCompare(b.date)))
+    return { label: u.label, list, cut: list.length > CELL_LIST_MAX }
+  }, [mode, selected, units, data])
+
+  /** 当前在看的那篇落在哪个单元。时间轴上多半落进一个格子，命中的格描一圈亮边——
+   *  "我正在写的东西在网络里的哪儿"这个问题，在时间轴上只有这一种答法 */
+  const centerKey = useMemo(() => {
+    if (currentId === null) return null
+    const entry = `e:${currentId}`
+    for (const u of units) {
+      if (u.kind === 'node' ? u.node.key === entry : u.members.includes(entry)) return unitKeyOf(u)
+    }
+    return entry
+  }, [currentId, units])
+
   /* ── 渲染 ── */
 
   if (!open) return null
 
   const aggCount = base?.collapsed.reduce((s, c) => s + c.count, 0) ?? 0
-  const shown = units.length
+  const visibleCount = units.length
   const conserved = base ? conservedCount(base.units) : 0
-  const centerKey = currentId === null ? null : `e:${currentId}`
   const focusables = units.filter((u) => coords.has(unitKeyOf(u)))
   /** 求解期不画边。实测 511 个可见单元配 1437 条边，每提交一次就要重排两千个 SVG 元素，
    *  主线程最长一次被占 233ms —— 那是用户能感知的卡顿。点本来就在动，这时候线是噪声；
    *  收敛后一次性把线画出来，反而是"网络成型"的那一下。 */
-  const drawEdges = phase === 'ready'
+  const drawEdges = phase === 'ready' && mode === 'force'
+  const lineEdges = mode === 'time' ? focusEdges : edges
+  const filtering = isFilterActive(filter)
 
   return (
     <div
@@ -432,14 +647,89 @@ export function GraphOverlay(): JSX.Element | null {
         <div className="go-title">
           知识图谱
           <em className="go-count">
-            {data ? `${data.nodes.length} 条 · ${data.edges.length} 条连线` : '读取中'}
+            {data ? (
+              filtering ? (
+                <span className="go-filtering" title="筛过之后分母仍是全库；这行报的是筛后规模，不是折叠">
+                  显示 {shown.nodes.length} / 共 {data.nodes.length} 条 · {shown.edges.length} 条连线
+                </span>
+              ) : (
+                `${data.nodes.length} 条 · ${data.edges.length} 条连线`
+              )
+            ) : (
+              '读取中'
+            )}
           </em>
         </div>
+        <div className="go-modes" role="group" aria-label="视图模式">
+          <button
+            className={`tb-btn${mode === 'force' ? ' active' : ''}`}
+            onClick={() => setMode('force')}
+            title="谁连着谁 · 力导向（T 切换）"
+          >
+            关系
+          </button>
+          <button
+            className={`tb-btn${mode === 'time' ? ' active' : ''}`}
+            onClick={() => setMode('time')}
+            title="什么时候开始关心 · 主题 × 时间（T 切换）"
+          >
+            时间
+          </button>
+        </div>
         <div className="go-right">
+          {mode === 'time' && (
+            <label className="go-bin">
+              分箱
+              <select
+                value={binPick}
+                onChange={(e) => setBinPick(e.target.value as 'auto' | BinUnit)}
+                title={`自动档按跨度选，当前落在「${binLabel('2026-01', binUnit)}」这一级`}
+              >
+                <option value="auto">自动</option>
+                <option value="day">按天</option>
+                <option value="week">按周</option>
+                <option value="month">按月</option>
+                <option value="quarter">按季</option>
+                <option value="year">按年</option>
+              </select>
+            </label>
+          )}
+          <label className="go-bin">
+            类型
+            <select
+              value={filter.kind}
+              onChange={(e) => setFilter({ ...filter, kind: e.target.value as GraphFilter['kind'] })}
+            >
+              <option value="all">全部</option>
+              <option value="diary">只看日记</option>
+              <option value="article">只看文章</option>
+            </select>
+          </label>
+          <label className="go-bin">
+            时间
+            <select
+              value={filter.sinceDays === null ? 'all' : String(filter.sinceDays)}
+              onChange={(e) =>
+                setFilter({ ...filter, sinceDays: e.target.value === 'all' ? null : Number(e.target.value) })
+              }
+              title="以今天为基准，不是以库里最新那天"
+            >
+              <option value="all">全部</option>
+              <option value="30">近 30 天</option>
+              <option value="90">近 90 天</option>
+              <option value="365">近一年</option>
+            </select>
+          </label>
+          <TopicChips topics={data?.topics ?? []} value={filter.topics} onChange={(t) => setFilter({ ...filter, topics: t })} />
+          {filtering && (
+            <button className="tb-btn go-clear" onClick={() => setFilter(NO_FILTER)} title="清掉全部过滤">
+              清除筛选
+            </button>
+          )}
           {phase === 'solving' && (
             <span className="go-progress solving">布局中 {Math.round(progress * 100)}%</span>
           )}
-          {phase === 'ready' && aggCount > 0 && (
+          {phase === 'ready' && mode === 'force' && aggCount > 0 && (
             <span className="go-progress" title="按主题折叠是为了看得清，不是筛掉了">
               已折叠 {base?.collapsed.length} 个主题 · {aggCount} 条
             </span>
@@ -452,17 +742,22 @@ export function GraphOverlay(): JSX.Element | null {
 
       <div className="go-canvas" ref={wrapRef}>
         {error && <p className="go-empty">读不到图谱：{error}</p>}
+        {!error && data && filtering && shown.nodes.length === 0 && (
+          <p className="go-empty">
+            筛选后一条都不剩。<button className="go-link" onClick={() => setFilter(NO_FILTER)}>清掉筛选</button> 再看。
+          </p>
+        )}
         {!error && data && data.nodes.length <= 1 && (
           <p className="go-empty">
             还没有网络。正文里写 <code>[[双链]]</code> 或 <code>#标签</code>，连起来再回来看。
           </p>
         )}
-        {!error && data && data.nodes.length > 1 && (
+        {!error && data && data.nodes.length > 1 && shown.nodes.length > 0 && (
           <svg
             className="go-svg"
             ref={svgRef}
             role="img"
-            aria-label={`全库图谱，${shown} 个可见单元`}
+            aria-label={`全库图谱，${visibleCount} 个可见单元`}
             onPointerDown={onPointerDown}
             onPointerMove={onPointerMove}
             onPointerUp={onPointerUp}
@@ -471,12 +766,37 @@ export function GraphOverlay(): JSX.Element | null {
             }}
           >
             <g transform={`translate(${view.x},${view.y}) scale(${view.k})`}>
-              {drawEdges &&
-                edges.map((e, i) => {
+              {/* 主题轨迹：一行一条，把占了的格子按时间连起来。跨空档那一段画虚线 */}
+              {mode === 'time' &&
+                trajectories.map((t, i) => (
+                  <line
+                    key={`t${i}`}
+                    className={`go-traj${t.gap ? ' gap' : ''}`}
+                    x1={t.x1}
+                    y1={t.y1}
+                    x2={t.x2}
+                    y2={t.y2}
+                    style={t.topicKey ? ({ '--tc': topicVarOf(t.topicKey) } as React.CSSProperties) : undefined}
+                  />
+                ))}
+
+              {(drawEdges ? edges : lineEdges).map((e, i) => {
                 const a = coords.get(e.source)
                 const b = coords.get(e.target)
                 if (!a || !b) return null
                 const dim = neighborKeys !== null && !(neighborKeys.has(e.source) && neighborKeys.has(e.target))
+                if (mode === 'time') {
+                  // 焦点弧往上鼓：同一段日期里直线会把"跨了 8 个月"和"就在隔壁格"画成同一个东西
+                  const mx = (a.x + b.x) / 2
+                  const my = (a.y + b.y) / 2 - Math.abs(b.x - a.x) * 0.22 - 12
+                  return (
+                    <path
+                      key={`e${i}`}
+                      className={`go-arc${dim ? ' dim' : ''}`}
+                      d={`M${a.x},${a.y} Q${mx},${my} ${b.x},${b.y}`}
+                    />
+                  )
+                }
                 return (
                   <line
                     key={`e${i}`}
@@ -525,6 +845,12 @@ export function GraphOverlay(): JSX.Element | null {
                       data-key={key}
                       aria-label={unitLabel(u)}
                       onClick={() => {
+                        // 时间轴上的格子不是"摊开"对象：把它打散回同一列只是噪声，
+                        // 点一下要的是"这一格是谁、连到哪"
+                        if (mode === 'time') {
+                          setSelected((s) => (s === key ? null : key))
+                          return
+                        }
                         if (u.kind === 'agg' && u.topicKey) {
                           setExpanded((prev) => {
                             const next = new Set(prev)
@@ -537,8 +863,10 @@ export function GraphOverlay(): JSX.Element | null {
                         setSelected((s) => (s === key ? null : key))
                       }}
                       onDoubleClick={() => {
-                        if (u.kind !== 'node') return
-                        void openNode(key)
+                        // 格子双击 = 进这一格最早的那篇（成员清单里可以挑别的）
+                        const target = u.kind === 'node' ? u.node.key : u.members[0]
+                        if (!target || !target.startsWith('e:')) return
+                        void openNode(target)
                         setOpen(false)
                       }}
                       onPointerEnter={() => setHover(key)}
@@ -552,7 +880,7 @@ export function GraphOverlay(): JSX.Element | null {
                       )}
                       <title>
                         {u.kind === 'agg'
-                          ? `${u.label} · ${u.count} 条（点一下摊开）`
+                          ? `${u.label} · ${u.count} 条${u.bin !== undefined ? '（点一下看成员与连线）' : '（点一下摊开）'}`
                           : `${u.node.label}${data.topics.find((t) => t.key === u.node.topicKey) ? ` · ${data.topics.find((t) => t.key === u.node.topicKey)!.label}` : ''} · 被 ${u.node.inDeg} 处链接指向`}
                       </title>
                     </g>
@@ -567,15 +895,118 @@ export function GraphOverlay(): JSX.Element | null {
             </g>
           </svg>
         )}
+          {/* 轴画在屏幕空间、不跟着缩放：横向拖远了列名不会跟着跑掉，
+              字也不会被 scale 拉糊（6a 的标签踩过这个坑，才定的 LABEL_ZOOM 门） */}
+          {mode === 'time' && cells && (
+            <div className="go-axis" aria-hidden={false}>
+              <div className="go-cols">
+                {(() => {
+                  /** 列名按"上一个的右边界"让位，不按固定步长跳。
+                   *  固定步长在最左边会翻车（实机截图上 `2024-01` 和 `2024-02` 叠成一坨）：
+                   *  起点那一列被改成左对齐之后，它占的宽度不再是"居中 ±半格" */
+                  const stride = Math.max(1, Math.ceil(56 / (COL_W * view.k)))
+                  const half = 24
+                  const out: JSX.Element[] = []
+                  let lastRight = -1e9
+                  cells.bins.forEach((b, i) => {
+                    if (i % stride !== 0) return
+                    const x = view.x + i * COL_W * view.k - GUT_L
+                    if (x < -20) return
+                    const edge = x < half * 2
+                    const left = edge ? 2 : x
+                    const right = edge ? left + half * 2 : x + half
+                    if (left - lastRight < 8) return
+                    lastRight = right
+                    out.push(
+                      <span
+                        key={b}
+                        className={`go-col${edge ? ' edge' : ''}`}
+                        style={{ left: Math.max(2, x) }}
+                      >
+                        {binLabel(b, cells.unit)}
+                      </span>
+                    )
+                  })
+                  return out
+                })()}
+              </div>
+              <div className="go-lanes">
+                {cells.lanes.map((lane, r) => {
+                  // 点就画在 r*ROW_H 这个坐标上（格子的中心即行的坐标），所以名字也得落在同一个 y。
+                  // 以前多减了半行，整列名字低了一行：第一行的点没人认领，最后一行只剩个名字没有点
+                  const y = view.y + r * ROW_H * view.k
+                  const on = filter.topics.includes(lane)
+                  const count = shown.nodes.filter((n) => (n.topicKey ?? 'untouched') === lane).length
+                  return (
+                    <button
+                      key={lane}
+                      className={`go-lane${on ? ' on' : ''}`}
+                      style={
+                        {
+                          top: y,
+                          '--tc': topicVarOf(lane === 'untouched' ? null : lane),
+                        } as React.CSSProperties
+                      }
+                      onClick={() =>
+                        setFilter({
+                          ...filter,
+                          topics: on ? filter.topics.filter((k) => k !== lane) : [...filter.topics, lane],
+                        })
+                      }
+                      title={on ? '不再只看这一行' : '只看这一行主题'}
+                    >
+                      {fitLabel(lane === 'untouched' ? '未归主题' : topicName(lane), 11)}
+                      <em>{count}</em>
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+
+          {memberList && (
+            <aside className="go-members">
+              <header>
+                {memberList.label}
+                <button className="tb-btn" onClick={() => setSelected(null)} title="收起 · Esc">
+                  ×
+                </button>
+              </header>
+              {memberList.list.slice(0, CELL_LIST_MAX).map((n) => (
+                <button
+                  key={n.key}
+                  className="go-member"
+                  onClick={() => {
+                    void openNode(n.key)
+                    setOpen(false)
+                  }}
+                >
+                  <span className="m-date">{n.date.slice(5)}</span>
+                  <span className="m-kind">{n.type === 'diary' ? '日记' : '文章'}</span>
+                  <span className="m-label">{n.label}</span>
+                </button>
+              ))}
+              {memberList.cut && <p className="go-more">还有 {memberList.list.length - CELL_LIST_MAX} 条没列出</p>}
+            </aside>
+          )}
       </div>
 
       <footer className="go-foot">
-        <span>滚轮缩放 · 拖动平移 · 双击进正文 · Esc 关闭</span>
+        <span>
+          {mode === 'time'
+            ? '点一格看它的连线与成员 · 点左边的主题名只看那一行 · 滚轮缩放 · 拖动平移 · T 切回关系图'
+            : '滚轮缩放 · 拖动平移 · 双击进正文 · Esc 关闭'}
+        </span>
         {data && data.danglingCount > 0 && (
           <span title="写了 [[…]] 但目标还不存在。不进拓扑，只报数">悬空链接 {data.danglingCount} 条</span>
         )}
-        {base && conserved !== data?.nodes.length && (
-          <span className="go-warn">守恒不对：{conserved} / {data?.nodes.length}</span>
+        {mode === 'time' && selected && (
+          <span title="时间视图平时不画全库的线：折到月格之后仍有近五千条，画出来是一团糊">
+            这一格向外 {focusEdges.length} 条连线
+          </span>
+        )}
+        {base && conserved !== shown.nodes.length && (
+          <span className="go-warn">守恒不对：{conserved} / {shown.nodes.length}</span>
         )}
       </footer>
     </div>

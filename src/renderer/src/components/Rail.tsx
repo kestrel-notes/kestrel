@@ -17,6 +17,7 @@ export function Rail(): JSX.Element {
   const backlinks = useStore((s) => s.backlinks)
   const graph = useStore((s) => s.graph)
   const openNode = useStore((s) => s.openNode)
+  const setGraphOpen = useStore((s) => s.setGraphOpen)
   const activeHeading = useStore((s) => s.activeHeading)
   const jumpToHeading = useStore((s) => s.jumpToHeading)
   const versions = useStore((s) => s.versions)
@@ -62,6 +63,16 @@ export function Rail(): JSX.Element {
             局部图谱
             {graph && <em className="net-cur">{graph.center.label}</em>}
           </>
+        }
+        action={
+          <button
+            className="rail-btn"
+            onClick={() => setGraphOpen(true)}
+            title="看全库的图 · Ctrl+G"
+            aria-label="打开全局图谱"
+          >
+            ⤢
+          </button>
         }
       >
         {graph ? (

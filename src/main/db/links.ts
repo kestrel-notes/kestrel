@@ -510,6 +510,7 @@ export function graphAll(): GlobalGraph {
       label: labelOf(r.kind, r.title, r.entry_date),
       topicKey: r.topic_id === null ? null : topicKey(r.topic_id),
       inDeg: r.in_deg,
+      date: r.entry_date,
     })),
     edges,
     topics: topicRows.map((t) => ({ key: topicKey(t.id), label: t.name, count: t.count })),

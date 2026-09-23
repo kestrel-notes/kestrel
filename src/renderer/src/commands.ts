@@ -146,7 +146,21 @@ export const COMMANDS: Command[] = [
     group: '视图',
     // Ctrl+G 已核：注册表里没占用（期-06a §5.4）。与输入法撞了就退回只走命令面板（§七 反转条件）
     keys: ['Ctrl+G'],
-    run: (s) => s.setGraphOpen(true),
+    run: (s) => {
+      s.setGraphMode('force')
+      s.setGraphOpen(true)
+    },
+  },
+  {
+    id: 'view.graphTime',
+    title: '打开全局图谱 · 时间轴',
+    group: '视图',
+    // Ctrl+Shift+G 已核：注册表里没占用（期-06b §5.4）
+    keys: ['Ctrl+Shift+G'],
+    run: (s) => {
+      s.setGraphMode('time')
+      s.setGraphOpen(true)
+    },
   },
   {
     id: 'tag.focus',
