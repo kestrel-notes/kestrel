@@ -420,6 +420,23 @@ export function recent(limit: number): EntrySummary[] {
   return rows.map(toSummary)
 }
 
+/** 随机挑一篇活着的（期-09c「随机打开一篇」）。`except` 是上一次随机到的那个 id——
+ *  连按不该给出同一篇，撞上就重摇一次。
+ *
+ *  为什么直接 `order by random()` 而不是「先数总数再随机偏移」：3006 篇的库上实测 0–1 ms
+ *  （设计稿 §〇 M3），这个量级不值得为它养一张表或一个缓存。
+ *  `deleted_at is null` 是承重的：回收站里那一些不该被翻出来。 */
+export function randomId(except?: number): number | null {
+  const row = getDatabase()
+    .prepare(
+      `select id from Entry
+       where deleted_at is null and id != ?
+       order by random() limit 1`
+    )
+    .get(except ?? -1) as unknown as { id: number } | undefined
+  return row ? row.id : null
+}
+
 /** 只回「这一篇叫什么、是哪一类、哪一天」。标签条给每一格配名字全靠它（期-09a §四）。
  *
  *  为什么不拿 `get(id)` 挨个取：那一趟会把整篇正文都搬过 IPC，恢复五个标签就是五遍，

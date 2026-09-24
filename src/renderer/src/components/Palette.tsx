@@ -138,6 +138,8 @@ export function Palette(): JSX.Element | null {
         s.sheetOpen ||
         s.libraryOpen ||
         s.transferOpen ||
+        s.slidesOpen ||
+        s.graphOpen ||
         s.versionOf
       )
         return

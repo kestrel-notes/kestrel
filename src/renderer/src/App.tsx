@@ -11,6 +11,7 @@ import { Settings } from '@/components/Settings'
 import { Palette } from '@/components/Palette'
 import { SearchPanel } from '@/components/SearchPanel'
 import { GraphOverlay } from '@/components/GraphOverlay'
+import { SlidesOverlay } from '@/components/SlidesOverlay'
 import { PromoteCard } from '@/components/PromoteCard'
 import { RecycleBin } from '@/components/RecycleBin'
 import { Bookmarks } from '@/components/Bookmarks'
@@ -109,6 +110,9 @@ export default function App(): JSX.Element {
           if (!s.transferBusy) s.setTransferOpen(false)
         }
         else if (s.versionOf) s.closeVersion()
+        // 演示层自己收了 `Esc`（`SlidesOverlay` 那一段）；这一道是兜底：焦点万一掉到层外，
+        // 按 `Esc` 也得能退出来，而不是留一层关不掉的东西压在屏幕上
+        else if (s.slidesOpen) s.closeSlides()
         else if (s.sheetOpen) s.setSheetOpen(false)
         else if (s.focus) s.toggleFocus()
         return
@@ -171,6 +175,7 @@ export default function App(): JSX.Element {
       <Palette />
       <SearchPanel />
       <GraphOverlay />
+      <SlidesOverlay />
       <ConfirmDialog />
       {toast && <div className="toast on">{toast}</div>}
     </>

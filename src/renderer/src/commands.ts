@@ -253,6 +253,21 @@ export const COMMANDS: Command[] = [
     },
   },
   {
+    id: 'view.slides',
+    title: '演示这一篇（幻灯片）',
+    group: '视图',
+    // 不配默认键位：这一条进的是覆盖层，而 `Space`/方向键那一批在层里本地处理，
+    // 登记进全局命令表就会吃掉编辑器与列表的同名键（设计稿决策 57）
+    enabled: (s) => s.entry !== null,
+    run: (s) => s.openSlides(),
+  },
+  {
+    id: 'go.random',
+    title: '随机打开一篇',
+    group: '跳转',
+    run: (s) => void s.randomEntry(),
+  },
+  {
     id: 'tag.focus',
     title: '焦点给标签树',
     group: '跳转',

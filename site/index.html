@@ -51,6 +51,7 @@
       <li><a href="#record">记录</a></li>
       <li><a href="#organize">组织</a></li>
       <li><a href="#looks">外观与片段</a></li>
+      <li><a href="#present">演示与回顾</a></li>
       <li><a href="#safety">安全网四层</a></li>
       <li><a href="#keys">快捷键</a></li>
       <li><a href="#first-run">第一次打开</a></li>
@@ -218,6 +219,19 @@
       </ul>
     </section>
 
+    <section id="present">
+      <h2>演示与回顾</h2>
+      <p>写完了要能给人看，也要能翻回去看自己。</p>
+      <ul>
+        <li><strong>幻灯片</strong>：<kbd>Ctrl+K</kbd> 搜「演示这一篇」。在两个段落之间<strong>独占一行</strong>写 <code>---</code> 就是分页（<code>***</code>、<code>___</code>、<code>- - -</code> 一样算），全屏一屏一页，页脚写着 <code>3 / 12</code>。<kbd>→</kbd> <kbd>↓</kbd> <kbd>Space</kbd> <kbd>PageDown</kbd> 下一页，<kbd>←</kbd> <kbd>↑</kbd> <kbd>Backspace</kbd> <kbd>PageUp</kbd> 上一页，<kbd>Home</kbd> <kbd>End</kbd> 首尾，点屏幕左 / 右半边也能翻，<kbd>Esc</kbd> 退出。翻到头不循环、也不报错。</li>
+        <li><strong>代码围栏里的那条 <code>---</code> 不算分页</strong>：切分是一个带状态的行扫描（进围栏 / 出围栏），不是拿字符串切一刀。所以正文里贴的 diff、表格的分隔线、<code>a---b</code> 都不会莫名多出页来。页与页之间不共享滚动位置：翻过去就是从头读。</li>
+        <li><strong>只有一页时会给你一句提示</strong>（「这一篇没有分页符：在两个段落之间独占一行写 <code>---</code> 就能分页」），不会悄悄把整篇当一页、让你以为功能坏了。字号在演示里比编辑时大一档，那是一层 CSS 放大，<strong>不改正文一个字</strong>。</li>
+        <li>演示那一层是<strong>模态的</strong>：开着的时候 <kbd>Ctrl+K</kbd> / <kbd>Ctrl+W</kbd> / <kbd>Ctrl+Tab</kbd> / <kbd>Ctrl+,</kbd> 一概不生效——演示底下不该有标签被关掉、文档被换掉。退出来之后那一格还在原处，文档与滚动位置都不动。</li>
+        <li><strong>随机打开一篇</strong>：<kbd>Ctrl+K</kbd> 搜「随机」。它是<strong>新开一个标签</strong>而不是原地换——随机这件事的时机你无法预期，不该把你正在写的那一篇顶掉；屏幕上会报开的是哪一篇。连着按不会给出同一篇，回收站里的那些不参与。没有默认键位（「想起来才用」的那种）。</li>
+        <li>不做演讲者视图、备注与计时、自动播放，也不做「按标签随机」——筛选那件事查询块已经做了，日记也不是电视。</li>
+      </ul>
+    </section>
+
     <section id="safety">
       <h2>安全网四层</h2>
       <p>记东西的应用最怕「改坏了回不去」。这里的网有四层：</p>
@@ -265,7 +279,8 @@
           <tr><td class="keys"><kbd>Ctrl+,</kbd></td><td>设置</td><td>外观 / 编辑器 / 片段 / 快捷键 / 数据 / 关于</td></tr>
         </tbody>
       </table>
-      <p>只从命令面板进、没有键位的：<strong>升格为文章</strong>、<strong>主题管理</strong>、<strong>回收站</strong>、<strong>删除当前记录</strong>、<strong>收藏列表</strong>、<strong>插入查询块</strong>、<strong>查询与模板</strong>（存查询 / 模板管理）、表格那一组，<strong>设置 · CSS 片段</strong>、<strong>重读 CSS 片段</strong>、<strong>暂停全部片段（本次会话）</strong>，以及 <strong>导出为 Markdown</strong>、<strong>从 Markdown 导回</strong>、<strong>备份与恢复</strong>这三条。导出那一档一年用不了几次，占一个键位不如让人搜得到。</p>
+      <p>只从命令面板进、没有键位的：<strong>升格为文章</strong>、<strong>主题管理</strong>、<strong>回收站</strong>、<strong>删除当前记录</strong>、<strong>收藏列表</strong>、<strong>插入查询块</strong>、<strong>查询与模板</strong>（存查询 / 模板管理）、表格那一组，<strong>设置 · CSS 片段</strong>、<strong>重读 CSS 片段</strong>、<strong>暂停全部片段（本次会话）</strong>，<strong>演示这一篇（幻灯片）</strong>、<strong>随机打开一篇</strong>，以及 <strong>导出为 Markdown</strong>、<strong>从 Markdown 导回</strong>、<strong>备份与恢复</strong>这三条。导出那一档一年用不了几次，占一个键位不如让人搜得到。</p>
+      <p>演示那一层自己的键（<kbd>→</kbd> <kbd>↓</kbd> <kbd>←</kbd> <kbd>↑</kbd> · <kbd>Space</kbd> <kbd>Backspace</kbd> <kbd>PageDown</kbd> <kbd>PageUp</kbd> · <kbd>Home</kbd> <kbd>End</kbd> <kbd>Esc</kbd>）<strong>只在层里生效</strong>，没登记进全局命令表——登记了就会吃掉编辑器与列表的同名键。</p>
       <p><kbd>Ctrl+F</kbd> 是站内搜索，<kbd>Ctrl+Shift+F</kbd> 是专注模式——这一对与 Obsidian 的键位不一样，别按习惯按。</p>
       <p>开几篇同时在手：在侧栏的文章卡上 <kbd>Ctrl+单击</kbd> 或按鼠标中键就是新开一格；中键点已经开着的那一篇是切到它那一格，不会多出第二格；<strong>双击</strong>标签固定它（固定的永远排最前，<kbd>Ctrl+W</kbd> 关不掉，得先取消固定）。固定没有键位，命令面板里有那一条。</p>
     </section>

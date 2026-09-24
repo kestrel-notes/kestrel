@@ -4329,3 +4329,111 @@ input[type='range'] {
   font-size: 11.5px;
 }
 
+/* ── 幻灯片演示层（期-09c §四）──────────────────────────────────────
+   挂载形状照 `.graph-overlay`（fixed + inset:0 + flex column），95 压在图谱那一层之上、
+   toast（200）之下——随机那条命令的 toast 要能在层外看得见。
+   页内用的是 `.doc` + `.md-prose` 那一套，所以 09b 的片段直接盖得到演示里的正文。 */
+
+.slides-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 95;
+  display: none;
+  flex-direction: column;
+  background: var(--bg-glass-strong);
+  backdrop-filter: blur(28px) saturate(1.8);
+  -webkit-backdrop-filter: blur(28px) saturate(1.8);
+  outline: none;
+  cursor: default;
+}
+.slides-overlay.open {
+  display: flex;
+}
+/* 降级与省电：与图谱同一条理由，去掉模糊就得换成实心，否则字压在正文上糊成一片 */
+body.no-glass .slides-overlay {
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  background: var(--bg-base);
+}
+
+.sl-head {
+  flex: 0 0 44px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 0 18px;
+  border-bottom: 1px solid var(--border);
+  font-size: 12.5px;
+  color: var(--text-3);
+}
+.sl-title {
+  font-size: 13.5px;
+  font-weight: 650;
+  color: var(--text-1);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sl-close {
+  flex: 0 0 auto;
+  padding: 5px 11px;
+  font-size: 12px;
+  color: var(--text-2);
+  background: var(--hover);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+.sl-close:hover {
+  color: var(--text-1);
+  border-color: var(--border-strong);
+}
+
+.sl-body {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  padding: 44px 0 64px;
+  /* 演示的字号放大走 `zoom`：`--slide-scale` 只放大字的话，`.md-prose` 那一堆硬写的
+   * px（#139 那笔账）一个都不会跟着动，而表格/代码块会原尺寸挤在小柱子里。
+   * `zoom` 连布局尺寸一起放大，且不改 DOM，片段照样盖得住 */
+  zoom: var(--slide-scale, 1.2);
+}
+.sl-body .doc {
+  /* 每页一棵只读实例：页与页之间不共享滚动位置，翻过去就是新的一页从头读 */
+  padding-top: 4px;
+}
+.sl-body .md-prose {
+  cursor: default;
+}
+
+.sl-foot {
+  flex: 0 0 40px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 0 18px;
+  border-top: 1px solid var(--border);
+  font-size: 12px;
+  color: var(--text-3);
+}
+.sl-count {
+  flex: 0 0 auto;
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  color: var(--text-2);
+}
+.sl-hint {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sl-hint code {
+  font-family: var(--font-mono);
+  padding: 1px 4px;
+  border-radius: 3px;
+  background: var(--hover);
+  color: var(--text-2);
+}
+

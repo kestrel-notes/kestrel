@@ -236,6 +236,12 @@ export interface AppState {
   graphOpen: boolean
   graphMode: 'force' | 'time'
 
+  /** 幻灯片演示层（期-09c）。**只存开没开**：页是 `slideSplit(content)` 现算的，
+   *  把页存进来就有了第二真相源（设计稿 §二）。
+   *  `lastRandomId` 是内存值、不落库——「连按不给同一篇」是手感，不是状态（决策 56） */
+  slidesOpen: boolean
+  lastRandomId: number | null
+
   /** 当前这篇的历史版本（列表不带正文） */
   versions: RevisionSummary[]
   /** 正在预览的那一版，含正文 */
@@ -369,6 +375,11 @@ export interface AppState {
   setBookmarkOpen(open: boolean): void
   setGraphOpen(open: boolean): void
   setGraphMode(mode: 'force' | 'time'): void
+  /** 演示当前这一篇（期-09c）。空正文也开得起来——那一页是空白的，提示语照样在场 */
+  openSlides(): void
+  closeSlides(): void
+  /** 随机开一篇：新开一格而不是原地换（决策 55），连按不给同一篇（决策 56） */
+  randomEntry(): Promise<void>
   /** 跨年同日那张卡上的「连」：在正文末尾补一行 `[[那年那条]]`，走正常保存与重解析
    *  （期-06b-2 §二）。**不直接写 Link 表**——那条表是正文的派生物，绕开正文写进去的边，
    *  下一次保存就会被 `reparseEntry` 整删整插抹掉。 */
@@ -968,6 +979,8 @@ export const useStore = create<AppState>()((set, get) => {
     bookmarkOpen: false,
     graphOpen: false,
     graphMode: 'force',
+    slidesOpen: false,
+    lastRandomId: null,
     bookmarks: [],
     versions: [],
     versionOf: null,
@@ -1834,6 +1847,33 @@ export const useStore = create<AppState>()((set, get) => {
     },
     setGraphMode(mode) {
       set({ graphMode: mode })
+    },
+
+    /* ─ 演示与随机（期-09c） ─ */
+
+    // 页不在这里算，也不存在这里：`slideSplit(content)` 是覆盖层自己现算的（设计稿 §二）
+    openSlides() {
+      set({ slidesOpen: true })
+    },
+    closeSlides() {
+      set({ slidesOpen: false })
+    },
+
+    async randomEntry() {
+      const 上一记 = get().lastRandomId
+      // 「撞上就重摇」落在 SQL 的 `id != ?` 上：把上一次那个 id 当排除条件递过去，
+      // 一趟就够，不必先摇一次再比对（设计稿决策 56）
+      const id = await window.kestrel.entries.randomId(上一记 ?? undefined)
+      if (id === null) {
+        get().notify(上一记 === null ? '库里还没有记录' : '库里只有那一篇，摇不出别的')
+        return
+      }
+      set({ lastRandomId: id })
+      // 新开一格，不原地换：换会把你正在写的那一篇顶掉（决策 55）。
+      // 这一条自己会先 flush，所以未落盘的改动不会被卷走
+      await get().openEntryInTab(id)
+      const s = get()
+      if (s.entry && s.currentId === id) s.notify(`随机到「${entryLabel(s.entry)}」`)
     },
 
     /* ─ 跨年同日（期-06b-2 §二） ─ */

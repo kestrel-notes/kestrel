@@ -30,6 +30,7 @@ const api: KestrelApi = {
     listPromotedOn: (date) => ipcRenderer.invoke(IPC.entryListPromotedOn, date),
     chronicle: (topicId) => ipcRenderer.invoke(IPC.entryChronicle, topicId),
     prevDiary: (date) => ipcRenderer.invoke(IPC.entryPrevDiary, date),
+    randomId: (except) => ipcRenderer.invoke(IPC.entryRandomId, except),
   },
   topics: {
     list: () => ipcRenderer.invoke(IPC.topicList),

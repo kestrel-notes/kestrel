@@ -689,6 +689,9 @@ export interface KestrelApi {
     /** 严格早于 `date` 的那一篇日记（期-07 §五：`{{last_entry}}` 要的就是它）。
      *  一篇都没有返回 null，界面上说「这是第一篇」 */
     prevDiary(date: string): Promise<EntrySummary | null>
+    /** 随机一篇活着的（期-09c）：`except` 传上一次随机到的 id，连按就不会给出同一篇。
+     *  库里一篇都没有（或只有 `except` 那一篇）返回 null */
+    randomId(except?: number): Promise<number | null>
   }
   topics: {
     list(): Promise<Topic[]>
@@ -892,6 +895,8 @@ export const IPC = {
   entryListPromotedOn: 'entry:listPromotedOn',
   /** 主题编年史（期-06b-2 §一）：一个主题下的条目按 `promoted_at ?? created_at` 排成的时间线 */
   entryChronicle: 'entry:chronicle',
+  /** 随机一篇活着的（期-09c §二）：`except` 是上一次随机到的 id，撞上就重摇一次 */
+  entryRandomId: 'entry:randomId',
   topicList: 'topic:list',
   topicCreate: 'topic:create',
   topicUpdate: 'topic:update',

@@ -199,6 +199,7 @@ function registerIpc(): void {
   handle(IPC.entryListPromotedOn, (date: string) => entries.listPromotedOn(date))
   handle(IPC.entryChronicle, (topicId: number) => entries.chronicle(topicId))
   handle(IPC.entryPrevDiary, (date: string) => entries.prevDiary(date))
+  handle(IPC.entryRandomId, (except?: number) => entries.randomId(except))
 
   handle(IPC.revisionList, (entryId: number) => revisions.list(entryId))
   handle(IPC.revisionGet, (id: number) => revisions.get(id))
