@@ -12,7 +12,7 @@
 import { app, net, protocol } from 'electron'
 import { createHash } from 'node:crypto'
 import { mkdir, stat, writeFile } from 'node:fs/promises'
-import { existsSync } from 'node:fs'
+import { existsSync, readFileSync, statSync } from 'node:fs'
 import { basename, extname, join } from 'node:path'
 import { pathToFileURL } from 'node:url'
 
@@ -96,4 +96,43 @@ export async function importAsset(originalName: string, data: Uint8Array): Promi
   }
   await writeFile(target, data)
   return name
+}
+
+/** 取一份附件的字节，内联进导出的那一份分享文件（期-11a §五 的 `share:asset`）。
+ *
+ *  名字先过 `assetNameFromUrl` 那一刀——它只认「40 位 sha1 + 白名单后缀」那一种形状，
+ *  带 `..`、带 `%2F`、后缀在名单外的一律 null。所以这一条通道**给不出路径**，
+ *  与协议 handler 用的是同一个判据（不抄第二份）。
+ *  读不到就回 `data: null` 加一句为什么：界面上那句「那张图没有带出来」靠它，
+ *  而导出这一路的原则是「要么整份，要么不动」——半张图比没有图更坏。 */
+export function readAsset(
+  name: string,
+  上限: number
+): { name: string; bytes: number; data: string | null; note: string | null } {
+  const 合规 = assetNameFromUrl(`${SCHEME}://${name}`)
+  if (!合规) return { name, bytes: 0, data: null, note: '那个名字不像是 Kestrel 存的附件' }
+  const file = join(attachmentsDir(), 合规)
+  let size = 0
+  try {
+    size = statSync(file).size
+  } catch {
+    return { name: 合规, bytes: 0, data: null, note: '附件不在这台机器上' }
+  }
+  if (size === 0) return { name: 合规, bytes: 0, data: null, note: '那一份是空的' }
+  if (size > 上限)
+    return { name: 合规, bytes: size, data: null, note: `单张太大（${(size / 1048576).toFixed(1)} MB）` }
+  let buf: Buffer
+  try {
+    buf = readFileSync(file)
+  } catch {
+    return { name: 合规, bytes: size, data: null, note: '读不出来（正被别的程序占着？）' }
+  }
+  return { name: 合规, bytes: size, data: `data:${mimeOf(合规)};base64,${buf.toString('base64')}`, note: null }
+}
+
+/** 内联进 HTML 的那个 MIME。名单与 `EXT_WHITELIST` 同一处定义：svg 在 `<img>` 语境下
+ *  Chromium 会禁掉里面的脚本（文件头那条理由），所以给得出 `image/svg+xml` 是安全的 */
+function mimeOf(name: string): string {
+  const ext = extname(name).slice(1).toLowerCase()
+  return ext === 'jpg' ? 'image/jpeg' : `image/${ext}`
 }

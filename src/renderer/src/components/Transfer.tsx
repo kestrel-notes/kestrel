@@ -13,6 +13,7 @@ import { useStore } from '@/store'
 import { BackupPane } from './BackupPane'
 import { ExportWizard } from './ExportWizard'
 import { ImportWizard } from './ImportWizard'
+import { SharePane } from './SharePane'
 import { SyncPane } from './SyncPane'
 
 const 档 = {
@@ -20,6 +21,7 @@ const 档 = {
   import: { 名: '导入', 标题: '从 Markdown 导回', 说: '只认自家导出的那一份，认不出的一个字都不读' },
   backup: { 名: '备份', 标题: '备份与恢复', 说: '一天一份，最近的几份随时换得回去' },
   sync: { 名: '同步', 标题: '文件夹同步', 说: '推到一个夹、从那个夹换回来——应用自己不联网' },
+  share: { 名: '分享', 标题: '分享这一篇', 说: '当前这一篇写成一个 .html：不带 JS、不发请求，断网也能看' },
 } as const
 
 type Tab = keyof typeof 档
@@ -75,6 +77,7 @@ export function Transfer(): JSX.Element | null {
         <ImportWizard open={tab === 'import'} onBusy={setBusy} />
         <BackupPane open={tab === 'backup'} />
         <SyncPane open={tab === 'sync'} onBusy={setBusy} />
+        <SharePane open={tab === 'share'} onBusy={setBusy} />
       </div>
     </div>
   )

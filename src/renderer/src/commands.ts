@@ -485,6 +485,19 @@ export const COMMANDS: Command[] = [
     },
   },
   {
+    id: 'share.pane',
+    title: '分享这一篇 · 写成一个离线能看的 .html',
+    group: '数据',
+    // 与 backup.pane / sync.pane 同一条理由：按下去会往盘外写一个文件，
+    // 命令本身只把面板打开，真动手的是面板里那颗按钮。
+    // 也没有键位：一年用不了几次，而它做的事情是"把这篇日记复制一份带出门"。
+    enabled: (s) => s.currentId !== null,
+    run: (s) => {
+      s.setTransferTab('share')
+      s.setTransferOpen(true)
+    },
+  },
+  {
     id: 'entry.remove',
     title: '删除当前记录',
     group: '数据',

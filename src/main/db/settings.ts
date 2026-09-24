@@ -57,6 +57,8 @@ function coerce(raw: Partial<Settings>): Settings {
     // 与 exportLastDir 同一类：只当字符串存着，不校验存不存在。那个夹可能在移动硬盘上、
     // 今天没插——那一格也要能告诉用户「上次是这儿」
     syncDir: typeof raw.syncDir === 'string' ? raw.syncDir : null,
+    // 同上：那一个夹可能在 U 盘上、今天没插。存的是"上次放哪儿了"这句话，不是承诺它还在
+    shareLastDir: typeof raw.shareLastDir === 'string' ? raw.shareLastDir : null,
   }
 }
 

@@ -137,6 +137,10 @@ export interface Settings {
    *  与 `exportLastDir` 同一类：路径只当字符串存着，不校验存不存在——
    *  那个夹可能在移动硬盘上，今天没插。界面上要能告诉用户「上次是这儿」 */
   syncDir: string | null
+  /** 上一次把分享文件放到哪儿了（期-11a）。与 `exportLastDir` 同一类：只当字符串存着。
+   *  这一档是"重复动作"——同一篇改一版再发一次很常见，每次都从系统对话框重挑太烦；
+   *  而「还放那个夹」那颗按钮也是实机验收唯一能不走系统对话框的那条路 */
+  shareLastDir: string | null
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -153,6 +157,7 @@ export const DEFAULT_SETTINGS: Settings = {
   snippetsOff: [],
   editorModeDefault: 'rich',
   syncDir: null,
+  shareLastDir: null,
 }
 
 /** 同步那一格的全部读数（期-10 §三）。全是读，一次 IPC 拿齐——
@@ -185,6 +190,26 @@ export interface SyncResult {
   file: string
   savedAs?: string
   face: SyncFace
+}
+
+/** 一份附件的字节（期-11a §五）。`data` 是 `data:<mime>;base64,…`，
+ *  取不到（不在这台机器上、太大、读不出来）就是 null + `note` 那一句为什么——
+ *  界面上那句「那张图没有带出来」靠它，不靠猜 */
+export interface ShareAsset {
+  name: string
+  bytes: number
+  data: string | null
+  note: string | null
+}
+
+/** 分享落盘的结果。`checks` 是 `自检()` 那三条硬判据的计数，全为 0 才写得出文件；
+ *  `renamed` 为 true 表示那个名字已经有了，这一份落成了 `…·2.html`（不盖旧的那一份） */
+export interface ShareWrite {
+  file: string
+  bytes: number
+  ms: number
+  checks: Record<string, number>
+  renamed: boolean
 }
 
 /** 关于那一格要的几件事（期-09b §四）。版本与路径都在主进程那一侧，渲染进程猜不出来，
@@ -832,8 +857,9 @@ export interface KestrelApi {
    *  目录由系统对话框选，渲染层只拿到一个字符串路径。 */
   transfer: {
     /** 打开「选文件夹」对话框；取消返回 null。`import` 那一档不给「新建目录」的按钮，
-     *  `sync` 那一档也不给——那个夹是 Dropbox / OneDrive 已经在管的那个，不是我们建出来的 */
-    pickDirectory(mode?: 'export' | 'import' | 'sync'): Promise<string | null>
+     *  `sync` 那一档也不给——那个夹是 Dropbox / OneDrive 已经在管的那个，不是我们建出来的。
+     *  `share`（期-11a）同样不给：那一个 .html 是放到人自己挑的地方，不是我们替他造的 */
+    pickDirectory(mode?: 'export' | 'import' | 'sync' | 'share'): Promise<string | null>
     exportPlan(dir: string): Promise<ExportPlan>
     exportRun(dir: string): Promise<ExportResult>
     /** 进度是**拉**不是推：大库（实测 6001 篇那份）导出要看得见它在动，
@@ -871,6 +897,15 @@ export interface KestrelApi {
     pull(): Promise<SyncResult>
     /** 忘掉这台机器上的同步记录与那个夹。**不删那个夹里的任何文件** */
     forget(): Promise<void>
+  }
+  /** 单篇离线分享（期-11a）。渲染层负责拍与洗（那两件事只有它做得到：DOM 与 CSSOM 都在它那边），
+   *  这一头只做两件它做不到的：取字节、写文件。
+   *  **没有一条通道能指定往哪儿写**——目录只有 `pickDirectory('share')` 那一个来源。 */
+  share: {
+    /** 按名字取一份附件，拿回来直接就是 `data:` URI（名单外的名字主进程一概不给字节） */
+    asset(name: string): Promise<ShareAsset>
+    /** 落那个 .html。落盘前主进程自己再跑一遍 `自检()`：过不了就抛，一个字节都不写 */
+    write(dir: string, title: string, html: string): Promise<ShareWrite>
   }
   /** 工作区（期-09a）：开着哪几篇、哪个在当前、各自滚到哪儿。
    *  `load` 认不出来就返回 null（当没有，界面退回今天）；走这条而不是 `settings.*` 的理由写在
@@ -1019,6 +1054,10 @@ export const IPC = {
   syncPush: 'sync:push',
   syncPull: 'sync:pull',
   syncForget: 'sync:forget',
+  /** 单篇离线分享（期-11a）。两条：取一份附件的字节、把那一串 HTML 落成文件。
+   *  挑目录复用 `transferPick('share')`——与 `'sync'` 同法：只弹框，不凭空建目录 */
+  shareAsset: 'share:asset',
+  shareWrite: 'share:write',
   /** 工作区（期-09a）：开着哪几篇、哪个在当前、各自滚到哪儿。独立于 settings:* 的两条，理由见 shared/workspace.ts 头上 */
   workspaceLoad: 'workspace:load',
   workspaceSave: 'workspace:save',

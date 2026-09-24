@@ -115,6 +115,10 @@ const api: KestrelApi = {
     pull: () => ipcRenderer.invoke(IPC.syncPull),
     forget: () => ipcRenderer.invoke(IPC.syncForget),
   },
+  share: {
+    asset: (name) => ipcRenderer.invoke(IPC.shareAsset, name),
+    write: (dir, title, html) => ipcRenderer.invoke(IPC.shareWrite, dir, title, html),
+  },
   workspace: {
     load: () => ipcRenderer.invoke(IPC.workspaceLoad),
     save: (ws) => ipcRenderer.invoke(IPC.workspaceSave, ws),

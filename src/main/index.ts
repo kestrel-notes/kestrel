@@ -24,6 +24,7 @@ import * as backup from './db/backup'
 import * as workspace from './db/workspace'
 import * as snippets from './db/snippets'
 import * as sync from './db/sync'
+import * as share from './db/share'
 import { parseQueryBlock } from '../shared/queryLang'
 import {
   IPC,
@@ -211,14 +212,22 @@ function registerIpc(): void {
 
   /* 流通（期-08）。目录由主进程弹系统对话框选——渲染层拿不到 fs，也不该拿到；
    *  渲染层看到的只是一个字符串路径。 */
-  handle(IPC.transferPick, async (_mode?: 'export' | 'import' | 'sync') => {
-    const 导 = _mode !== 'import' && _mode !== 'sync'
+  handle(IPC.transferPick, async (_mode?: 'export' | 'import' | 'sync' | 'share') => {
+    const 导 = _mode !== 'import' && _mode !== 'sync' && _mode !== 'share'
     const 同 = _mode === 'sync'
+    const 分 = _mode === 'share'
     const r = await dialog.showOpenDialog({
-      title: 导 ? '选一个目录放导出物' : 同 ? '选那个同步用的文件夹' : '选一个 Kestrel 导出的目录',
-      buttonLabel: 导 ? '就放这里' : 同 ? '就同步这个夹' : '就导这个',
+      title: 导
+        ? '选一个目录放导出物'
+        : 同
+          ? '选那个同步用的文件夹'
+          : 分
+            ? '那一份分享文件放哪儿'
+            : '选一个 Kestrel 导出的目录',
+      buttonLabel: 导 ? '就放这里' : 同 ? '就同步这个夹' : 分 ? '就放这里' : '就导这个',
       // 同步那一档不给「新建目录」：那个夹是 Dropbox / OneDrive 已经在管的那个，
-      // 由我们凭空建一个出来，用户就不知道自己在把日记交给谁了
+      // 由我们凭空建一个出来，用户就不知道自己在把日记交给谁了。
+      // 分享那一档同样不给：它是"把一个文件放到你挑的地方"，不是"造一个 Kestrel 的夹"
       properties: 导 ? ['openDirectory', 'createDirectory'] : ['openDirectory'],
     })
     return r.canceled ? null : (r.filePaths[0] ?? null)
@@ -244,6 +253,13 @@ function registerIpc(): void {
   handle(IPC.syncPush, () => sync.push())
   handle(IPC.syncPull, () => sync.pull())
   handle(IPC.syncForget, () => sync.forget())
+
+  /* 单篇离线分享（期-11a）。两条：取一份附件的字节、把那一串 HTML 落成文件。
+   *  拍与洗都在渲染层（DOM 与 CSSOM 只有那边有），这一头守住的是"往盘上写"那一步：
+   *  目录只有 `transferPick('share')` 一个来源，文件名由主进程自己拼，
+   *  而且**落盘前主进程自己再跑一遍 `自检()`**——渲染层报过来的那一份不预先相信。 */
+  handle(IPC.shareAsset, (name: string) => share.asset(name))
+  handle(IPC.shareWrite, (dir: string, title: string, html: string) => share.write(dir, title, html))
 
   /** 工作区（期-09a）。`save` 这一头不再校验一遍：写进去的坏东西在 `load()` 那里会被
    *  当成「没有工作区」，那一刀本来就按不可信输入写（`shared/workspace.ts`）。
