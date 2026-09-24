@@ -26,6 +26,7 @@ import {
   fileText,
   frontmatterFor,
   isReserved,
+  inKestrelNamespace,
   libraryTopics,
   planPaths,
   rewriteAssets,
@@ -100,7 +101,9 @@ function propTypes(): Record<string, string> {
   const t = getDatabase()
     .prepare('select name, type from PropKey order by ordinal, name')
     .all() as unknown as { name: string; type: PropType }[]
-  return Object.fromEntries(t.map((r) => [r.name, r.type]))
+  // `kestrel-*` 那一段不是用户属性（它是导出物里 Kestrel 自己字段的名字空间）。
+  // 把它列进这张表，等于递过去一份导入方一定会拒收的名单——两头都拒绝同一批名字才对得上
+  return Object.fromEntries(t.filter((r) => !inKestrelNamespace(r.name)).map((r) => [r.name, r.type]))
 }
 
 function attachmentsDir(): string {

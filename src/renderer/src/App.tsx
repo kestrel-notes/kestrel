@@ -103,7 +103,11 @@ export default function App(): JSX.Element {
         else if (s.bookmarkOpen) s.setBookmarkOpen(false)
         else if (s.binOpen) s.setBinOpen(false)
         else if (s.libraryOpen) s.setLibraryOpen(false)
-        else if (s.transferOpen) s.setTransferOpen(false)
+        else if (s.transferOpen) {
+          // 正在写盘/写库的那一档不放行：主进程不会因为你关了面板就停手，
+          // 关了只是让人看不见写到哪了。要停手用那一档里的「中止」
+          if (!s.transferBusy) s.setTransferOpen(false)
+        }
         else if (s.versionOf) s.closeVersion()
         else if (s.sheetOpen) s.setSheetOpen(false)
         else if (s.focus) s.toggleFocus()

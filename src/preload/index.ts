@@ -87,11 +87,15 @@ const api: KestrelApi = {
     remove: (id) => ipcRenderer.invoke(IPC.tplRemove, id),
   },
   transfer: {
-    pickDirectory: () => ipcRenderer.invoke(IPC.transferPick),
+    pickDirectory: (mode) => ipcRenderer.invoke(IPC.transferPick, mode),
     exportPlan: (dir) => ipcRenderer.invoke(IPC.exportPlan, dir),
     exportRun: (dir) => ipcRenderer.invoke(IPC.exportRun, dir),
     exportProgress: () => ipcRenderer.invoke(IPC.exportProgress),
     exportCancel: () => ipcRenderer.invoke(IPC.exportCancel),
+    importPlan: (dir) => ipcRenderer.invoke(IPC.importPlan, dir),
+    importRun: (dir) => ipcRenderer.invoke(IPC.importRun, dir),
+    importProgress: () => ipcRenderer.invoke(IPC.importProgress),
+    importCancel: () => ipcRenderer.invoke(IPC.importCancel),
   },
   settings: {
     all: () => ipcRenderer.invoke(IPC.settingsAll),

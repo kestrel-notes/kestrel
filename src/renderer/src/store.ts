@@ -224,6 +224,10 @@ export interface AppState {
   libraryOpen: boolean
   /** 「流通」面板：导出整库 / 从导出物导入 / 备份（期-08 §九） */
   transferOpen: boolean
+  transferTab: 'export' | 'import'
+  /** 流通面板正在写盘/写库。Esc 要不要放过这一档，判据在 `App.tsx` 那条链上——
+   *  主进程不会因为面板关了就在半路停手，关了只会让人以为「取消了」而看不见写到哪了 */
+  transferBusy: boolean
 
   /** 大纲点击 → 编辑器滚动。存的是自增的请求号，编辑器听着它滚一次 */
   headingJump: { index: number; at: number } | null
@@ -339,6 +343,9 @@ export interface AppState {
   setLibraryOpen(open: boolean): void
   /** 「流通」面板的开关（期-08 §九）。面板自己负责取导出预览，这里只翻状态 */
   setTransferOpen(open: boolean): void
+  /** 流通面板停在哪一档。命令面板里「导出」「导入」是两条命令，各自要把人带到自己那一档 */
+  setTransferTab(tab: 'export' | 'import'): void
+  setTransferBusy(busy: boolean): void
   /** 收藏 / 取消收藏某一样东西（当前这篇、sheet 里的某一行都走这一条）。
    *  `title` 只在新增那一次落库，是收藏那一刻的名字快照（§4.1） */
   toggleBookmark(kind: BookmarkKind, ref: number, title: string): Promise<void>
@@ -799,6 +806,8 @@ export const useStore = create<AppState>()((set, get) => {
     templates: [],
     libraryOpen: false,
     transferOpen: false,
+    transferTab: 'export',
+    transferBusy: false,
     headingJump: null,
     activeHeading: null,
     recentLimit: RECENT_LIMIT,
@@ -1478,7 +1487,22 @@ export const useStore = create<AppState>()((set, get) => {
     },
 
     setTransferOpen(open) {
-      set({ transferOpen: open })
+      // 关掉就回到「导出」那一档：导入是一年用不上几次的事，
+      // 面板留着上一次的档位，下次手一抖 Ctrl+K 回车就站在危险的那一边。
+      // busy 也跟着抹掉：面板都没了还挂着它，下一条 Esc 不知道该关谁
+      set({
+        transferOpen: open,
+        transferTab: open ? get().transferTab : 'export',
+        transferBusy: open ? get().transferBusy : false,
+      })
+    },
+
+    setTransferTab(tab) {
+      set({ transferTab: tab })
+    },
+
+    setTransferBusy(busy) {
+      set({ transferBusy: busy })
     },
 
     async saveQuery(name, body) {

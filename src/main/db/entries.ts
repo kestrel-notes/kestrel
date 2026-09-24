@@ -115,6 +115,12 @@ export function ensureDiary(date: string): Entry {
   })
 }
 
+/** 那一天有没有日记（**不**顺手建）。导入器要分清「已有」与「没有」，
+ *  用它自己的 `ensureDiary` 会在探测的时候就把空日记写进去。 */
+export function diaryOn(date: string): Entry | null {
+  return findByDiaryDate(date)
+}
+
 function findByDiaryDate(date: string): Entry | null {
   const row = getDatabase()
     .prepare(

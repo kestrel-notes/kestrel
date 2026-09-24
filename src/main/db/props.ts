@@ -12,6 +12,7 @@
  *  3. **补登记而不是报错**。`props` 里出现没登记过的 key（导入、别的途径写的）时按 `text`
  *     登记下来（§4.3），因为报错拦不住用户看自己的数据，而补登记是幂等的。 */
 
+import { inKestrelNamespace } from '../../shared/exportFormat'
 import {
   isPropType,
   normalizePropKey,
@@ -118,6 +119,11 @@ export function keys(): PropKeyInfo[] {
 export function keyPut(rawName: string, type: PropType): void {
   const name = normalizePropKey(rawName)
   if (!name) throw new Error('属性名不能是空的，也不能含 . " 或反斜杠')
+  // `kestrel-*` 是导出物里 Kestrel 自己那批字段的名字空间（期-08 §一）。
+  // 在这里挡，是因为不挡的代价要到导出时才看得见：那一次整个导出直接不做了
+  if (inKestrelNamespace(name)) {
+    throw new Error(`属性名不能以「kestrel-」开头：那一段是 Kestrel 自己导出时用的`)
+  }
   if (!isPropType(type)) throw new Error(`不认识的属性类型：${String(type)}`)
 
   const current = typeMap().get(name)

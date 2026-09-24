@@ -19,6 +19,7 @@ export const MANIFEST_FILE = LIBRARY_DIR + '/MANIFEST.json'
 export const RESERVED = [
   'kestrel-id',
   'kestrel-kind',
+  'kestrel-title',
   'kestrel-date',
   'kestrel-topic',
   'kestrel-status',
@@ -29,6 +30,14 @@ export const RESERVED = [
 
 export function isReserved(name: string): boolean {
   return RESERVED.includes(name)
+}
+
+/** `kestrel-` 这一整个前缀都是 Kestrel 自己留给包头用的名字。
+ *  导出撞车判据用精确表（`isReserved`，YAML 的键区分大小写，`Kestrel-Id` 撞不上），
+ *  但**新建属性**那一侧按前缀挡——将来包头多加一个字段，不该把用户库里已经存在的
+ *  `kestrel-xxx` 变成「导不出去」。 */
+export function inKestrelNamespace(name: string): boolean {
+  return name.toLowerCase().startsWith('kestrel-')
 }
 
 const ILLEGAL = '/\\:*?"<>|'
@@ -141,8 +150,12 @@ export function frontmatterFor(entry: Entry, topicName: string | null, propNames
   const fm: Fm = {
     'kestrel-id': entry.id,
     'kestrel-kind': entry.kind,
-    'kestrel-date': entry.entryDate,
   }
+  // **标题必须写进包头**：文件名是洗过名的（非法字符换成 `·`、超长截断、撞车加 `·2`），
+  // 拿文件名当标题等于把「`a/b` 这篇」导回来变成「a·b 这篇」。设计稿 §一的样例里漏了这一行，
+  // 实现期做「导出 → 空库导入 → 逐字段比」时才撞上。
+  if (entry.title) fm['kestrel-title'] = entry.title
+  fm['kestrel-date'] = entry.entryDate
   // 主题归属对日记也一样是**数据**：实测这份库里 525 篇日记有 400 篇挂着 topic_id，
   // 只给文章写就等于把这一半关系丢掉（导入回来主题就不对了）
   if (topicName) fm['kestrel-topic'] = topicName

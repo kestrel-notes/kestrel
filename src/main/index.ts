@@ -19,6 +19,7 @@ import * as savedQueries from './db/savedQueries'
 import * as templates from './db/templates'
 import * as queryBlock from './db/queryBlock'
 import * as exporter from './db/export'
+import * as importer from './db/import'
 import { parseQueryBlock } from '../shared/queryLang'
 import {
   IPC,
@@ -189,11 +190,12 @@ function registerIpc(): void {
 
   /* 流通（期-08）。目录由主进程弹系统对话框选——渲染层拿不到 fs，也不该拿到；
    *  渲染层看到的只是一个字符串路径。 */
-  handle(IPC.transferPick, async () => {
+  handle(IPC.transferPick, async (_mode?: 'export' | 'import') => {
+    const 导 = _mode !== 'import'
     const r = await dialog.showOpenDialog({
-      title: '选一个目录放导出物',
-      buttonLabel: '就放这里',
-      properties: ['openDirectory', 'createDirectory'],
+      title: 导 ? '选一个目录放导出物' : '选一个 Kestrel 导出的目录',
+      buttonLabel: 导 ? '就放这里' : '就导这个',
+      properties: 导 ? ['openDirectory', 'createDirectory'] : ['openDirectory'],
     })
     return r.canceled ? null : (r.filePaths[0] ?? null)
   })
@@ -201,6 +203,10 @@ function registerIpc(): void {
   handle(IPC.exportRun, async (dir: string) => exporter.run(dir))
   handle(IPC.exportProgress, () => exporter.getProgress())
   handle(IPC.exportCancel, () => exporter.requestCancel())
+  handle(IPC.importPlan, (dir: string) => importer.plan(dir))
+  handle(IPC.importRun, async (dir: string) => importer.run(dir))
+  handle(IPC.importProgress, () => importer.getProgress())
+  handle(IPC.importCancel, () => importer.requestCancel())
 
   handle(IPC.topicList, () => topics.list())
   handle(IPC.topicCreate, (name: string) => topics.create(name))

@@ -113,6 +113,9 @@ export interface Settings {
   /** 上一次导出用的目录。导出是重复动作（每周导一次给别的工具看），
    *  每次都从系统对话框重挑一遍太烦；这一项也让「导出到哪去了」有个地方能查 */
   exportLastDir: string | null
+  /** 上一次导入用的目录。与导出那一档分开记：往返测试里「导出去的地方」和
+   *  「从哪儿导回来」常常是同一个目录，但混成一个键会让「上次导到哪」这句话有歧义 */
+  importLastDir: string | null
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -123,6 +126,7 @@ export const DEFAULT_SETTINGS: Settings = {
   glass: true,
   followSystem: false,
   exportLastDir: null,
+  importLastDir: null,
 }
 
 /* ── 流通（期-08）：导出 / 导入 / 备份 ────────────────────────────
@@ -164,6 +168,48 @@ export interface ExportResult {
 /** 导出正在进行中的进度。界面**轮询**它，不为这一个数字开一条事件通道——
  *  导出本身是异步分批发起的（`export.ts` 每 200 篇让出一次事件循环），所以轮询拿得到。 */
 export interface ExportProgress {
+  running: boolean
+  done: number
+  total: number
+}
+
+/** 导入计划（期-08 §三）。三个数就是这一档的全部意义：
+ *  人在点确认之前要看得见「新建多少、覆盖多少、多少原样不动」。 */
+export interface ImportPlan {
+  dir: string
+  /** 扫到的 md 文件数（含认不出来的） */
+  files: number
+  /** 认得出 `kestrel-id` 的篇数 */
+  ours: number
+  /** 认不出来的篇数——它们一个字都不会被读进库 */
+  foreign: number
+  /** 前几个认不出来的文件名，给人核对是不是选错了目录 */
+  foreignNames: string[]
+  creates: number
+  updates: number
+  skips: number
+  errors: string[]
+  errorCount: number
+  assets: { referenced: number; present: number; missing: number }
+  newTopics: string[]
+  newPropKeys: string[]
+  library: { topics: number; savedQueries: number; templates: number }
+}
+
+export interface ImportResult {
+  dir: string
+  created: number
+  updated: number
+  skipped: number
+  assets: number
+  topics: number
+  propKeys: number
+  errors: string[]
+  ms: number
+  aborted: boolean
+}
+
+export interface ImportProgress {
   running: boolean
   done: number
   total: number
@@ -651,8 +697,8 @@ export interface KestrelApi {
   /** 流通（期-08）。导出/导入都在主进程做——渲染层拿不到 fs，也不该拿到。
    *  目录由系统对话框选，渲染层只拿到一个字符串路径。 */
   transfer: {
-    /** 打开「选文件夹」对话框；取消返回 null */
-    pickDirectory(): Promise<string | null>
+    /** 打开「选文件夹」对话框；取消返回 null。`import` 那一档不给「新建目录」的按钮 */
+    pickDirectory(mode?: 'export' | 'import'): Promise<string | null>
     exportPlan(dir: string): Promise<ExportPlan>
     exportRun(dir: string): Promise<ExportResult>
     /** 进度是**拉**不是推：大库（实测 6001 篇那份）导出要看得见它在动，
@@ -660,6 +706,10 @@ export interface KestrelApi {
     exportProgress(): Promise<ExportProgress>
     /** 中止正在跑的导出（`export.ts` 的 requestCancel）。只对**正在跑**的那一次有效 */
     exportCancel(): Promise<void>
+    importPlan(dir: string): Promise<ImportPlan>
+    importRun(dir: string): Promise<ImportResult>
+    importProgress(): Promise<ImportProgress>
+    importCancel(): Promise<void>
   }
   settings: {
     all(): Promise<Settings>
@@ -774,6 +824,10 @@ export const IPC = {
   exportRun: 'export:run',
   exportProgress: 'export:progress',
   exportCancel: 'export:cancel',
+  importPlan: 'import:plan',
+  importRun: 'import:run',
+  importProgress: 'import:progress',
+  importCancel: 'import:cancel',
   devSql: 'dev:sql',
   winMinimize: 'win:minimize',
   winToggleMaximize: 'win:toggleMaximize',

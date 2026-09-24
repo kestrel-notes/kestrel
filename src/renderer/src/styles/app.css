@@ -4016,4 +4016,55 @@ input[type='range'] {
   white-space: pre-wrap;
   word-break: break-word;
 }
+/* 导出 / 导入两档。选中态沿用 .chip.on 那一套（accent-soft 底 + accent 字），
+   不用 primary——primary 在这套语言里是「按下就提交」的意思，这一行只是换账本 */
+.tr-tabs {
+  display: flex;
+  gap: 6px;
+  margin: -8px 0 14px;
+}
+.tr-tab {
+  height: 26px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--text-2);
+  font: inherit;
+  font-size: 12.5px;
+  white-space: nowrap;
+  transition: all 0.15s;
+}
+.tr-tab:hover {
+  background: var(--hover);
+  border-color: var(--border-strong);
+  color: var(--text-1);
+}
+.tr-tab.on {
+  background: var(--accent-soft);
+  border-color: transparent;
+  color: var(--accent);
+}
+.tr-tab:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+.tr-tab:disabled:hover {
+  background: none;
+  border-color: var(--border);
+  color: var(--text-2);
+}
+.close-x:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.close-x:disabled:hover {
+  background: none;
+  color: var(--text-3);
+}
+.tr-body code {
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  color: var(--text-2);
+}
 

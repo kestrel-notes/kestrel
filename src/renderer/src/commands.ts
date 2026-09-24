@@ -341,7 +341,21 @@ export const COMMANDS: Command[] = [
     title: '导出为 Markdown · 整库 front-matter 目录树',
     group: '数据',
     // 不配快捷键：这是一年用不了几次的事，占一个键位不如让人搜得到
-    run: (s) => s.setTransferOpen(true),
+    run: (s) => {
+      s.setTransferTab('export')
+      s.setTransferOpen(true)
+    },
+  },
+  {
+    id: 'import.markdown',
+    title: '从 Markdown 导回 · 只认 Kestrel 自己导出的目录',
+    group: '数据',
+    // 两条命令分开，是为了让人搜「导入」时不必先进面板再找档——那一档会写库，
+    // 中途多一次误点就多一次风险
+    run: (s) => {
+      s.setTransferTab('import')
+      s.setTransferOpen(true)
+    },
   },
   {
     id: 'entry.remove',
