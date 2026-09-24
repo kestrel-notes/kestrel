@@ -179,7 +179,7 @@
       <ul>
         <li><strong>两种笔记体</strong>：<strong>日记</strong>按日期建，一天一篇；<strong>文章</strong>挂在主题下面。</li>
         <li><strong>自动保存</strong>：停下来半秒就落盘，状态条会写「已保存」。<kbd>Ctrl+S</kbd> 强制存并留一版历史。</li>
-        <li><strong>双模式编辑器</strong>：源码模式是 CodeMirror 6，所见即所得是 Tiptap。<kbd>Ctrl+Shift+M</kbd> 两边切换。</li>
+        <li><strong>三种编辑器模式</strong>：阅读、所见即所得（Tiptap）、源码（CodeMirror 6）。<kbd>Ctrl+Shift+M</kbd> 循环切换。</li>
         <li><strong>升格</strong>：日记写着写着变成文章，<kbd>Ctrl+K</kbd> 搜「升格」，选个主题，原文连同样式一起搬过去。</li>
       </ul>
       <div class="card glass">
@@ -207,16 +207,16 @@
       <p>记东西的应用最怕「改坏了回不去」。这里的网有四层：</p>
       <ol>
         <li>
-          <strong>回收站</strong>：删掉的记录先软删除进回收站，随时可以恢复，指向它的链接也一起接回来。<strong>没有任何自动清理</strong>：它会一直待在那儿，直到你亲手点「彻底删除」。只有点「彻底删除」才是真删，历史版本和所有引用会一起清掉。
+          <strong>回收站</strong>：删掉的记录先软删除进回收站，随时可以恢复，指向它的链接也一起接回来。<strong>满 30 天才动刀</strong>：超过 30 天的那一些会在开应用时自动彻底删除，走的与「彻底删除」是同一把刀（历史版本和所有引用一起清）。而且这一刀只在<strong>当天那一份快照已经在盘上</strong>的时候才动手——它自己的回退路径就是那一份：自动备份关着、或那一份没落成的时候，它跟着不跑。等不及可以自己按「跑一次那一刀」，那一句是你当场下的令。
         </li>
         <li>
-          <strong>历史版本</strong>：正文每改一次自动留一版（同一篇两次自动快照至少隔 5 分钟，否则历史列表会变成一串「3 秒前 / 6 秒前」）；每篇最多留最近 50 版。<kbd>Ctrl+S</kbd> 强制留一版，不受这个门槛限制。右栏「历史」翻得到，选中哪一版都能恢复——恢复之前会先把<strong>当前</strong>这一版存下，所以连恢复本身都能撤销。
+          <strong>历史版本</strong>：正文每改一次自动留一版（同一篇两次自动快照至少隔 5 分钟，否则历史列表会变成一串「3 秒前 / 6 秒前」）；每篇最多留最近 50 版。<kbd>Ctrl+S</kbd> 强制留一版，不受这个门槛限制。右栏「历史」翻得到，选中哪一版都能恢复——恢复之前会先把<strong>当前</strong>这一版存下，所以连恢复本身都能撤销。超过 30 天的历史版本与回收站走同一把刀（上一条那两个条件一个不少）。
         </li>
         <li>
           <strong>改名的连带</strong>：给主题或标签改名时先报「全库有 N 处会被改」，动手之前那 N 篇各自先留一版历史。
         </li>
         <li>
-          <strong>库本身</strong>：一个 SQLite 单文件，想备份就拷这一个文件。卸载应用不会动它。
+          <strong>每日快照与换库</strong>：开应用时如果当天还没有那一份，就用 <code>VACUUM INTO</code> 往 <code>%APPDATA%\Kestrel\backups\</code> 落一份，默认留最近 7 份（可设 3–30）。清单里每一份写着日期、篇数和大小，挑一份就能把<strong>整个库</strong>换回去；换之前当前库先自动存成 <code>kestrel-before-restore-…</code>，所以两个方向都退得回去。<strong>别拿拷 <code>.db</code> 文件当备份</strong>：应用开着的时候那些写入还在 <code>-wal</code> 里，只拷主文件拷走的是一部缺了最近改动的库。卸载应用不会动这个目录。
         </li>
       </ol>
     </section>
@@ -232,9 +232,12 @@
         <tbody>
           <tr><td class="keys"><kbd>Ctrl+K</kbd> / <kbd>Ctrl+P</kbd></td><td>命令面板</td><td>按分组列出所有命令</td></tr>
           <tr><td class="keys"><kbd>Ctrl+O</kbd></td><td>快速切换 · 跳到某条记录或主题</td><td></td></tr>
+          <tr><td class="keys"><kbd>Ctrl+F</kbd></td><td>站内搜索</td><td>三档排序：综合（默认）/ 相关度 / 最近</td></tr>
+          <tr><td class="keys"><kbd>Ctrl+G</kbd></td><td>打开全局图谱</td><td></td></tr>
+          <tr><td class="keys"><kbd>Ctrl+Shift+G</kbd></td><td>打开全局图谱 · 时间轴</td><td>密度格子与跨年同日那一档</td></tr>
           <tr><td class="keys"><kbd>Ctrl+1</kbd> <kbd>Ctrl+2</kbd> <kbd>Ctrl+3</kbd> <kbd>Ctrl+4</kbd></td><td>切到「今天」/「主题」/「标签」/「属性」</td><td>左栏四格</td></tr>
           <tr><td class="keys"><kbd>Ctrl+N</kbd></td><td>新建</td><td>日记模式打开今天，主题模式下新建文章</td></tr>
-          <tr><td class="keys"><kbd>Ctrl+Shift+M</kbd></td><td>源码 ⇄ 所见即所得</td><td>切换前过一遍无损判据</td></tr>
+          <tr><td class="keys"><kbd>Ctrl+Shift+M</kbd></td><td>循环切换编辑器模式</td><td>阅读 → 所见即所得 → 源码；切换前过一遍无损判据</td></tr>
           <tr><td class="keys"><kbd>Ctrl+S</kbd></td><td>手动保存</td><td>存盘并留一版历史</td></tr>
           <tr><td class="keys"><kbd>Ctrl+D</kbd></td><td>收藏 / 取消收藏当前记录</td><td></td></tr>
           <tr><td class="keys"><kbd>Ctrl+Shift+F</kbd></td><td>专注模式</td><td></td></tr>
@@ -242,8 +245,8 @@
           <tr><td class="keys"><kbd>Ctrl+,</kbd></td><td>设置 · 外观</td><td>四套主题与强调色</td></tr>
         </tbody>
       </table>
-      <p>只从命令面板进、没有键位的：<strong>升格为文章</strong>、<strong>主题管理</strong>、<strong>回收站</strong>、<strong>删除当前记录</strong>、<strong>收藏列表</strong>。</p>
-      <p><kbd>Ctrl+F</kbd> 是留白的——它属于站内搜索，那一版还没做。</p>
+      <p>只从命令面板进、没有键位的：<strong>升格为文章</strong>、<strong>主题管理</strong>、<strong>回收站</strong>、<strong>删除当前记录</strong>、<strong>收藏列表</strong>、<strong>插入查询块</strong>、<strong>查询与模板</strong>（存查询 / 模板管理）、表格那一组，以及 <strong>导出为 Markdown</strong>、<strong>从 Markdown 导回</strong>、<strong>备份与恢复</strong>这三条。导出那一档一年用不了几次，占一个键位不如让人搜得到。</p>
+      <p><kbd>Ctrl+F</kbd> 是站内搜索，<kbd>Ctrl+Shift+F</kbd> 是专注模式——这一对与 Obsidian 的键位不一样，别按习惯按。</p>
     </section>
 
     <section id="first-run">
@@ -258,10 +261,11 @@
         <li><strong>库文件位置</strong>：Windows 下是 <code>%APPDATA%\Kestrel\kestrel.db</code>，一个 SQLite 单文件。</li>
         <li><strong>零网络请求</strong>：没有统计、没有更新检查、没有云；字体打包在安装包里。正文里的 http 链接被点击时交给系统浏览器打开，应用内不开新窗口。</li>
         <li><strong>卸载不动库</strong>：卸载程序被配置成不删 <code>%APPDATA%\Kestrel</code>。</li>
-        <li><strong>备份</strong>：拷走那一个 <code>.db</code> 文件就是全部备份。<code>.md</code> 导出还没做，在那之前它是唯一的备份手段。</li>
+        <li><strong>每日快照</strong>：<code>%APPDATA%\Kestrel\backups\</code>，一天一份（<code>VACUUM INTO</code>，含 <code>-wal</code> 里那些还没回写主文件的改动），默认留 7 份。快照只在本机，<strong>不做异地 / 云盘</strong>；换库是整库换文件，附件在旁边的 <code>attachments/</code> 目录里、不跟着快照走，所以那份库拿到另一台机器上会指向缺文件的位置。</li>
+        <li><strong>导出与导回</strong>：整个库可以导成一棵 Markdown 目录树（frontmatter 铺在顶层，Obsidian 那类读得懂属性的编辑器打开就是原生形状），也可以把那棵导回库——<strong>认的是自家包头里的 <code>kestrel-id</code></strong>。这一对只保证自家往返，不是通用导入器：别的软件导过来的目录，它一个字都不读。</li>
       </ul>
       <div class="note">
-        <p><strong>这一版还没接上的部分，写在这儿。</strong>回收站<strong>没有任何自动清理</strong>：程序不会自己删掉里面的任何东西，要清干净得你自己点「彻底删除」。同理，「同步」「协作」这类词在这里都不是承诺，见<a href="#nongoals">非目标</a>。</p>
+        <p><strong>这一版会自己删东西的地方，只有一处，写在这儿。</strong>回收站与历史版本满 <strong>30 天</strong>会在开应用时被自动彻底删除（与「彻底删除」同一把刀），而且只在<strong>当天那份快照已经在盘上</strong>的时候动手——自动备份关着或那一份没落成，它就不跑。除此之外程序不会自己删掉你的任何内容。同理，「同步」「协作」这类词在这里都不是承诺，见<a href="#nongoals">非目标</a>。</p>
       </div>
     </section>
 
@@ -269,8 +273,8 @@
       <h2>非目标</h2>
       <p>这些不是「还没做」，是<strong>不打算做</strong>：</p>
       <ul>
-        <li><strong>不做云同步</strong>。本地优先的全部意义在于数据只在你机器上。想同步就把那个 <code>.db</code> 文件交给任意网盘或 git。</li>
-        <li><strong>不用 <code>.md</code> 目录当存储格式</strong>。双链、反链、属性、历史版本这些跨文件的索引，一旦以文件为存储就得在每次打开时重算一遍，库一大就慢。已知的取舍：库文件损坏时没法像纯文本那样手工改。</li>
+        <li><strong>不做云同步</strong>。本地优先的全部意义在于数据只在你机器上。想同步就把那个 <code>.db</code> 文件交给任意网盘或 git——但别拿它当备份，理由在<a href="#safety">安全网第 4 层</a>。</li>
+        <li><strong>不用 <code>.md</code> 目录当存储格式</strong>。双链、反链、属性、历史版本这些跨文件的索引，一旦以文件为存储就得在每次打开时重算一遍，库一大就慢。这里存的是 SQLite，那棵 Markdown 是<strong>导出来的</strong>。已知的取舍：库文件损坏时没法像纯文本那样手工改。</li>
         <li><strong>不做协作与多人编辑</strong>。这是个人工具。</li>
         <li><strong>不做插件系统</strong>。要做的能力就直接做进主程序，否则界面一致性保不住。</li>
         <li><strong>不做移动端</strong>。</li>

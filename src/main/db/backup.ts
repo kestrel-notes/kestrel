@@ -6,7 +6,9 @@
  *     实测「拷主文件 + 删 -wal」拷走的是一份**缺了最近那些写入**的库，那不是备份，是丢数据。
  *     `VACUUM INTO` 走的是这条连接自己，读得进 WAL，产物是单个不带 `-wal` 的完整文件
  *     （22ms 量级，`integrity_check ok`）。`node:sqlite` 没有在线备份 API，所以只有这一条路。
- *  2. **裁剪跑在备份之后**，顺序是硬的：那几份快照就是 30 天那一刀唯一的回退路径。
+ *  2. **裁剪跑在备份之后，而且要有当日那一份在手才跑**，顺序是硬的：那几份快照就是 30 天
+ *     那一刀唯一的回退路径。设置里那颗勾关掉、或那一份没落成（磁盘满）时，自动那一跑
+ *     不碰这一刀——「有回退路径」看的是盘上有没有那个文件，不是设置里怎么写的。
  *  3. **换库是同步的一段**（关连接 → 自保 → 换文件 → 重开）。中间不让出事件循环，
  *     否则 IPC 能插进"连接已关、文件还没换上"那一瞬，那正是 0.4 那种坑的孪生兄弟。
  *
@@ -246,6 +248,15 @@ export async function runMaintenance(): Promise<void> {
     if (made) console.log(`[backup] 落了一份：${made}`)
     if (pruned.length) console.log(`[backup] 超出保留名额 ${keep} 份，删掉：${pruned.join('、')}`)
     if (!isOpen()) return
+    // 自动那一跑里，30 天那一刀要等「今天那一份确实在盘上」才动手。判据不是设置里那颗勾，
+    // 而是它对着的文件：勾开着但落那一份失败（磁盘满、目录被占）时，回退路径同样是零。
+    // 界面上那颗「跑一次那一刀」不受这一条管——那是人当场下的令，不是每天自己那一跑。
+    if (!hasSnapshotForDay(盘上的(), today)) {
+      console.log(
+        '[backup] 今天那一份不在盘上，30 天那一刀跟着不跑（那一刀的回退路径就是当日那一份）'
+      )
+      return
+    }
     const cut = await pruneHistory()
     if (cut.revisions || cut.entries)
       console.log(
