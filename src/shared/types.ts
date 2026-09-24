@@ -212,6 +212,28 @@ export interface ShareWrite {
   renamed: boolean
 }
 
+/** 一簇「反复提到」（期-11b）：同一个目标被这些篇在 ≥3 个不同月份各自提过，
+ *  且**这些篇彼此一条链都没有**（有一条就不算这一簇，判据见 `main/db/repeats.ts`）。
+ *
+ *  `kind` 三种：目标是一篇文章 / 是一个主题 / 至今不存在（悬空）。第三种最值钱——
+ *  `[[X]]` 连着写了三个月而 X 还没有，那就是"该成文"最硬的一票（决策 95）。 */
+export interface Repeat {
+  /** 稳定键：`entry:<id>` / `topic:<id>` / `raw:<规范化写法>`（悬空那一档） */
+  key: string
+  kind: RepeatTargetKind
+  /** 显示用的名字。悬空时就是那个写法本身（规范化后的），界面上要说"至今没有这一篇" */
+  目标: string
+  /** 目标存不存在（悬空 = false） */
+  存在: boolean
+  /** 跨了几个不同的月（YYYY-MM 去重后的个数） */
+  跨月: number
+  月份: string[]
+  篇数: number
+  篇: { id: number; kind: EntryKind; title: string | null; entryDate: string }[]
+}
+
+export type RepeatTargetKind = 'entry' | 'topic' | 'dangling'
+
 /** 关于那一格要的几件事（期-09b §四）。版本与路径都在主进程那一侧，渲染进程猜不出来，
  *  而「我的日记存在哪儿」这一格恰恰是人最容易问、也最不该由界面编的一句话。 */
 export interface AppInfo {
@@ -907,6 +929,12 @@ export interface KestrelApi {
     /** 落那个 .html。落盘前主进程自己再跑一遍 `自检()`：过不了就抛，一个字节都不写 */
     write(dir: string, title: string, html: string): Promise<ShareWrite>
   }
+  /** 思想重复度（期-11b）：现算，库里不记任何东西。两条通道读的是同一份算法，
+   *  区别只在要不要按「当前这一篇掺在里面」筛一遍 */
+  repeats: {
+    all(上限?: number): Promise<{ 簇: Repeat[]; 还有: number }>
+    for(entryId: number, 上限?: number): Promise<{ 簇: Repeat[]; 还有: number }>
+  }
   /** 工作区（期-09a）：开着哪几篇、哪个在当前、各自滚到哪儿。
    *  `load` 认不出来就返回 null（当没有，界面退回今天）；走这条而不是 `settings.*` 的理由写在
    *  `shared/workspace.ts` 头上。 */
@@ -1058,6 +1086,9 @@ export const IPC = {
    *  挑目录复用 `transferPick('share')`——与 `'sync'` 同法：只弹框，不凭空建目录 */
   shareAsset: 'share:asset',
   shareWrite: 'share:write',
+  /** 思想重复度（期-11b）：全库清单 / 当前这一篇掺在哪些簇里。都是只读，现算不缓存 */
+  repeatsAll: 'repeats:all',
+  repeatsFor: 'repeats:for',
   /** 工作区（期-09a）：开着哪几篇、哪个在当前、各自滚到哪儿。独立于 settings:* 的两条，理由见 shared/workspace.ts 头上 */
   workspaceLoad: 'workspace:load',
   workspaceSave: 'workspace:save',

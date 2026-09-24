@@ -3486,6 +3486,109 @@ input[type='range'] {
   background: var(--hover);
 }
 
+/* 反复提到（期-11b §四）。跟着编年史那一块的尺寸走：右栏六块共用一套字号与间距，
+   新加一块不该顺手改这套尺子（圆角标尺那条规矩同样在这儿生效） */
+.rp-switch {
+  align-self: flex-start;
+  padding: 1px 6px;
+  border: none;
+  border-radius: var(--radius-xs);
+  background: none;
+  color: var(--text-3);
+  font-family: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+.rp-switch:hover {
+  color: var(--accent);
+  background: var(--hover);
+}
+.rp-item {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 6px 0;
+  border-top: 1px solid var(--border);
+}
+.rp-head {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.rp-target {
+  font-size: 12.5px;
+  color: var(--text-1);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.rp-meta {
+  font-size: 11px;
+  color: var(--text-3);
+}
+.rp-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  margin: 2px 0;
+  padding: 0;
+  list-style: none;
+}
+.rp-open {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  width: 100%;
+  padding: 2px 4px;
+  border: none;
+  border-radius: var(--radius-xs);
+  background: none;
+  color: var(--text-2);
+  font-family: inherit;
+  font-size: 11.5px;
+  text-align: left;
+  cursor: pointer;
+}
+.rp-open:hover {
+  background: var(--hover);
+  color: var(--accent);
+}
+/* 日期那一列等宽：不成列的话一屏扫下去全是锯齿 */
+.rp-date {
+  flex: 0 0 auto;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-3);
+}
+.rp-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.rp-more {
+  font-size: 11px;
+  color: var(--text-3);
+}
+.rp-do {
+  align-self: flex-start;
+  margin-top: 2px;
+  padding: 3px 9px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--bg-panel);
+  color: var(--text-2);
+  font-family: inherit;
+  font-size: 11.5px;
+  cursor: pointer;
+}
+.rp-do:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.rp-do:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
 /* 跨年同日的静默卡。刻意不做卡片底色：它是一行提示，不是一块要读的内容区 */
 .cy-lines {
   display: flex;

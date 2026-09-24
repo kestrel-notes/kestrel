@@ -119,6 +119,10 @@ const api: KestrelApi = {
     asset: (name) => ipcRenderer.invoke(IPC.shareAsset, name),
     write: (dir, title, html) => ipcRenderer.invoke(IPC.shareWrite, dir, title, html),
   },
+  repeats: {
+    all: (上限) => ipcRenderer.invoke(IPC.repeatsAll, 上限),
+    for: (entryId, 上限) => ipcRenderer.invoke(IPC.repeatsFor, entryId, 上限),
+  },
   workspace: {
     load: () => ipcRenderer.invoke(IPC.workspaceLoad),
     save: (ws) => ipcRenderer.invoke(IPC.workspaceSave, ws),

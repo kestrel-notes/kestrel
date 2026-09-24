@@ -498,6 +498,16 @@ export const COMMANDS: Command[] = [
     },
   },
   {
+    id: 'repeats.global',
+    title: '思想重复度 · 全库那些"反复提到却没连"的目标',
+    group: '视图',
+    // 只把右栏那一块切到全库那一档（期-11b §四）：不另开窗口、不主动弹，
+    // 也不给键位——它是一台"偶尔翻一翻"的机器，天天摊着就会被学会忽略
+    run: (s) => {
+      s.showRepeats(true)
+    },
+  },
+  {
     id: 'entry.remove',
     title: '删除当前记录',
     group: '数据',

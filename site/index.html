@@ -197,6 +197,7 @@
         <li><strong>悬空链接</strong>是特性不是错误：目标还没写出来时画成虚线，等你哪天补上那一篇，它自己就连上了。</li>
         <li><strong>反向链接</strong>在右栏，带着上下文那一行。</li>
         <li><strong>局部图谱</strong>画当前记录两跳以内的邻居，颜色分日记 / 文章 / 主题。</li>
+        <li><strong>反复提到</strong>在右栏：这一篇写的某个 <code>[[目标]]</code>，如果在<strong>三个以上不同的月份</strong>被提过、而提到它的那些篇<strong>彼此一条链都没有</strong>（<code>[[标题]]</code> 与 <code>[[日期]]</code> 两种写法都算连过），这一块就把那几篇摊出来，每行写着「跨 7 个月 · 10 篇彼此没连」，让人自己判要不要理；目标还没写出来时它说得最硬——「至今没有这一篇」。点「整理成一篇」只新建一篇<strong>空标题</strong>的文章、把那几篇的双链摊进去，<strong>不合并、不代写、不删原篇</strong>。全库清单从命令面板搜「思想重复度」，一次最多列 50 簇，剩下的写着"还有几条没列出来"。这一档只做"同一个被提及的目标"：<strong>类别不是重复</strong>，同主题 / 同标签那两种信号实测出局；文本相似度那一路<strong>没做</strong>——不是太贵，是今天没有一份语料能定阈值，定低了它就变成"你写的东西都差不多"那面噪音墙。也不主动弹：这一档一开始主动弹，就会被学会忽略。</li>
         <li><strong>嵌套标签</strong> <code>#父/子</code>：标签只认正文，左栏的标签树会自动长出来，点父标签能把子孙的条目一起筛出来。中文标签不用打空格。</li>
         <li><strong>属性</strong>是「这篇自己带的结构化字段」，有 <code>text / number / list / checkbox</code> 四种类型，属性名在全库共用一个类型。左栏第四格按值分组——这是标签做不到的一件事。</li>
         <li><strong>大纲</strong>在右栏，长正文不用滚。</li>
@@ -279,7 +280,7 @@
           <tr><td class="keys"><kbd>Ctrl+,</kbd></td><td>设置</td><td>外观 / 编辑器 / 片段 / 快捷键 / 数据 / 关于</td></tr>
         </tbody>
       </table>
-      <p>只从命令面板进、没有键位的：<strong>升格为文章</strong>、<strong>主题管理</strong>、<strong>回收站</strong>、<strong>删除当前记录</strong>、<strong>收藏列表</strong>、<strong>插入查询块</strong>、<strong>查询与模板</strong>（存查询 / 模板管理）、表格那一组，<strong>设置 · CSS 片段</strong>、<strong>重读 CSS 片段</strong>、<strong>暂停全部片段（本次会话）</strong>，<strong>演示这一篇（幻灯片）</strong>、<strong>随机打开一篇</strong>，以及 <strong>导出为 Markdown</strong>、<strong>从 Markdown 导回</strong>、<strong>备份与恢复</strong>、<strong>文件夹同步</strong>、<strong>分享这一篇</strong>那五条。导出那一档一年用不了几次，占一个键位不如让人搜得到；<strong>同步这一档另有半个理由：那两颗按钮里有一颗会把当前库整个换掉</strong>，它不该做成"按一次回车就写盘"的默认行为。</p>
+      <p>只从命令面板进、没有键位的：<strong>升格为文章</strong>、<strong>主题管理</strong>、<strong>回收站</strong>、<strong>删除当前记录</strong>、<strong>收藏列表</strong>、<strong>插入查询块</strong>、<strong>查询与模板</strong>（存查询 / 模板管理）、表格那一组，<strong>设置 · CSS 片段</strong>、<strong>重读 CSS 片段</strong>、<strong>暂停全部片段（本次会话）</strong>，<strong>演示这一篇（幻灯片）</strong>、<strong>随机打开一篇</strong>，以及 <strong>导出为 Markdown</strong>、<strong>从 Markdown 导回</strong>、<strong>备份与恢复</strong>、<strong>文件夹同步</strong>、<strong>分享这一篇</strong>那五条，以及<strong>思想重复度 · 全库</strong>（右栏那一块换成全库清单，每行给「整理成一篇」）。导出那一档一年用不了几次，占一个键位不如让人搜得到；<strong>同步这一档另有半个理由：那两颗按钮里有一颗会把当前库整个换掉</strong>，它不该做成"按一次回车就写盘"的默认行为。</p>
       <p>演示那一层自己的键（<kbd>→</kbd> <kbd>↓</kbd> <kbd>←</kbd> <kbd>↑</kbd> · <kbd>Space</kbd> <kbd>Backspace</kbd> <kbd>PageDown</kbd> <kbd>PageUp</kbd> · <kbd>Home</kbd> <kbd>End</kbd> <kbd>Esc</kbd>）<strong>只在层里生效</strong>，没登记进全局命令表——登记了就会吃掉编辑器与列表的同名键。</p>
       <p><kbd>Ctrl+F</kbd> 是站内搜索，<kbd>Ctrl+Shift+F</kbd> 是专注模式——这一对与 Obsidian 的键位不一样，别按习惯按。</p>
       <p>开几篇同时在手：在侧栏的文章卡上 <kbd>Ctrl+单击</kbd> 或按鼠标中键就是新开一格；中键点已经开着的那一篇是切到它那一格，不会多出第二格；<strong>双击</strong>标签固定它（固定的永远排最前，<kbd>Ctrl+W</kbd> 关不掉，得先取消固定）。固定没有键位，命令面板里有那一条。</p>

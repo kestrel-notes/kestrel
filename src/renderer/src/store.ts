@@ -242,6 +242,10 @@ export interface AppState {
   slidesOpen: boolean
   lastRandomId: number | null
 
+  /** 右栏那块「反复提到」看的是哪一档：false = 只掺进当前这一篇的簇，true = 全库清单（期-11b §四）。
+   *  全库清单不另开窗口，也不另做一块常驻界面——它只是同一块的另一种态 */
+  repeatsGlobal: boolean
+
   /** 当前这篇的历史版本（列表不带正文） */
   versions: RevisionSummary[]
   /** 正在预览的那一版，含正文 */
@@ -378,6 +382,8 @@ export interface AppState {
   /** 演示当前这一篇（期-09c）。空正文也开得起来——那一页是空白的，提示语照样在场 */
   openSlides(): void
   closeSlides(): void
+  /** 右栏那块「反复提到」切态：true = 全库清单，false = 只当前这一篇掺进去的（期-11b §四） */
+  showRepeats(全局: boolean): void
   /** 随机开一篇：新开一格而不是原地换（决策 55），连按不给同一篇（决策 56） */
   randomEntry(): Promise<void>
   /** 跨年同日那张卡上的「连」：在正文末尾补一行 `[[那年那条]]`，走正常保存与重解析
@@ -981,6 +987,7 @@ export const useStore = create<AppState>()((set, get) => {
     graphMode: 'force',
     slidesOpen: false,
     lastRandomId: null,
+    repeatsGlobal: false,
     bookmarks: [],
     versions: [],
     versionOf: null,
@@ -1857,6 +1864,13 @@ export const useStore = create<AppState>()((set, get) => {
     },
     closeSlides() {
       set({ slidesOpen: false })
+    },
+
+    /* ─ 反复提到（期-11b） ─ */
+
+    // 只切一个布尔：那一块的两种态读的是同一份现算结果（决策 93），没有第二份状态要同步
+    showRepeats(全局: boolean) {
+      set({ repeatsGlobal: 全局 })
     },
 
     async randomEntry() {

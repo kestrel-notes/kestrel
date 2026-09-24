@@ -7,6 +7,7 @@ import { Backlinks } from '@/components/Backlinks'
 import { RailBlock } from '@/components/RailBlock'
 import { PropsPanel } from '@/components/PropsPanel'
 import { Chronicle } from '@/components/Chronicle'
+import { Repeats } from '@/components/Repeats'
 import { CrossYearCard } from '@/components/CrossYearCard'
 
 export function Rail(): JSX.Element {
@@ -95,6 +96,10 @@ export function Rail(): JSX.Element {
       {/* 编年史与上面那两块是同一件事的两个轴：反链与局部图谱看"谁连着这一篇"（空间轴），
           这一条看"这一篇是怎么长出来的"（时间轴）。没有归属主题时整块不渲染 */}
       <Chronicle />
+
+      {/* 与编年史同一根时间轴上的另一件事：那一块说"这一条线怎么长出来的"，这一块说
+          "你反复提到的那个目标，这几篇彼此却没连"。不掺在任何一簇里时整块不渲染（期-11b §四） */}
+      <Repeats />
 
       <PropsPanel />
 

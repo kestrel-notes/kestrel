@@ -24,6 +24,7 @@ import * as backup from './db/backup'
 import * as workspace from './db/workspace'
 import * as snippets from './db/snippets'
 import * as sync from './db/sync'
+import * as repeats from './db/repeats'
 import * as share from './db/share'
 import { parseQueryBlock } from '../shared/queryLang'
 import {
@@ -260,6 +261,9 @@ function registerIpc(): void {
    *  而且**落盘前主进程自己再跑一遍 `自检()`**——渲染层报过来的那一份不预先相信。 */
   handle(IPC.shareAsset, (name: string) => share.asset(name))
   handle(IPC.shareWrite, (dir: string, title: string, html: string) => share.write(dir, title, html))
+  // 思想重复度（期-11b）：两条都只读、都现算（决策 93：3ms 的东西不养第二份真相）
+  handle(IPC.repeatsAll, (上限?: number) => repeats.all(上限))
+  handle(IPC.repeatsFor, (entryId: number, 上限?: number) => repeats.forEntry(entryId, 上限))
 
   /** 工作区（期-09a）。`save` 这一头不再校验一遍：写进去的坏东西在 `load()` 那里会被
    *  当成「没有工作区」，那一刀本来就按不可信输入写（`shared/workspace.ts`）。
