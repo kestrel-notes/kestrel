@@ -54,6 +54,9 @@ function coerce(raw: Partial<Settings>): Settings {
       raw.editorModeDefault === 'rich'
         ? raw.editorModeDefault
         : DEFAULT_SETTINGS.editorModeDefault,
+    // 与 exportLastDir 同一类：只当字符串存着，不校验存不存在。那个夹可能在移动硬盘上、
+    // 今天没插——那一格也要能告诉用户「上次是这儿」
+    syncDir: typeof raw.syncDir === 'string' ? raw.syncDir : null,
   }
 }
 

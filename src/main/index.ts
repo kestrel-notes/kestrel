@@ -23,6 +23,7 @@ import * as importer from './db/import'
 import * as backup from './db/backup'
 import * as workspace from './db/workspace'
 import * as snippets from './db/snippets'
+import * as sync from './db/sync'
 import { parseQueryBlock } from '../shared/queryLang'
 import {
   IPC,
@@ -210,11 +211,14 @@ function registerIpc(): void {
 
   /* 流通（期-08）。目录由主进程弹系统对话框选——渲染层拿不到 fs，也不该拿到；
    *  渲染层看到的只是一个字符串路径。 */
-  handle(IPC.transferPick, async (_mode?: 'export' | 'import') => {
-    const 导 = _mode !== 'import'
+  handle(IPC.transferPick, async (_mode?: 'export' | 'import' | 'sync') => {
+    const 导 = _mode !== 'import' && _mode !== 'sync'
+    const 同 = _mode === 'sync'
     const r = await dialog.showOpenDialog({
-      title: 导 ? '选一个目录放导出物' : '选一个 Kestrel 导出的目录',
-      buttonLabel: 导 ? '就放这里' : '就导这个',
+      title: 导 ? '选一个目录放导出物' : 同 ? '选那个同步用的文件夹' : '选一个 Kestrel 导出的目录',
+      buttonLabel: 导 ? '就放这里' : 同 ? '就同步这个夹' : '就导这个',
+      // 同步那一档不给「新建目录」：那个夹是 Dropbox / OneDrive 已经在管的那个，
+      // 由我们凭空建一个出来，用户就不知道自己在把日记交给谁了
       properties: 导 ? ['openDirectory', 'createDirectory'] : ['openDirectory'],
     })
     return r.canceled ? null : (r.filePaths[0] ?? null)
@@ -233,6 +237,13 @@ function registerIpc(): void {
   handle(IPC.backupNow, () => backup.snapshotNow())
   handle(IPC.backupRestore, (name: string) => backup.restore(name))
   handle(IPC.backupPrune, () => backup.pruneHistory())
+
+  /* 文件夹同步（期-10）。四条：看 / 推 / 拉 / 忘掉。那个夹的路径只有 `transferPick('sync')`
+   *  与设置里那一条来源，这里没有任何一条通道接受"往这个路径写"——拼路径的权力留在主进程。 */
+  handle(IPC.syncStatus, () => sync.status())
+  handle(IPC.syncPush, () => sync.push())
+  handle(IPC.syncPull, () => sync.pull())
+  handle(IPC.syncForget, () => sync.forget())
 
   /** 工作区（期-09a）。`save` 这一头不再校验一遍：写进去的坏东西在 `load()` 那里会被
    *  当成「没有工作区」，那一刀本来就按不可信输入写（`shared/workspace.ts`）。

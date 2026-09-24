@@ -109,6 +109,12 @@ const api: KestrelApi = {
     restore: (name) => ipcRenderer.invoke(IPC.backupRestore, name),
     prune: () => ipcRenderer.invoke(IPC.backupPrune),
   },
+  sync: {
+    status: () => ipcRenderer.invoke(IPC.syncStatus),
+    push: () => ipcRenderer.invoke(IPC.syncPush),
+    pull: () => ipcRenderer.invoke(IPC.syncPull),
+    forget: () => ipcRenderer.invoke(IPC.syncForget),
+  },
   workspace: {
     load: () => ipcRenderer.invoke(IPC.workspaceLoad),
     save: (ws) => ipcRenderer.invoke(IPC.workspaceSave, ws),

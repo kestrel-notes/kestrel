@@ -473,6 +473,18 @@ export const COMMANDS: Command[] = [
     },
   },
   {
+    id: 'sync.pane',
+    title: '文件夹同步 · 推到一个夹，或从那个夹换回来',
+    group: '数据',
+    // 设计稿 §三 本来列了三条（推 / 拉 / 换一个夹），这里收成一条只开面板：
+    // 推与拉都是写盘与换库，"按一次回车就动手"不该是命令的默认行为——与 backup.pane 同一条理由。
+    // 面板里那三颗按钮都在，判据不许的那颗是灰的
+    run: (s) => {
+      s.setTransferTab('sync')
+      s.setTransferOpen(true)
+    },
+  },
+  {
     id: 'entry.remove',
     title: '删除当前记录',
     group: '数据',

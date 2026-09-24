@@ -262,7 +262,7 @@ export interface AppState {
   libraryOpen: boolean
   /** 「流通」面板：导出整库 / 从导出物导入 / 备份（期-08 §九） */
   transferOpen: boolean
-  transferTab: 'export' | 'import' | 'backup'
+  transferTab: 'export' | 'import' | 'backup' | 'sync'
   /** 流通面板正在写盘/写库。Esc 要不要放过这一档，判据在 `App.tsx` 那条链上——
    *  主进程不会因为面板关了就在半路停手，关了只会让人以为「取消了」而看不见写到哪了 */
   transferBusy: boolean
@@ -408,7 +408,7 @@ export interface AppState {
   /** 「流通」面板的开关（期-08 §九）。面板自己负责取导出预览，这里只翻状态 */
   setTransferOpen(open: boolean): void
   /** 流通面板停在哪一档。命令面板里「导出」「导入」是两条命令，各自要把人带到自己那一档 */
-  setTransferTab(tab: 'export' | 'import' | 'backup'): void
+  setTransferTab(tab: 'export' | 'import' | 'backup' | 'sync'): void
   setTransferBusy(busy: boolean): void
   /** 收藏 / 取消收藏某一样东西（当前这篇、sheet 里的某一行都走这一条）。
    *  `title` 只在新增那一次落库，是收藏那一刻的名字快照（§4.1） */

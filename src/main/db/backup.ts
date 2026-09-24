@@ -99,12 +99,20 @@ function infoOf(name: string): BackupInfo {
 }
 
 /** 写盘失败要说人话：这一档最坏的结局是"用户以为有备份"。磁盘满、目录只读、
- *  被同步盘占住，都得在按下按钮的那一处报出来，而不是只留一行 errno。 */
-function 说人话(err: unknown, 在干什么: string): Error {
+ *  被同步盘占住，都得在按下按钮的那一处报出来，而不是只留一行 errno。
+ *
+ *  `EBUSY` 是期-10 补进来的：同步盘（OneDrive / Dropbox）在传那一刻会拿独占句柄，
+ *  实测那时 `copyFileSync` 报 EBUSY、`renameSync` 报 EPERM（`scratch/p10-pre.mjs` M4）。
+ *  占住与"权限不够"是两件不同的事，人也得听出那是两件事——前者等一下就过去了，后者要改盘。 */
+export function 说人话(err: unknown, 在干什么: string): Error {
   const m = err instanceof Error ? err.message : String(err)
   if (/ENOSPC|磁盘空间|no space/i.test(m)) return new Error(`${在干什么}没写成：磁盘满了。`)
+  if (/EBUSY|被占|used by another process|locked/i.test(m))
+    return new Error(
+      `${在干什么}没写成：那个文件正被别的程序占着（同步盘正在传？）。等它传完再试一次就行。`
+    )
   if (/EPERM|EACCES|read-only|拒绝访问|permission/i.test(m))
-    return new Error(`${在干什么}没写成：备份目录写不进去（只读？被别的程序占着？）`)
+    return new Error(`${在干什么}没写成：写不进去（目录只读？被别的程序占着？权限不够？）`)
   return new Error(`${在干什么}没写成：${m}`)
 }
 

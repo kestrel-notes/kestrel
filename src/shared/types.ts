@@ -2,8 +2,10 @@
  *  只有类型和常量，不含副作用——两边都会 import。 */
 
 import type { Workspace } from './workspace'
+import type { SyncFace, SyncMark, SyncVerdict } from './syncFormat'
 
 export type { Workspace }
+export type { SyncFace, SyncMark, SyncVerdict }
 
 export type EntryKind = 'diary' | 'article'
 export type EntryStatus = 'draft' | 'published'
@@ -131,6 +133,10 @@ export interface Settings {
   /** 启动时套一次的编辑器档位。`editorMode` 本身仍是运行态（每次换文档都可能被闸门按回 source），
    *  这一格只管「开应用落在哪一档」 */
   editorModeDefault: 'rich' | 'source' | 'reading'
+  /** 同步用那个夹（期-10 §二）。null = 这台机器还没挑过。
+   *  与 `exportLastDir` 同一类：路径只当字符串存着，不校验存不存在——
+   *  那个夹可能在移动硬盘上，今天没插。界面上要能告诉用户「上次是这儿」 */
+  syncDir: string | null
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -146,6 +152,39 @@ export const DEFAULT_SETTINGS: Settings = {
   backupKeep: 7,
   snippetsOff: [],
   editorModeDefault: 'rich',
+  syncDir: null,
+}
+
+/** 同步那一格的全部读数（期-10 §三）。全是读，一次 IPC 拿齐——
+ *  界面上那六个数要分三趟取，就会有一拍摆出「本地是新的、夹里也是新的」那种假冲突。 */
+export interface SyncStatus {
+  dir: string | null
+  /** 那个夹今天在不在这台机器上（移动硬盘没插是常态，不是错误） */
+  hasDir: boolean
+  verdict: SyncVerdict
+  /** 主进程给的那一句人话。界面不自己编：八种状态各有两句，散着写必漏一种 */
+  line: string
+  baseline: SyncMark | null
+  local: SyncFace
+  remote: SyncMark | null
+  canPush: boolean
+  canPull: boolean
+  /** 冲突 / 没有参照物：这两态下两颗按钮都亮，但都要人明确按一次 */
+  needChoice: boolean
+  dbBytes: number | null
+  /** 那份记录说的数与那一份库自己说的数不一致 ⇒ 那个夹被人动过。
+   *  这一句必须摆出来：它意味着「判据站不住」，而不是「有点小瑕疵」 */
+  mismatch: string | null
+}
+
+/** 推/拉一次的结果。`savedAs` 只有拉才有：那是「换错了还能回哪去」的唯一答案 */
+export interface SyncResult {
+  side: 'push' | 'pull'
+  ms: number
+  entries: number
+  file: string
+  savedAs?: string
+  face: SyncFace
 }
 
 /** 关于那一格要的几件事（期-09b §四）。版本与路径都在主进程那一侧，渲染进程猜不出来，
@@ -792,8 +831,9 @@ export interface KestrelApi {
   /** 流通（期-08）。导出/导入都在主进程做——渲染层拿不到 fs，也不该拿到。
    *  目录由系统对话框选，渲染层只拿到一个字符串路径。 */
   transfer: {
-    /** 打开「选文件夹」对话框；取消返回 null。`import` 那一档不给「新建目录」的按钮 */
-    pickDirectory(mode?: 'export' | 'import'): Promise<string | null>
+    /** 打开「选文件夹」对话框；取消返回 null。`import` 那一档不给「新建目录」的按钮，
+     *  `sync` 那一档也不给——那个夹是 Dropbox / OneDrive 已经在管的那个，不是我们建出来的 */
+    pickDirectory(mode?: 'export' | 'import' | 'sync'): Promise<string | null>
     exportPlan(dir: string): Promise<ExportPlan>
     exportRun(dir: string): Promise<ExportResult>
     /** 进度是**拉**不是推：大库（实测 6001 篇那份）导出要看得见它在动，
@@ -820,6 +860,17 @@ export interface KestrelApi {
     restore(name: string): Promise<RestoreResult>
     /** 手动跑一次 30 天那一刀（自动那一跑在开屏之后，这里只是给人对着账） */
     prune(): Promise<{ revisions: number; entries: number }>
+  }
+  /** 文件夹同步（期-10）。那个夹的路径由系统对话框给，渲染进程只拿到字符串；
+   *  四条通道全是"看 / 推 / 拉 / 忘掉"，**没有一条能指定往哪儿写**——路径只有 `pickDirectory` 那一条来源。 */
+  sync: {
+    status(): Promise<SyncStatus>
+    /** 推：`VACUUM INTO` 到那个夹（先 .tmp 再 rename）。返回里带着那一份自检过的篇数 */
+    push(): Promise<SyncResult>
+    /** 拉：走既有的换库那一路。成功之后渲染层要 `location.reload()`（与备份那一档同一收法） */
+    pull(): Promise<SyncResult>
+    /** 忘掉这台机器上的同步记录与那个夹。**不删那个夹里的任何文件** */
+    forget(): Promise<void>
   }
   /** 工作区（期-09a）：开着哪几篇、哪个在当前、各自滚到哪儿。
    *  `load` 认不出来就返回 null（当没有，界面退回今天）；走这条而不是 `settings.*` 的理由写在
@@ -962,6 +1013,12 @@ export const IPC = {
   backupNow: 'backup:now',
   backupRestore: 'backup:restore',
   backupPrune: 'backup:prune',
+  /** 文件夹同步（期-10）。挑那个夹走既有的 `transferPick('sync')`，这里只有四条：
+   *  看、推、拉、忘掉。全程 `node:fs` + SQLite，一个网络包都不发 */
+  syncStatus: 'sync:status',
+  syncPush: 'sync:push',
+  syncPull: 'sync:pull',
+  syncForget: 'sync:forget',
   /** 工作区（期-09a）：开着哪几篇、哪个在当前、各自滚到哪儿。独立于 settings:* 的两条，理由见 shared/workspace.ts 头上 */
   workspaceLoad: 'workspace:load',
   workspaceSave: 'workspace:save',
