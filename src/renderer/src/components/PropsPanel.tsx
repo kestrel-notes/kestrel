@@ -9,7 +9,7 @@
 
 import type { JSX } from 'react'
 import { useEffect, useRef, useState } from 'react'
-import { PROP_TYPES, PROP_TYPE_LABEL, normalizePropKey, stringifyPropValue } from '../../../shared/props'
+import { PROP_TYPES, PROP_TYPE_LABEL, normalizePropKey, normalizePropValue, stringifyPropValue } from '../../../shared/props'
 import type { PropValue } from '../../../shared/props'
 import type { PropType } from '../../../shared/types'
 import { useStore } from '@/store'
@@ -170,7 +170,7 @@ function ValueInput({
   // 把 `'2026-09-19 08:30:00'` 规范成 `'2026-09-19T08:30'` 这两种「你写的没被原样存下」
   useEffect(() => setDraft(seed), [seed])
 
-  const commit = (): void => {
+  const commit = async (): Promise<void> => {
     // 数字框会把 `'1e999'`、日期框会把选了一半的值吞成空串（`validity.badInput`），
     // 这时提交等于删键——用户以为存了个非法值，实际那一行整个没了。拦在本地，别去撞主进程那道
     if (box.current?.validity.badInput) {
@@ -178,7 +178,15 @@ function ValueInput({
       return
     }
     setBad(false)
-    if (draft !== seed) void onCommit(draft)
+    if (draft === seed) return
+    const typed = draft
+    await onCommit(typed)
+    // 规范化改了什么，输入框就跟着显示什么。上面那个 useEffect 只在 `seed` 变的时候才同步，
+    // 而**库里那份本来就等于规范化结果**时它没变（`'  平静  '` → `'平静'`，而库里早就是
+    // `'平静'`），于是框里一直留着用户敲的那一份，直到切走再回来才对上（#77）。
+    // 判据共用 `normalizePropValue`：渲染层不再写第二份 trim 规则
+    const got = normalizePropValue(type, typed)
+    if (got.status === 'ok') setDraft(stringifyPropValue(got.value))
   }
 
   return (
