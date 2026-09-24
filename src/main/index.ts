@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, shell } from 'electron'
+import { app, BrowserWindow, dialog, ipcMain, shell } from 'electron'
 import { copyFileSync, existsSync, mkdirSync } from 'node:fs'
 import { join } from 'node:path'
 import { closeDatabase, getDatabase, openDatabase } from './db'
@@ -18,6 +18,7 @@ import * as settings from './db/settings'
 import * as savedQueries from './db/savedQueries'
 import * as templates from './db/templates'
 import * as queryBlock from './db/queryBlock'
+import * as exporter from './db/export'
 import { parseQueryBlock } from '../shared/queryLang'
 import {
   IPC,
@@ -185,6 +186,21 @@ function registerIpc(): void {
   handle(IPC.revisionSnapshot, (entryId: number) => entries.snapshotRevision(entryId))
 
   handle(IPC.attachmentImport, (name: string, data: Uint8Array) => importAsset(name, data))
+
+  /* 流通（期-08）。目录由主进程弹系统对话框选——渲染层拿不到 fs，也不该拿到；
+   *  渲染层看到的只是一个字符串路径。 */
+  handle(IPC.transferPick, async () => {
+    const r = await dialog.showOpenDialog({
+      title: '选一个目录放导出物',
+      buttonLabel: '就放这里',
+      properties: ['openDirectory', 'createDirectory'],
+    })
+    return r.canceled ? null : (r.filePaths[0] ?? null)
+  })
+  handle(IPC.exportPlan, (dir: string) => exporter.plan(dir))
+  handle(IPC.exportRun, async (dir: string) => exporter.run(dir))
+  handle(IPC.exportProgress, () => exporter.getProgress())
+  handle(IPC.exportCancel, () => exporter.requestCancel())
 
   handle(IPC.topicList, () => topics.list())
   handle(IPC.topicCreate, (name: string) => topics.create(name))

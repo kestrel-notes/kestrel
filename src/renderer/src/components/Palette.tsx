@@ -126,7 +126,17 @@ export function Palette(): JSX.Element | null {
       // 那时浮层的输入框刚在 commit 里拿到 autoFocus，这里再把焦点抢回正文，
       // 打字就打到身后的文档上去了——实测标题没改、正文反被选中替换掉。
       const s = useStore.getState()
-      if (s.palette || s.searchOpen || s.promoteOpen || s.binOpen || s.sheetOpen || s.libraryOpen || s.versionOf) return
+      if (
+        s.palette ||
+        s.searchOpen ||
+        s.promoteOpen ||
+        s.binOpen ||
+        s.sheetOpen ||
+        s.libraryOpen ||
+        s.transferOpen ||
+        s.versionOf
+      )
+        return
       focusEditor()
     }
   }, [mode])

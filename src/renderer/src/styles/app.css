@@ -3909,3 +3909,111 @@ input[type='range'] {
   display: inline;
   margin: 0;
 }
+
+/* ═════════ 流通：导出向导（期-08 §一、§九）═════════
+   形状与 .lib-* 那一片同源（同一张 .sheet-card），只换里面的行。
+   错误色沿用 1640 行那条 `var(--danger, var(--accent))` 的写法——
+   这套 token 里本来就没有 --danger，四个主题各写一个的代价远大于收益。 */
+.tr-card {
+  width: min(600px, 92vw);
+}
+.tr-body {
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+}
+.tr-path {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-2);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tr-hint {
+  margin: 0;
+  color: var(--text-3);
+  font-size: 12px;
+  line-height: 1.6;
+}
+.tr-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--border);
+}
+.tr-grid > div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 9px;
+  background: var(--bg-glass-strong);
+  font-size: 12px;
+}
+.tr-grid span {
+  color: var(--text-3);
+}
+.tr-grid b {
+  color: var(--text-1);
+  font-family: var(--font-mono);
+  font-weight: 600;
+}
+/* 「说明这一行是干什么的」——放在数字下面比挤进格子里读得动 */
+.tr-list {
+  max-height: 132px;
+  overflow-y: auto;
+  padding: 6px 9px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-panel);
+  margin: 0;
+}
+.tr-list li {
+  color: var(--text-2);
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  line-height: 1.75;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tr-progress {
+  height: 4px;
+  overflow: hidden;
+  border-radius: var(--radius-xs);
+  background: var(--hover);
+}
+.tr-progress i {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+  transition: width 0.2s ease-out;
+}
+.tr-foot {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 18px;
+}
+.tr-foot.tr-done {
+  justify-content: space-between;
+}
+.tr-err {
+  padding: 7px 9px;
+  border: 1px solid var(--danger, var(--accent));
+  border-radius: var(--radius-sm);
+  background: var(--accent-soft);
+  color: var(--danger, var(--accent));
+  font-size: 12px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+

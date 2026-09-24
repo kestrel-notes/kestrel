@@ -110,6 +110,9 @@ export interface Settings {
   glass: boolean
   /** 跟随系统浅色/深色（在浅色主题与暗色主题之间切换） */
   followSystem: boolean
+  /** 上一次导出用的目录。导出是重复动作（每周导一次给别的工具看），
+   *  每次都从系统对话框重挑一遍太烦；这一项也让「导出到哪去了」有个地方能查 */
+  exportLastDir: string | null
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -119,6 +122,51 @@ export const DEFAULT_SETTINGS: Settings = {
   sat: 1.7,
   glass: true,
   followSystem: false,
+  exportLastDir: null,
+}
+
+/* ── 流通（期-08）：导出 / 导入 / 备份 ────────────────────────────
+ *
+ *  三个形状都放在这儿而不是 main 里，是因为界面要能把「会写多少篇、会不会改名」
+ *  在点确认**之前**就画出来——而那份判据只有一份（`main/db/export.ts` 算它）。 */
+
+export interface ExportPlan {
+  /** 用户选中的目录（绝对路径，界面原样显示） */
+  dir: string
+  entries: number
+  diary: number
+  articles: number
+  /** 会被写出去的文件数（正文 + 附件 + library.json + MANIFEST.json） */
+  files: number
+  /** 正文总字节（不含包头与附件）——给人一个「这大概要多大」的量 */
+  bytes: number
+  /** 大小写不敏感撞车后被改了名的那几篇 */
+  renamed: { entryId: number; path: string; note: string }[]
+  /** 属性名撞上 `kestrel-*`：这一条**中止**导出并报错，不自动加前缀（口径 ①） */
+  reserved: { entryId: number; name: string }[]
+  assets: { referenced: number; onDisk: number; missing: number }
+  /** 正文里的外链图片数量：只报一句，一个字不动 */
+  external: number
+}
+
+export interface ExportResult {
+  dir: string
+  written: number
+  bytes: number
+  renamed: number
+  assets: number
+  ms: number
+  /** 用户按了「中止」。这时目录里只有前 `written` 篇，且**没有** library/MANIFEST——
+   *  那两份是「这一导完整」的凭据，半截目录配一份全量清单比不写更坏 */
+  aborted: boolean
+}
+
+/** 导出正在进行中的进度。界面**轮询**它，不为这一个数字开一条事件通道——
+ *  导出本身是异步分批发起的（`export.ts` 每 200 篇让出一次事件循环），所以轮询拿得到。 */
+export interface ExportProgress {
+  running: boolean
+  done: number
+  total: number
 }
 
 /** 一次保存的入参：只带真正会变的字段 */
@@ -600,6 +648,19 @@ export interface KestrelApi {
     ): Promise<Template>
     remove(id: number): Promise<void>
   }
+  /** 流通（期-08）。导出/导入都在主进程做——渲染层拿不到 fs，也不该拿到。
+   *  目录由系统对话框选，渲染层只拿到一个字符串路径。 */
+  transfer: {
+    /** 打开「选文件夹」对话框；取消返回 null */
+    pickDirectory(): Promise<string | null>
+    exportPlan(dir: string): Promise<ExportPlan>
+    exportRun(dir: string): Promise<ExportResult>
+    /** 进度是**拉**不是推：大库（实测 6001 篇那份）导出要看得见它在动，
+     *  但不必为这一个数字开一条事件通道 */
+    exportProgress(): Promise<ExportProgress>
+    /** 中止正在跑的导出（`export.ts` 的 requestCancel）。只对**正在跑**的那一次有效 */
+    exportCancel(): Promise<void>
+  }
   settings: {
     all(): Promise<Settings>
     patch(patch: Partial<Settings>): Promise<Settings>
@@ -707,6 +768,12 @@ export const IPC = {
   /** 裸 SQL 通道。**只在非打包版注册**（期-03-设计 §8-D6）：本期所有 FTS 的 DDL 与
    *  探针只能在 Electron 主进程那份 SQLite 上跑（§2.1：系统 node 的 3.47 没有 FTS5），
    *  要有自动验收就得能跑建表和 pragma。打包版这个 handler 不是"锁起来"，是不存在。 */
+  /** 流通（期-08）：目录由主进程弹系统对话框选，渲染层只拿路径字符串 */
+  transferPick: 'transfer:pick',
+  exportPlan: 'export:plan',
+  exportRun: 'export:run',
+  exportProgress: 'export:progress',
+  exportCancel: 'export:cancel',
   devSql: 'dev:sql',
   winMinimize: 'win:minimize',
   winToggleMaximize: 'win:toggleMaximize',

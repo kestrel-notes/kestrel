@@ -34,6 +34,9 @@ function coerce(raw: Partial<Settings>): Settings {
     glass: typeof raw.glass === 'boolean' ? raw.glass : DEFAULT_SETTINGS.glass,
     followSystem:
       typeof raw.followSystem === 'boolean' ? raw.followSystem : DEFAULT_SETTINGS.followSystem,
+    // 路径只当字符串存着，不校验存不存在：上一次导到的目录可能在移动硬盘上，
+    // 今天没插——那也要能告诉用户「上次是这儿」
+    exportLastDir: typeof raw.exportLastDir === 'string' ? raw.exportLastDir : null,
   }
 }
 

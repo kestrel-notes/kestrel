@@ -337,6 +337,13 @@ export const COMMANDS: Command[] = [
     run: (s) => s.setBinOpen(true),
   },
   {
+    id: 'export.markdown',
+    title: '导出为 Markdown · 整库 front-matter 目录树',
+    group: '数据',
+    // 不配快捷键：这是一年用不了几次的事，占一个键位不如让人搜得到
+    run: (s) => s.setTransferOpen(true),
+  },
+  {
     id: 'entry.remove',
     title: '删除当前记录',
     group: '数据',
