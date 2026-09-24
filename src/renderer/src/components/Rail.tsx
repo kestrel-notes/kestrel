@@ -4,6 +4,7 @@ import { outlineLines } from '@/outline'
 import { useStore } from '@/store'
 import { GraphView } from '@/components/GraphView'
 import { Backlinks } from '@/components/Backlinks'
+import { Outgoing } from '@/components/Outgoing'
 import { RailBlock } from '@/components/RailBlock'
 import { PropsPanel } from '@/components/PropsPanel'
 import { Chronicle } from '@/components/Chronicle'
@@ -88,6 +89,10 @@ export function Rail(): JSX.Element {
           <div className="empty-hint">正在读这篇的关系…</div>
         )}
       </RailBlock>
+
+      {/* 出链排在反链前面（期-05a）：先说"这一篇提到了哪儿"，再说"谁提到了这一篇"。
+          没有出链时整块不渲染——正文空着的时候这两块都不该占位子 */}
+      <Outgoing />
 
       <RailBlock title="反向链接" count={backlinks.length}>
         <Backlinks backlinks={backlinks} onOpen={(key) => void openNode(key)} />
