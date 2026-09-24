@@ -3,7 +3,7 @@ import { getRichEditor } from '@/editor/richView'
 import { todayKey } from '../../shared/date'
 
 /** 命令分组。命令面板按这个顺序分组显示，顺序即优先级。 */
-export type CommandGroup = '跳转' | '新建' | '视图' | '编辑器' | '数据'
+export type CommandGroup = '跳转' | '新建' | '视图' | '工作区' | '编辑器' | '数据'
 
 /** 一条命令。**这是快捷键与命令面板的唯一真相源**：
  *  `App.tsx` 的 keydown 照着它匹配，命令面板照着它列表。
@@ -45,6 +45,10 @@ function mainKey(e: KeyboardEvent): string | null {
     Escape: 'Escape',
     Enter: 'Enter',
     Space: 'Space',
+    // 期-09a 的标签循环用 Ctrl+Tab、挪位用左右方向键：这三个键以前没人占，所以没登记过
+    Tab: 'Tab',
+    ArrowLeft: 'Left',
+    ArrowRight: 'Right',
   }
   return named[c] ?? null
 }
@@ -111,6 +115,63 @@ export const COMMANDS: Command[] = [
     group: '视图',
     keys: ['Ctrl+Shift+F'],
     run: (s) => s.toggleFocus(),
+  },
+  /* ── 工作区（期-09a §三）。分组紧跟着「视图」：标签页就是看东西的那一层 ── */
+  {
+    id: 'workspace.newTab',
+    title: '在新标签里打开…',
+    group: '工作区',
+    keys: ['Ctrl+T'],
+    // 与 Ctrl+O 同一个面板，只是选中之后的落点换成新标签
+    run: (s) => void s.openPalette('switch', true),
+  },
+  {
+    id: 'workspace.closeTab',
+    title: '关掉当前标签',
+    group: '工作区',
+    keys: ['Ctrl+W'],
+    /** 最后一个不关、固定的也不关（决策 33）。这里刻意**不**兜到「关窗口」——
+     *  那一刀底下是关窗前那条 flush 链，误按一次会让人以为软件把他窗口弄没了 */
+    enabled: (s) => s.tabs.length > 1,
+    run: (s) => void s.closeTab(s.activeTab),
+  },
+  {
+    id: 'workspace.nextTab',
+    title: '切到下一个标签',
+    group: '工作区',
+    keys: ['Ctrl+Tab'],
+    enabled: (s) => s.tabs.length > 1,
+    run: (s) => void s.cycleTab(1),
+  },
+  {
+    id: 'workspace.prevTab',
+    title: '切到上一个标签',
+    group: '工作区',
+    keys: ['Ctrl+Shift+Tab'],
+    enabled: (s) => s.tabs.length > 1,
+    run: (s) => void s.cycleTab(-1),
+  },
+  {
+    id: 'workspace.moveLeft',
+    title: '当前标签往左挪',
+    group: '工作区',
+    keys: ['Ctrl+Shift+Left'],
+    enabled: (s) => s.tabs.length > 1,
+    run: (s) => s.moveTab(s.activeTab, -1),
+  },
+  {
+    id: 'workspace.moveRight',
+    title: '当前标签往右挪',
+    group: '工作区',
+    keys: ['Ctrl+Shift+Right'],
+    enabled: (s) => s.tabs.length > 1,
+    run: (s) => s.moveTab(s.activeTab, 1),
+  },
+  {
+    id: 'workspace.togglePin',
+    title: '固定 / 取消固定当前标签',
+    group: '工作区',
+    run: (s) => s.togglePin(s.activeTab),
   },
   {
     id: 'view.settings',

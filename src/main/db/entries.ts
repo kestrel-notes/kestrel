@@ -420,6 +420,32 @@ export function recent(limit: number): EntrySummary[] {
   return rows.map(toSummary)
 }
 
+/** 只回「这一篇叫什么、是哪一类、哪一天」。标签条给每一格配名字全靠它（期-09a §四）。
+ *
+ *  为什么不拿 `get(id)` 挨个取：那一趟会把整篇正文都搬过 IPC，恢复五个标签就是五遍，
+ *  而「首屏不许变慢」是期-08 立着的判据。占位符按个数拼，值一律走绑定。
+ *  带上 `entryDate` 是因为没标题的日记那一格要显示日期，规则与 `entryLabel` 同一份。
+ *
+ *  `deleted_at is null` 是承重的：这一份名单同时是 `parseWorkspace` 用来筛「哪些标签还活着」的
+ *  那一刀。漏掉它，进了回收站的那一篇会留下一格空标签（验收第 9 项第一次跑就是这么红的）。 */
+export function labels(
+  ids: number[]
+): { id: number; title: string | null; kind: 'diary' | 'article'; entryDate: string }[] {
+  const 净 = [...new Set(ids.filter((x) => Number.isInteger(x) && x > 0))]
+  if (净.length === 0) return []
+  return getDatabase()
+    .prepare(
+      `select id, title, kind, entry_date as entryDate from Entry
+       where id in (${净.map(() => '?').join(', ')}) and deleted_at is null`
+    )
+    .all(...净) as unknown as {
+    id: number
+    title: string | null
+    kind: 'diary' | 'article'
+    entryDate: string
+  }[]
+}
+
 export function listByTopic(topicId: number): EntrySummary[] {
   const rows = getDatabase()
     .prepare(

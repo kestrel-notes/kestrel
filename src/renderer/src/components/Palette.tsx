@@ -64,7 +64,11 @@ function buildSwitchRows(): Row[] {
     title: entryLabel(e),
     hint: e.kind === 'diary' ? '日记' : '文章',
     group: e.kind === 'diary' ? '记录 · 日记' : '记录 · 文章',
-    run: () => void useStore.getState().openEntry(e.id),
+    // `Ctrl+T` 与 `Ctrl+O` 是同一个面板，只差落在哪儿：新标签还是当前这一格（§三）
+    run: () => {
+      const s = useStore.getState()
+      void (s.paletteNewTab ? s.openEntryInTab(e.id) : s.openEntry(e.id))
+    },
   }))
 
   for (const t of s.topics) {

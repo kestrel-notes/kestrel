@@ -7,6 +7,7 @@ import { PROP_TYPE_LABEL, type PropValue } from '../../shared/props'
 import { expandTemplate } from '../../shared/template'
 import { roundTrip } from '@/editor/markdown'
 import { getRichEditor } from '@/editor/richView'
+import { makeTab, sortTabs, type Workspace, type WorkspaceTab } from '../../shared/workspace'
 import type { PropConversion, PropType } from '../../shared/types'
 import {
   DEFAULT_SETTINGS,
@@ -167,11 +168,28 @@ export interface AppState {
   /** gateNote 是不是「没切过去」 */
   gateBlocked: boolean
 
+  /** 标签栈（期-09a）。一篇一个标签（决策 31），固定的在最前。
+   *  落库时 `activeTab` 换算成 `activeEntryId`，见 `shared/workspace.ts` 头上 */
+  tabs: WorkspaceTab[]
+  /** `tabs` 的下标 */
+  activeTab: number
+  /** 此刻挂着编辑器实例的那几篇（LRU，末尾是最近看见的）。
+   *  上限的理由在 设计稿 §五 ①：一棵实例重新解析一次要几秒，所以切标签不能重建实例；
+   *  但实例也占内存，挂着的不该无上限（`MAX_LIVE`，代价量在验收第 5 项） */
+  live: number[]
+  /** 标签上那一行字。id → 已经按 `entryLabel` 那套规则拼好的名字。
+   *  只给「开着的这几篇」缓存，不给全库——那一句话就是它存在的理由（§四）。
+   *  为什么不现取：`tabs` 里只有 id，而标题为空的那一篇要显示日期，得知道 kind 与 entryDate */
+  tabLabels: Record<number, string>
+
   focus: boolean
   sheetOpen: boolean
 
   /** 命令面板 / 快速切换（同一个组件两种数据源），null = 关着 */
   palette: PaletteMode | null
+  /** 这一次面板选中之后的落点：`true` = 新标签（`Ctrl+T`），`false` = 当前标签原地（`Ctrl+O`）。
+   *  同一个面板两种用法，不值得为它再写一个组件 */
+  paletteNewTab: boolean
   /** 快速切换的候选池，打开时才拉 */
   switchRows: EntrySummary[]
 
@@ -242,6 +260,22 @@ export interface AppState {
   setMode(mode: ViewMode): Promise<void>
   openDate(date: string): Promise<void>
   openEntry(id: number): Promise<void>
+  /** 在**新标签**里打开（`Ctrl+单击` / 中键 / `Ctrl+T`）。已经开着就激活那一个（决策 31） */
+  openEntryInTab(id: number): Promise<void>
+  activateTab(index: number): Promise<void>
+  closeTab(index: number): Promise<void>
+  cycleTab(dir: 1 | -1): Promise<void>
+  togglePin(index: number): void
+  moveTab(index: number, dir: 1 | -1): void
+  /** 那一棵编辑器在「看不见」那一刻回报自己的光标（§〇 M2、M3）。
+   *  只有它自己知道自己那篇的文档坐标是多少，所以这一格由组件写、不由动作写。
+   *  滚动位置不在这里：它属于那个共用的滚动容器，不属于某一棵编辑器（见 `setTabScroll`） */
+  setTabView(entryId: number, 视图: Pick<WorkspaceTab, 'anchor' | 'head' | 'focused'>): void
+  /** 滚动容器实时回报「此刻这一格滚到哪儿了」。
+   *  为什么不能等到看不见那一刻再量：同一批提交里 React 先把离开那一格的 `data-active` 摘掉
+   *  （→ `display:none`、容器 `scrollHeight` 塌下去、浏览器把 `scrollTop` 夹到 0），
+   *  之后才跑 cleanup —— 那一发量到的永远是 0（验收第一次跑就是这么红出来的）。 */
+  setTabScroll(entryId: number, scroll: number): void
   openNode(key: string): Promise<void>
   newArticle(): Promise<void>
   removeCurrent(): Promise<void>
@@ -299,7 +333,7 @@ export interface AppState {
   /** 弹层上的两个按钮 / Escape 都回到这里，`ok` 就是答案 */
   answerConfirm(ok: boolean): void
 
-  openPalette(mode: PaletteMode): Promise<void>
+  openPalette(mode: PaletteMode, 新标签?: boolean): Promise<void>
   closePalette(): void
   /** `Ctrl+F`（期-03 §4.3）。与命令面板互斥地关掉对方：两个都是居中 sheet，同开会叠两层模糊 */
   openSearch(): void
@@ -416,8 +450,13 @@ export function topicColorVar(color: string | null): string {
 }
 
 export const useStore = create<AppState>()((set, get) => {
-  /** 装载一篇记录为「当前编辑对象」。切文档前必须先 flush，见 setMode / openEntry */
-  function applyEntry(entry: Entry): void {
+  /** 装载一篇记录为「当前编辑对象」。切文档前必须先 flush，见 setMode / openEntry
+   *
+   *  `已挂着` = 这一篇的编辑器实例此刻还在（切回一个老标签）。那一棵已经过了闸门、
+   *  也画得出来，再跑一遍只是白付 3.3 秒（§〇 剖面：一次打开里闸门与挂载各解析一遍）。
+   *  闸门该不该跑，问的是「要不要新建那一棵视图」，不是「要不要换当前这一篇」——
+   *  这两件事在过去恰好同时发生，9a 之后不再同时。 */
+  function applyEntry(entry: Entry, 已挂着 = false): void {
     if (saveTimer) {
       clearTimeout(saveTimer)
       saveTimer = null
@@ -427,10 +466,11 @@ export const useStore = create<AppState>()((set, get) => {
     // 要是那篇有文件树认不出的东西（比如一整块原始 HTML），所见即所得/阅读都会把它吃掉，
     // 用户下一次敲键保存就真的没了。宁可把他按在源码模式里。
     const mode = get().editorMode
-    const gate = mode === 'rich' || mode === 'reading' ? roundTrip(entry.content) : null
+    const 要闸门 = !已挂着 && (mode === 'rich' || mode === 'reading')
+    const gate = 要闸门 ? roundTrip(entry.content) : null
     const blocked = gate !== null && !gate.lossless
 
-    set({
+    set((s) => ({
       currentId: entry.id,
       entry,
       title: entry.title ?? '',
@@ -440,10 +480,13 @@ export const useStore = create<AppState>()((set, get) => {
       savedAt: entry.updatedAt,
       saveError: null,
       rev: 0,
-      editorMode: blocked ? 'source' : get().editorMode,
+      editorMode: blocked ? 'source' : s.editorMode,
       gateNote: blocked ? `这一篇留在源码模式：非源码视图会丢 ${gate.lost.join('、')}` : null,
       gateBlocked: blocked,
-    })
+      // 装载即刷新那一格的标题：改名、恢复历史版本、导回都从这条路过一遍，
+      // 比在每个动作里各记一次少一处会漏的地方
+      tabLabels: { ...s.tabLabels, [entry.id]: 标签文案(entry) },
+    }))
     // 换文档 = 网络整体换掉，快照作废（否则回看一篇内容相同的旧文档会拿上一次的结果糊弄）
     networkKey = ''
     void refreshNetwork()
@@ -459,6 +502,104 @@ export const useStore = create<AppState>()((set, get) => {
     // 人正停在属性那一格时，计数与当前这级的列表也要跟着换
     if (get().mode === 'prop') void refreshPropSide()
     else void get().refreshPropKeys()
+  }
+
+  /** 同时挂着几棵编辑器实例。超出就把最久没看见的那一棵卸掉（下次激活重新解析一次）。
+   *  6 这个数先拍在「一屏放得下四个标签 + 两个后备」，代价量在验收第 5 项（设计稿决策 34） */
+  const MAX_LIVE = 6
+
+  /** 把 id 记成「最近看见的」，并按上限裁 */
+  function 挂上(id: number): number[] {
+    const 后 = [...get().live.filter((x) => x !== id), id]
+    return 后.slice(Math.max(0, 后.length - MAX_LIVE))
+  }
+
+  /** 与 `entryLabel` 同一条取法，只是这儿手上只有 id / title / kind / entryDate 那四个 */
+  function 标签文案(e: {
+    title: string | null
+    kind: 'diary' | 'article'
+    entryDate: string
+  }): string {
+    if (e.title) return e.title
+    return e.kind === 'diary' ? formatDateZh(e.entryDate) : '未命名文章'
+  }
+
+  /** 把缺着的那几篇的名字一次取回来。已有缓存的不重取：改名那条路自己会写进来（setTitle）。
+   *  一次 IPC 取一批，别按标签数排那么多次队。 */
+  function 补标签(ids: number[]): void {
+    const 缺 = ids.filter((id) => !(id in get().tabLabels))
+    if (缺.length === 0) return
+    void window.kestrel.entries
+      .labels(缺)
+      .then((行) => {
+        if (行.length === 0) return
+        set((s) => {
+          const 后 = { ...s.tabLabels }
+          for (const 一 of 行) 后[一.id] = 标签文案(一)
+          return { tabLabels: 后 }
+        })
+      })
+      .catch(() => undefined)
+  }
+
+  /** 那一篇没了 ⇒ 它那一格摘掉。返回「摘的是不是当前那一格」。
+   *  「接下来装哪一篇」不归这里管：删除那条路本来就要么回到今天、要么把中间那一格清空
+   *  （期-08 之前就是这个行为），这里只保证下标不越界。 */
+  function 摘掉标签(entryId: number): boolean {
+    let 是当前 = false
+    set((x) => {
+      const at = x.tabs.findIndex((t) => t.entryId === entryId)
+      if (at < 0) return {}
+      const tabs = x.tabs.filter((_, i) => i !== at)
+      if (tabs.length === 0) return {}
+      是当前 = at === x.activeTab
+      return { tabs, live: x.live.filter((id) => id !== entryId), activeTab: Math.min(at, tabs.length - 1) }
+    })
+    写工作区()
+    return 是当前
+  }
+
+  /** 工作区那一条的写。串行排队：连着切两个标签时别让后一份盖住前一份的顺序不确定。
+   *
+   *  不防抖。一次 4.3 ms（§〇 M4），而防抖要处理「关窗那一刻那一发还没发出去」——
+   *  为一个省不下来的 4 毫秒去开一类「重启之后标签不对」的口子，不划算。 */
+  let 工作区链: Promise<unknown> = Promise.resolve()
+  function 写工作区(): void {
+    const { tabs, activeTab } = get()
+    const 当前 = tabs[activeTab]
+    if (!当前) return
+    const ws: Workspace = { v: 1, tabs, activeEntryId: 当前.entryId }
+    工作区链 = 工作区链
+      .then(() => window.kestrel.workspace.save(ws))
+      .catch((err) => console.warn('[workspace] 这一发没写进去', err))
+  }
+
+  /** `记滚动` 那一路的落盘闸。scroll 事件一帧一发（60/s），每发一次 4.3 ms 的写太吵：
+   *  一秒最多一笔，收尾再补一笔。切换 / 关标签那几路照旧走即时的那一发。 */
+  let 上次滚动写 = 0
+  let 滚动尾笔: number | null = null
+  function 写工作区节流(): void {
+    const 现在 = Date.now()
+    if (现在 - 上次滚动写 >= 1000) {
+      上次滚动写 = 现在
+      写工作区()
+      return
+    }
+    if (滚动尾笔 !== null) return
+    滚动尾笔 = window.setTimeout(() => {
+      滚动尾笔 = null
+      上次滚动写 = Date.now()
+      写工作区()
+    }, 1000)
+  }
+
+  /** 打开一篇之后左栏该停在哪一格。标签 / 属性视图的列表是一次查询结果：
+   *  点一条就跳回「今天」，等于把用户刚点开的筛选扔了（这一段从 openEntry 里原样搬过来） */
+  function 切视图格子(entry: Entry): void {
+    const s = get()
+    if (s.mode !== 'tag' && s.mode !== 'prop') {
+      set({ mode: entry.kind === 'article' ? 'topic' : 'diary' })
+    }
   }
 
   /** 反链、图谱、出链一起取。三者都只看当前这一篇，一次 IPC 往返拿全。 */
@@ -783,10 +924,18 @@ export const useStore = create<AppState>()((set, get) => {
     gateNote: null,
     gateBlocked: false,
 
+    // 启动先给一个空标签栈：init() 里读完工作区再填。空栈不是坏状态——
+    // 那一刻还没有「当前这一篇」，TabBar 也就整条不画（§四）
+    tabs: [],
+    activeTab: 0,
+    live: [],
+    tabLabels: {},
+
     focus: false,
     sheetOpen: false,
 
     palette: null,
+    paletteNewTab: false,
     switchRows: [],
     searchOpen: false,
     searchOrder: 'blend',
@@ -825,6 +974,37 @@ export const useStore = create<AppState>()((set, get) => {
         // 先确保今天的日记存在，再刷列表：否则刚建出来的当天日记不会出现在「最近记录」里
         const today = await window.kestrel.entries.ensureDiary(todayKey())
         applyEntry(today)
+
+        /* 工作区（期-09a）：把上次开着的那几篇摆回去。
+         *
+         *  摆在 `applyEntry(today)` 之后，是因为「没有工作区」就等于今天那套默认状态——
+         *  今天这一篇此刻已经装好了，工作区指的又是它的话一个字都不必再动。
+         *  这不是抠细节：「首屏不许变慢」是期-08 立着的判据，而重装一遍就是再跑一遍闸门。 */
+        const 上回 = await window.kestrel.workspace.load()
+        if (上回) {
+          let at = 上回.tabs.findIndex((t) => t.entryId === 上回.activeEntryId)
+          if (at < 0) at = 0
+          set({ tabs: 上回.tabs, activeTab: at })
+          if (上回.tabs[at].entryId !== today.id) {
+            const 那篇 = await window.kestrel.entries.get(上回.tabs[at].entryId)
+            if (那篇) {
+              set({ live: 挂上(那篇.id) })
+              applyEntry(那篇)
+              切视图格子(那篇)
+            } else {
+              // `load()` 已经按「库里活着」筛过一遍，走到这儿只剩竞态：这一格摘掉，别留个空标签
+              set({ tabs: [makeTab(today.id)], activeTab: 0 })
+            }
+          }
+        } else {
+          set({ tabs: [makeTab(today.id)], activeTab: 0 })
+        }
+        // 当前那一格的名字 applyEntry 顺手记过了；其余几格只是"开在那儿"，
+        // 一次把缺的名字取回来——按标签数挨个取会排出一串 IPC 队
+        补标签(get().tabs.map((t) => t.entryId))
+        // 补上开机这一格的实例账：上面两条路都只动了 tabs，`live` 还空着。
+        // 空着的后果是「中间那一格什么都没有」——Editor.tsx 只给 live 里那几篇画 pane
+        set({ live: 挂上(get().tabs[get().activeTab].entryId) })
 
         await Promise.all([
           refreshRecent(),
@@ -874,8 +1054,13 @@ export const useStore = create<AppState>()((set, get) => {
       void refreshHeat()
     },
 
+    /** 「在当前标签里打开」——今天所有入口的语义（侧栏、双链、反链、大纲、搜索、`Ctrl+O`）。
+     *  只多了两件事：别的标签已经开着这一篇就激活那一个，以及当前标签换了一篇之后
+     *  那一格的滚动与光标跟着作废。 */
     async openEntry(id) {
       if (get().currentId === id) return
+      const 已开 = get().tabs.findIndex((t) => t.entryId === id)
+      if (已开 >= 0) return get().activateTab(已开)
       await get().flush()
       const entry = await window.kestrel.entries.get(id)
       if (!entry) {
@@ -883,12 +1068,150 @@ export const useStore = create<AppState>()((set, get) => {
         await refreshRecent()
         return
       }
+      set((s) => {
+        const tabs = s.tabs.slice()
+        tabs[s.activeTab] = makeTab(id)
+        return { tabs, live: 挂上(id) }
+      })
       applyEntry(entry)
-      // 标签 / 属性视图的列表是一次查询结果：点一条就跳回「今天」，等于把用户刚点开的筛选扔了。
-      // 「今天 / 主题」两格之间照旧跟着 kind 走
-      if (get().mode !== 'tag' && get().mode !== 'prop') {
-        set({ mode: entry.kind === 'article' ? 'topic' : 'diary' })
+      切视图格子(entry)
+      写工作区()
+    },
+
+    async openEntryInTab(id) {
+      const 已开 = get().tabs.findIndex((t) => t.entryId === id)
+      if (已开 >= 0) return get().activateTab(已开)
+      await get().flush()
+      const entry = await window.kestrel.entries.get(id)
+      if (!entry) {
+        get().notify('这条记录已经不在了')
+        await refreshRecent()
+        return
       }
+      set((s) => {
+        // 插在最后一个非固定标签之后：固定的永远在最前（决策 31 之外唯一一条排序规则）
+        let 末 = -1
+        s.tabs.forEach((t, i) => {
+          if (!t.pinned) 末 = i
+        })
+        const 插 = 末 + 1
+        return {
+          tabs: [...s.tabs.slice(0, 插), makeTab(id), ...s.tabs.slice(插)],
+          activeTab: 插,
+          live: 挂上(id),
+        }
+      })
+      applyEntry(entry)
+      切视图格子(entry)
+      写工作区()
+    },
+
+    async activateTab(index) {
+      const s = get()
+      const 目标 = s.tabs[index]
+      if (!目标) return
+      if (index === s.activeTab && s.currentId === 目标.entryId) return
+      // 切走之前那一记必须先落盘（§〇 M5 量过：这条不变量在真界面上立得住）。
+      // 正因为立得住，标签页不必每标签带一份 dirty。
+      await get().flush()
+      const entry = await window.kestrel.entries.get(目标.entryId)
+      if (!entry) {
+        // 库里没了（在回收站里、或者被另一头删了）：这一格自己消失，其余不动
+        get().notify('这条记录已经不在了')
+        set((x) => ({ tabs: x.tabs.filter((_, i) => i !== index), activeTab: Math.min(index, Math.max(0, x.tabs.length - 2)) }))
+        await refreshRecent()
+        写工作区()
+        return
+      }
+      // 实例还在 ⇒ 闸门不用重跑（那一棵已经过了闸门，重跑一遍是 3.3 秒，见 §〇 剖面）
+      const 挂着 = s.live.includes(目标.entryId)
+      set({ activeTab: index, live: 挂上(目标.entryId) })
+      applyEntry(entry, 挂着)
+      切视图格子(entry)
+      写工作区()
+    },
+
+    async closeTab(index) {
+      const s = get()
+      const 目标 = s.tabs[index]
+      if (!目标) return
+      // 两个「按了没反应」是故意的（决策 33）：宁可让人觉得这一按不动，
+      // 也不要让人觉得「软件把我窗口关了」——那一刀底下是关窗那条 flush 链
+      if (目标.pinned) {
+        s.notify('先把这一格取消固定，才关得掉')
+        return
+      }
+      if (s.tabs.length === 1) return
+      const 是当前 = index === s.activeTab
+      if (是当前) await get().flush()
+      set((x) => {
+        const tabs = x.tabs.filter((_, i) => i !== index)
+        return {
+          tabs,
+          live: x.live.filter((id) => id !== 目标.entryId),
+          // 活动格往左贴一位；关掉的是最后一格就贴住新的末尾
+          activeTab: Math.min(index, tabs.length - 1),
+        }
+      })
+      if (是当前) await get().activateTab(Math.min(index, s.tabs.length - 2))
+      else 写工作区()
+    },
+
+    async cycleTab(dir) {
+      const s = get()
+      if (s.tabs.length < 2) return
+      await s.activateTab((s.activeTab + dir + s.tabs.length) % s.tabs.length)
+    },
+
+    togglePin(index) {
+      const s = get()
+      const 目标 = s.tabs[index]
+      if (!目标) return
+      const 换过 = { ...目标, pinned: !目标.pinned }
+      // 固定的挪到最前，两档内部各自保持原顺序（sort 稳定）
+      const tabs = sortTabs(s.tabs.map((t, i) => (i === index ? 换过 : t)))
+      set({ tabs, activeTab: Math.max(0, tabs.findIndex((t) => t.entryId === s.currentId)) })
+      写工作区()
+    },
+
+    moveTab(index, dir) {
+      const s = get()
+      const 到 = index + dir
+      const 目标 = s.tabs[index]
+      const 邻 = s.tabs[到]
+      if (!目标 || !邻) return
+      // 不许跨过固定 / 非固定那道界（§三：拖不动就是反馈）
+      if (目标.pinned !== 邻.pinned) return
+      const tabs = s.tabs.slice()
+      tabs[index] = 邻
+      tabs[到] = 目标
+      set({ tabs, activeTab: s.activeTab === index ? 到 : s.activeTab === 到 ? index : s.activeTab })
+      写工作区()
+    },
+
+    /** 标签栏实时回报「此刻这一格滚到哪儿了」。
+     *  与 `setTabView` 分家是因为读的位置不同：滚动属于那个共用的容器，容器在切换那一拍
+     *  已经被浏览器夹到 0（离开的那格 `display:none`），到看不见时才想起来量就量不到了。 */
+    setTabScroll(entryId, scroll) {
+      const s = get()
+      const at = s.tabs.findIndex((t) => t.entryId === entryId)
+      // 找不到就是这一格刚从标签上摘掉，那一发迟到的回报丢掉
+      if (at < 0 || s.tabs[at].scroll === scroll) return
+      const tabs = s.tabs.slice()
+      tabs[at] = { ...tabs[at], scroll }
+      set({ tabs })
+      写工作区节流()
+    },
+
+    setTabView(entryId, 视图) {
+      const s = get()
+      const at = s.tabs.findIndex((t) => t.entryId === entryId)
+      // 找不到就是这一格的标签刚被关掉，它那份迟到的回报丢掉——别把它当成新标签塞回去
+      if (at < 0) return
+      const tabs = s.tabs.slice()
+      tabs[at] = { ...tabs[at], ...视图 }
+      set({ tabs })
+      写工作区()
     },
 
     /** 点图谱节点或反链行跳过去。键形如 `e:12` / `t:3`（见 main/db/links.ts） */
@@ -955,11 +1278,16 @@ export const useStore = create<AppState>()((set, get) => {
         // 属性那一格：少一篇，某个值分组的计数就要掉，整组空了那一行还要消失
         if (get().mode === 'prop') await refreshPropSide()
         get().notify('已移入回收站')
+        // 那一格的标签跟着那一去（决策 31：一篇一格）。留着一格，点开就是一句「这条记录已经不在了」
+        const 摘的是当前 = 摘掉标签(currentId)
         if (isDiary) {
           const today = await window.kestrel.entries.ensureDiary(todayKey())
           applyEntry(today)
         } else {
           set({ entry: null, currentId: null, title: '', content: '', backlinks: [], graph: null, outgoing: [] })
+          // 摘的正是当前那一格 ⇒ 退回旁边那一格。不然标签栏亮着一格、中间却是空的，
+          // 要点一下那格才对上——浏览器删标签不是这个行为，这里也不该是
+          if (摘的是当前) await get().activateTab(get().activeTab)
         }
       } catch (err) {
         get().notify(errorMessage(err))
@@ -967,7 +1295,23 @@ export const useStore = create<AppState>()((set, get) => {
     },
 
     setTitle(title) {
-      set((s) => ({ title, dirty: true, rev: s.rev + 1 }))
+      set((s) => {
+        const 那篇 = s.entry
+        return {
+          title,
+          dirty: true,
+          rev: s.rev + 1,
+          // 标签上那一行字跟着一起改：一边打字一边看到自己那一格跟着变，
+          // 也省掉「等存完才更新」那一秒的错位。清空标题就回到那一篇本来该怎么显示
+          tabLabels:
+            s.currentId === null || !那篇
+              ? s.tabLabels
+              : {
+                  ...s.tabLabels,
+                  [s.currentId]: 标签文案({ title, kind: 那篇.kind, entryDate: 那篇.entryDate }),
+                },
+        }
+      })
       scheduleSave()
     },
 
@@ -1366,10 +1710,10 @@ export const useStore = create<AppState>()((set, get) => {
 
     /* ─ 命令面板 / 快速切换 ─ */
 
-    async openPalette(mode) {
+    async openPalette(mode, 新标签 = false) {
       // 先开面板再拉数据：候选池是几百条，等它回来才显示浮层会有一拍空白
       // 搜索面板一起关掉：两个都是居中 sheet，叠着会出两层模糊、两套键盘导航
-      set({ palette: mode, searchOpen: false })
+      set({ palette: mode, searchOpen: false, paletteNewTab: 新标签 })
       if (mode !== 'switch') return
       const rows = await window.kestrel.entries.recent(SWITCH_LIMIT)
       // 拉的过程中关掉了、或切去了命令模式，这份候选就作废
@@ -1712,6 +2056,9 @@ export const useStore = create<AppState>()((set, get) => {
         // 属性那一格：少一篇，某个值分组的计数就要掉，整组空了那一行还要消失
         if (get().mode === 'prop') await refreshPropSide()
         get().notify('已彻底删除')
+        // 彻底删除走的是同一把刀，标签也得跟着走；摘的是当前那一格就把邻格装上来，
+        // 别留一个「中间显示着没了的那篇、底下标签条指着邻格」的错位
+        if (摘掉标签(id) && get().currentId === id) await get().activateTab(get().activeTab)
       } catch (err) {
         get().notify(errorMessage(err))
       }

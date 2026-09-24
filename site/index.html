@@ -199,6 +199,7 @@
         <li><strong>属性</strong>是「这篇自己带的结构化字段」，有 <code>text / number / list / checkbox</code> 四种类型，属性名在全库共用一个类型。左栏第四格按值分组——这是标签做不到的一件事。</li>
         <li><strong>大纲</strong>在右栏，长正文不用滚。</li>
         <li><strong>收藏</strong> <kbd>Ctrl+D</kbd>，收藏列表从命令面板进。</li>
+        <li><strong>同时开几篇</strong>：一篇一个标签，<kbd>Ctrl+T</kbd> 新开、<kbd>Ctrl+W</kbd> 关掉、<kbd>Ctrl+Tab</kbd> 轮着切、<kbd>Ctrl+Shift+←/→</kbd> 调顺序。每格带着自己的滚动位置和光标，双击那一格是固定（固定的不吃 <kbd>Ctrl+W</kbd>）。关掉应用再开，上次开着的那几篇、顺序、当前那一格、各自滚到哪儿了——都原样回来。</li>
       </ul>
     </section>
 
@@ -232,6 +233,10 @@
         <tbody>
           <tr><td class="keys"><kbd>Ctrl+K</kbd> / <kbd>Ctrl+P</kbd></td><td>命令面板</td><td>按分组列出所有命令</td></tr>
           <tr><td class="keys"><kbd>Ctrl+O</kbd></td><td>快速切换 · 跳到某条记录或主题</td><td></td></tr>
+          <tr><td class="keys"><kbd>Ctrl+T</kbd></td><td>在新标签里打开…</td><td>与 <kbd>Ctrl+O</kbd> 同一个面板，只是落点是新开一格</td></tr>
+          <tr><td class="keys"><kbd>Ctrl+W</kbd></td><td>关掉当前标签</td><td>固定的那一格、以及最后一格都不关，也不关窗口</td></tr>
+          <tr><td class="keys"><kbd>Ctrl+Tab</kbd> <kbd>Ctrl+Shift+Tab</kbd></td><td>往前 / 往后循环切标签</td><td></td></tr>
+          <tr><td class="keys"><kbd>Ctrl+Shift+←</kbd> <kbd>Ctrl+Shift+→</kbd></td><td>当前标签左右挪一位</td><td>不跨过固定那道界；也可以直接把那一格拖过去</td></tr>
           <tr><td class="keys"><kbd>Ctrl+F</kbd></td><td>站内搜索</td><td>三档排序：综合（默认）/ 相关度 / 最近</td></tr>
           <tr><td class="keys"><kbd>Ctrl+G</kbd></td><td>打开全局图谱</td><td></td></tr>
           <tr><td class="keys"><kbd>Ctrl+Shift+G</kbd></td><td>打开全局图谱 · 时间轴</td><td>密度格子与跨年同日那一档</td></tr>
@@ -247,6 +252,7 @@
       </table>
       <p>只从命令面板进、没有键位的：<strong>升格为文章</strong>、<strong>主题管理</strong>、<strong>回收站</strong>、<strong>删除当前记录</strong>、<strong>收藏列表</strong>、<strong>插入查询块</strong>、<strong>查询与模板</strong>（存查询 / 模板管理）、表格那一组，以及 <strong>导出为 Markdown</strong>、<strong>从 Markdown 导回</strong>、<strong>备份与恢复</strong>这三条。导出那一档一年用不了几次，占一个键位不如让人搜得到。</p>
       <p><kbd>Ctrl+F</kbd> 是站内搜索，<kbd>Ctrl+Shift+F</kbd> 是专注模式——这一对与 Obsidian 的键位不一样，别按习惯按。</p>
+      <p>开几篇同时在手：在侧栏的文章卡上 <kbd>Ctrl+单击</kbd> 或按鼠标中键就是新开一格；中键点已经开着的那一篇是切到它那一格，不会多出第二格；<strong>双击</strong>标签固定它（固定的永远排最前，<kbd>Ctrl+W</kbd> 关不掉，得先取消固定）。固定没有键位，命令面板里有那一条。</p>
     </section>
 
     <section id="first-run">

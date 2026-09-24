@@ -191,7 +191,17 @@ function TopicSide(): JSX.Element {
               <button
                 key={a.id}
                 className={`article-card ${a.id === currentId ? 'active' : ''}`}
-                onClick={() => void openEntry(a.id)}
+                onClick={(e) => {
+                  // Ctrl+单击 = 新标签（§三那一条通用规则）
+                  if (e.ctrlKey || e.metaKey) void useStore.getState().openEntryInTab(a.id)
+                  else void openEntry(a.id)
+                }}
+                onAuxClick={(e) => {
+                  if (e.button === 1) {
+                    e.preventDefault()
+                    void useStore.getState().openEntryInTab(a.id)
+                  }
+                }}
               >
                 <h4>
                   {a.title ?? '未命名文章'}

@@ -1,6 +1,10 @@
 /** 主进程与渲染进程共享的类型与通道名。
  *  只有类型和常量，不含副作用——两边都会 import。 */
 
+import type { Workspace } from './workspace'
+
+export type { Workspace }
+
 export type EntryKind = 'diary' | 'article'
 export type EntryStatus = 'draft' | 'published'
 export type ThemeName = 'cloud' | 'paper' | 'midnight' | 'terminal'
@@ -628,6 +632,10 @@ export interface KestrelApi {
     create(input: CreateEntryInput): Promise<Entry>
     /** 部分更新；链接层重解析将来挂在这里 */
     update(id: number, patch: EntryPatch): Promise<Entry>
+    /** 只回 id / title / kind / entryDate（期-09a 的标签条）。库里没有的那几个 id 直接不出现 */
+    labels(
+      ids: number[]
+    ): Promise<{ id: number; title: string | null; kind: EntryKind; entryDate: string }[]>
     /** 软删除，进回收站 */
     remove(id: number): Promise<void>
     recent(limit: number): Promise<EntrySummary[]>
@@ -777,6 +785,13 @@ export interface KestrelApi {
     /** 手动跑一次 30 天那一刀（自动那一跑在开屏之后，这里只是给人对着账） */
     prune(): Promise<{ revisions: number; entries: number }>
   }
+  /** 工作区（期-09a）：开着哪几篇、哪个在当前、各自滚到哪儿。
+   *  `load` 认不出来就返回 null（当没有，界面退回今天）；走这条而不是 `settings.*` 的理由写在
+   *  `shared/workspace.ts` 头上。 */
+  workspace: {
+    load(): Promise<Workspace | null>
+    save(ws: Workspace): Promise<boolean>
+  }
   revisions: {
     list(entryId: number): Promise<RevisionSummary[]>
     /** 取正文。列表刻意不带 content，预览时才取这一份 */
@@ -820,6 +835,9 @@ export const IPC = {
   entryUpdate: 'entry:update',
   entryRemove: 'entry:remove',
   entryRecent: 'entry:recent',
+  /** 只取「这一篇叫什么」（期-09a §四）。标签条给每一格配名字用，
+   *  刻意不拿 `entry:get` 挨个取——那一趟连正文一起搬过 IPC */
+  entryLabels: 'entry:labels',
   entryCountByDay: 'entry:countByDay',
   entryListByTopic: 'entry:listByTopic',
   entryPromote: 'entry:promote',
@@ -894,6 +912,9 @@ export const IPC = {
   backupNow: 'backup:now',
   backupRestore: 'backup:restore',
   backupPrune: 'backup:prune',
+  /** 工作区（期-09a）：开着哪几篇、哪个在当前、各自滚到哪儿。独立于 settings:* 的两条，理由见 shared/workspace.ts 头上 */
+  workspaceLoad: 'workspace:load',
+  workspaceSave: 'workspace:save',
   devSql: 'dev:sql',
   winMinimize: 'win:minimize',
   winToggleMaximize: 'win:toggleMaximize',

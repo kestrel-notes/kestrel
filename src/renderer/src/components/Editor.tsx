@@ -1,5 +1,5 @@
 import type { JSX } from 'react'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { EditorView } from '@codemirror/view'
 import { TextSelection } from '@tiptap/pm/state'
 import { countChars, formatDateZh, relativeTime } from '../../../shared/date'
@@ -9,8 +9,17 @@ import { getCmView } from '@/editor/cmView'
 import { getRichView } from '@/editor/richView'
 import { RichEditor } from '@/editor/RichEditor'
 import { SourceEditor } from '@/editor/SourceEditor'
+import { TabBar } from '@/components/TabBar'
 import { useBookmarkedCurrent } from '@/components/Bookmarks'
 import { IconCode, IconPromote, IconStar, IconTrash } from '@/components/Icons'
+
+/** 期-09a 之后一屏底下挂着好几棵编辑器（每个标签一棵），所以**量 DOM 的那几处必须先挑出
+ *  看得见那一格**：`display:none` 的那些照样能被 `querySelectorAll` 捞到，
+ *  而它们的 `getBoundingClientRect()` 全是 0——大纲高亮会直接量歪。 */
+function 看得见那一格(box: HTMLElement | null): HTMLElement | null {
+  if (!box) return null
+  return box.querySelector<HTMLElement>('.tab-pane[data-active="1"]') ?? box
+}
 
 /** 第 n 个标题现在在屏幕上的 y（相对视口）。竖向位置在两种模式下取法不同：
  *
@@ -22,7 +31,9 @@ import { IconCode, IconPromote, IconStar, IconTrash } from '@/components/Icons'
 function headingYs(box: HTMLElement | null, rich: boolean, content: string): number[] {
   if (!box) return []
   if (rich) {
-    return [...box.querySelectorAll<HTMLElement>('.md-prose h1, .md-prose h2, .md-prose h3')].map(
+    const 那格 = 看得见那一格(box)
+    if (!那格) return []
+    return [...那格.querySelectorAll<HTMLElement>('.md-prose h1, .md-prose h2, .md-prose h3')].map(
       (el) => el.getBoundingClientRect().top
     )
   }
@@ -42,7 +53,7 @@ function headingYs(box: HTMLElement | null, rich: boolean, content: string): num
  *  测量帧里自己校正。（代价：窗口不在前台时那一帧不来，点了像没反应——验证时先把窗口调出来。） */
 function scrollToHeading(box: HTMLElement | null, rich: boolean, content: string, index: number): void {
   if (rich) {
-    box
+    看得见那一格(box)
       ?.querySelectorAll<HTMLElement>('.md-prose h1, .md-prose h2, .md-prose h3')
       [index]?.scrollIntoView({ block: 'start' })
     return
@@ -101,7 +112,8 @@ function indexOfCm(v: EditorView, lowerNeedle: string): number {
 }
 
 function locateInProse(box: HTMLElement | null, needle: string | null): boolean {
-  const prose = box?.querySelector<HTMLElement>('.md-prose')
+  // 只认看得见那一格：隐藏的那几棵里也可能有同一个词，先量到谁全凭 DOM 顺序
+  const prose = 看得见那一格(box)?.querySelector<HTMLElement>('.md-prose')
   if (!prose || !needle) return false
 
   const nodes: Text[] = []
@@ -180,6 +192,49 @@ export function Editor(): JSX.Element {
   // `rich` 在这里的语义是「挂着 ProseMirror 的那两档」（rich 或 reading），不是特指 rich
   const rich = editorMode === 'rich' || editorMode === 'reading'
 
+  const tabs = useStore((s) => s.tabs)
+  const live = useStore((s) => s.live)
+  const activeTab = useStore((s) => s.activeTab)
+  /** 此刻真该挂着实例的那几篇：`live` 里可能还留着刚从标签上摘掉的那一篇 */
+  const 挂着的 = useMemo(() => {
+    const 有 = new Set(tabs.map((t) => t.entryId))
+    return live.filter((id) => 有.has(id))
+  }, [live, tabs])
+
+  // 切标签 / 换档 / 换篇之后，把这一格该在的滚动位置放回去。
+  // 为什么需要专门做这一件事：§〇 M2 量到滚动容器是同一个 DOM 节点，切过去那一帧
+  // 量到的还是**上一篇**的 scrollTop（露 164335 那种），下一帧才归位。
+  //
+  // 用 layout effect 而不是 passive：归位必须赶在浏览器派发那一发 scroll 事件之前做完，
+  // 否则下面 `onScroll` 里那一记会把「被 `display:none` 夹出来的中间值」当成这一格的位置存进去。
+  const 归位中 = useRef(false)
+  const 要回的滚动 = `${entry?.id ?? '-'}:${activeTab}:${editorMode}`
+  useLayoutEffect(() => {
+    const box = scrollRef.current
+    const s = useStore.getState()
+    const 格 = s.tabs[s.activeTab]
+    // 源码模式底下 `.panes` 整块不显示，容器没有位置可言（那一格存的还是富文本那一档的）
+    if (!box || !格 || !rich) return
+    归位中.current = true
+    box.scrollTop = 格.scroll
+    // 第一次挂出来的那一棵要到下一帧才量得准高度（与大纲跳转同一类），补一次就收手。
+    // 松闸刻意放在补那一发之后：这两帧里的 scroll 事件都是归位自己引起的，记下来是白记
+    let 第二帧 = 0
+    const 第一帧 = requestAnimationFrame(() => {
+      if (Math.abs(box.scrollTop - 格.scroll) > 1) box.scrollTop = 格.scroll
+      第二帧 = requestAnimationFrame(() => {
+        归位中.current = false
+      })
+    })
+    return () => {
+      cancelAnimationFrame(第一帧)
+      cancelAnimationFrame(第二帧)
+      归位中.current = false
+    }
+    // 依赖刻意用那一串键而不是 `格.scroll`：回报滚动位置的那一步会改 tabs，
+    // 把它列进来就成了「记完就跳回去」的自激
+  }, [要回的滚动, rich])
+
   // 期-04 §4.10：选区字数。走原生 selectionchange——Tiptap 与 CodeMirror 都会把
   // 各自的选区反映到 DOM 的 selection 上，`toString()` 拿到的就是选中的字；
   // 不需要在两个编辑器里各装一份回调。0 = 光标（不算选中），也不显示。
@@ -224,6 +279,14 @@ export function Editor(): JSX.Element {
     if (!box) return
 
     const onScroll = (): void => {
+      // 谁在眼前，这一发 scrollTop 就算谁的（§〇 M2：容器是同一个 DOM 节点）。
+      // 两件事要挡：归位那两帧里的中间值、以及源码模式——后者 `.panes` 整块不显示，
+      // 容器量到 0，记进去就把这一格富文本那一档的位置冲掉了
+      const s = useStore.getState()
+      if (rich && !归位中.current) {
+        const 格 = s.tabs[s.activeTab]
+        if (格) s.setTabScroll(格.entryId, Math.round(box.scrollTop))
+      }
       const nodes = headingYs(box, rich, useStore.getState().content)
       if (nodes.length === 0) {
         useStore.getState().setActiveHeading(null)
@@ -291,6 +354,7 @@ export function Editor(): JSX.Element {
 
   return (
     <main className="editor-wrap">
+      <TabBar />
       <div className="editor-bar">
         <div className="crumb">
           {isDiary ? '今天' : '主题'}
@@ -390,11 +454,22 @@ export function Editor(): JSX.Element {
             <span className="pill">创建于 {entry.entryDate}</span>
           </div>
 
-          {rich ? (
-            <RichEditor key={entry.id} readOnly={editorMode === 'reading'} />
-          ) : (
-            <SourceEditor key={entry.id} />
-          )}
+          {rich || 挂着的.length > 0 ? (
+            /* 期-09a：一个标签一棵，切走的只是看不见，不重建（设计稿 §五 ①——重建一次是 7 秒）。
+               源码模式下这一整块也留着挂着：切档只重建看得见那一棵，别把整排标签都解析一遍。 */
+            <div className="panes" style={rich ? undefined : { display: 'none' }}>
+              {挂着的.map((id) => (
+                <div className="tab-pane" key={id} data-active={id === entry.id && rich ? '1' : undefined}>
+                  <RichEditor
+                    entryId={id}
+                    visible={rich && id === entry.id}
+                    readOnly={editorMode === 'reading'}
+                  />
+                </div>
+              ))}
+            </div>
+          ) : null}
+          {!rich && <SourceEditor key={entry.id} />}
         </div>
       </div>
 

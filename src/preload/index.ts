@@ -20,6 +20,7 @@ const api: KestrelApi = {
     update: (id, patch) => ipcRenderer.invoke(IPC.entryUpdate, id, patch),
     remove: (id) => ipcRenderer.invoke(IPC.entryRemove, id),
     recent: (limit) => ipcRenderer.invoke(IPC.entryRecent, limit),
+    labels: (ids) => ipcRenderer.invoke(IPC.entryLabels, ids),
     countByDay: (from, to) => ipcRenderer.invoke(IPC.entryCountByDay, from, to),
     listByTopic: (topicId) => ipcRenderer.invoke(IPC.entryListByTopic, topicId),
     promote: (id, input) => ipcRenderer.invoke(IPC.entryPromote, id, input),
@@ -106,6 +107,10 @@ const api: KestrelApi = {
     now: () => ipcRenderer.invoke(IPC.backupNow),
     restore: (name) => ipcRenderer.invoke(IPC.backupRestore, name),
     prune: () => ipcRenderer.invoke(IPC.backupPrune),
+  },
+  workspace: {
+    load: () => ipcRenderer.invoke(IPC.workspaceLoad),
+    save: (ws) => ipcRenderer.invoke(IPC.workspaceSave, ws),
   },
   revisions: {
     list: (entryId) => ipcRenderer.invoke(IPC.revisionList, entryId),

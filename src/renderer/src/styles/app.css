@@ -529,6 +529,103 @@ button.tag-fold:hover {
   overflow: hidden;
   position: relative;
 }
+/* 标签条（期-09a §四）。另起一条 30px，不挤 .editor-bar 那一行：
+   §〇 M6 量过那一行只剩 465px ≈ 3 个标签，而这一条吃掉的编辑区高度是 3.6%。
+   只有一个标签时整个不画（TabBar 自己 return null），那 30px 就还回去。 */
+.tab-bar {
+  display: flex;
+  align-items: stretch;
+  gap: 4px;
+  height: 30px;
+  flex-shrink: 0;
+  padding: 0 8px;
+  border-bottom: 1px solid var(--border);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.tab-bar::-webkit-scrollbar {
+  display: none;
+}
+.tab {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 1 auto;
+  min-width: 96px;
+  max-width: 168px;
+  padding: 0 6px 0 10px;
+  border: 1px solid transparent;
+  border-bottom: none;
+  border-radius: var(--radius-xs) var(--radius-xs) 0 0;
+  background: transparent;
+  color: var(--text-3);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  position: relative;
+}
+.tab:hover {
+  color: var(--text-2);
+  background: var(--hover);
+}
+.tab.active {
+  color: var(--text-1);
+  background: var(--bg-panel);
+  border-color: var(--border);
+  /* 压在 .editor-bar 那条分隔线上，看起来像"接住了"下面那一块 */
+  margin-bottom: -1px;
+}
+.tab.dragging {
+  opacity: 0.55;
+}
+.tab-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: left;
+}
+.tab .pin {
+  flex: 0 0 auto;
+  font-size: 10px;
+  opacity: 0.75;
+}
+.tab .close {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-xs);
+  background: transparent;
+  color: var(--text-3);
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+  visibility: hidden;
+}
+.tab:hover .close,
+.tab.active .close {
+  visibility: visible;
+}
+.tab .close:hover {
+  background: var(--accent-soft);
+  color: var(--text-1);
+}
+/* N 棵编辑器挂在一处，只有看得见那一格占版面 */
+.panes {
+  display: block;
+}
+.tab-pane {
+  display: block;
+}
+.tab-pane:not([data-active='1']) {
+  display: none;
+}
+
 .editor-bar {
   display: flex;
   align-items: center;

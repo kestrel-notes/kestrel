@@ -21,6 +21,7 @@ import * as queryBlock from './db/queryBlock'
 import * as exporter from './db/export'
 import * as importer from './db/import'
 import * as backup from './db/backup'
+import * as workspace from './db/workspace'
 import { parseQueryBlock } from '../shared/queryLang'
 import {
   IPC,
@@ -33,6 +34,7 @@ import {
   type Settings,
   type TopicPatch,
 } from '../shared/types'
+import type { Workspace } from '../shared/workspace'
 
 /** 无边框窗口：标题栏由前端自绘（设计系统里标题栏是玻璃层的一部分，
  *  系统标题栏没法做成那样）。代价是窗口按钮得自己提供，见 IPC.win*。 */
@@ -175,6 +177,7 @@ function registerIpc(): void {
   handle(IPC.entryUpdate, (id: number, patch: EntryPatch) => entries.update(id, patch))
   handle(IPC.entryRemove, (id: number) => entries.remove(id))
   handle(IPC.entryRecent, (limit: number) => entries.recent(limit))
+  handle(IPC.entryLabels, (ids: number[]) => entries.labels(ids))
   handle(IPC.entryCountByDay, (from: string, to: string) => entries.countByDay(from, to))
   handle(IPC.entryListByTopic, (topicId: number) => entries.listByTopic(topicId))
   handle(IPC.entryPromote, (id: number, input: PromoteInput) => entries.promote(id, input))
@@ -217,6 +220,15 @@ function registerIpc(): void {
   handle(IPC.backupNow, () => backup.snapshotNow())
   handle(IPC.backupRestore, (name: string) => backup.restore(name))
   handle(IPC.backupPrune, () => backup.pruneHistory())
+
+  /** 工作区（期-09a）。`save` 这一头不再校验一遍：写进去的坏东西在 `load()` 那里会被
+   *  当成「没有工作区」，那一刀本来就按不可信输入写（`shared/workspace.ts`）。
+   *  两头都校验只会让「为什么标签没了」多一个查不动的地方。 */
+  handle(IPC.workspaceLoad, () => workspace.load())
+  handle(IPC.workspaceSave, (ws: Workspace) => {
+    workspace.save(ws)
+    return true
+  })
 
   handle(IPC.topicList, () => topics.list())
   handle(IPC.topicCreate, (name: string) => topics.create(name))
