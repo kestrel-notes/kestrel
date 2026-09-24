@@ -43,6 +43,17 @@ function coerce(raw: Partial<Settings>): Settings {
       typeof raw.backupEnabled === 'boolean' ? raw.backupEnabled : DEFAULT_SETTINGS.backupEnabled,
     // 0 或负数不当「一份都别留」用：那一档留的是「删错了还能回哪去」，宁可贴到下限
     backupKeep: keepClamp(raw.backupKeep),
+    // 关掉的片段名。只认「字符串数组」这一种形状，名字本身不校验存不存在：
+    // 那份 .css 可能在另一台机器上、今天没放进目录——留着它才不会人一改名就又被偷偷启用
+    snippetsOff: Array.isArray(raw.snippetsOff)
+      ? raw.snippetsOff.filter((x): x is string => typeof x === 'string')
+      : DEFAULT_SETTINGS.snippetsOff,
+    editorModeDefault:
+      raw.editorModeDefault === 'source' ||
+      raw.editorModeDefault === 'reading' ||
+      raw.editorModeDefault === 'rich'
+        ? raw.editorModeDefault
+        : DEFAULT_SETTINGS.editorModeDefault,
   }
 }
 

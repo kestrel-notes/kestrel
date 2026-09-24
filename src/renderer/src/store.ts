@@ -8,6 +8,7 @@ import { expandTemplate } from '../../shared/template'
 import { roundTrip } from '@/editor/markdown'
 import { getRichEditor } from '@/editor/richView'
 import { makeTab, sortTabs, type Workspace, type WorkspaceTab } from '../../shared/workspace'
+import { applySnippets } from './snippets'
 import type { PropConversion, PropType } from '../../shared/types'
 import {
   DEFAULT_SETTINGS,
@@ -29,6 +30,7 @@ import {
   type SavedQuery,
   type SearchOrder,
   type Settings,
+  type Snippet,
   type TagNode,
   type Template,
   type Topic,
@@ -65,6 +67,10 @@ export interface SearchJump {
  *  不持久化：它更像「当前这篇怎么编辑/怎么看」而不是一条偏好，且遇到闸门过不去的文档
  *  会被拽回源码模式，记住它没有意义。 */
 export type EditorMode = 'rich' | 'source' | 'reading'
+
+/** 设置页那六格（期-09b §四）。片段单独一格而不是并进外观：它管的是**用户自己写的文件**，
+ *  出问题时人要第一眼去找的是它，不是藏在外观底下第三屏。 */
+export type SheetTab = 'look' | 'editor' | 'snippets' | 'keys' | 'data' | 'about'
 export type SaveState = 'saved' | 'saving' | 'error'
 
 /** 确认弹层上要写的那三句话。原来这两处是 `window.confirm`，一句话塞满所有信息：
@@ -100,6 +106,12 @@ export interface AppState {
 
   settings: Settings
   prefersDark: boolean
+  /** CSS 片段（期-09b）：主进程那份清单的副本。界面和 `document.head` 里那几颗 `<style>`
+   *  都以它为准，所以「界面上挂着什么」永远有一个可以读出来的答案 */
+  snippets: Snippet[]
+  /** 「暂停全部片段」那一颗。只影响本次会话、**不落库**：不落库是为了不让人
+   *  永久看不到自己的界面而必须先找到设置页（§七 决策 44） */
+  snippetsPaused: boolean
 
   mode: ViewMode
   currentId: number | null
@@ -184,6 +196,8 @@ export interface AppState {
 
   focus: boolean
   sheetOpen: boolean
+  /** 设置页当前那一格（期-09b §四）。标题栏那颗「主题」直接落在外观，命令面板落在调用方给的那一格 */
+  sheetTab: SheetTab
 
   /** 命令面板 / 快速切换（同一个组件两种数据源），null = 关着 */
   palette: PaletteMode | null
@@ -324,9 +338,14 @@ export interface AppState {
    *  与 §3.3 共用同一份 propCrumb，不另起一套「当前按哪个属性看」 */
   openPropSide(name: string): Promise<void>
   patchSettings(patch: Partial<Settings>): Promise<void>
+  /** 重问主进程一次片段清单，并据此重挂 `<style>`。三路铃（启动 / 目录 watch / 窗口聚焦）
+   *  都收进这一条，别在任何一路里自己猜「哪个文件变了」（§七 决策 42）。 */
+  reloadSnippets(): Promise<void>
+  /** 「暂停全部片段」。只影响本次会话（§七 决策 44） */
+  setSnippetsPaused(paused: boolean): void
   switchEditorMode(mode: EditorMode): Promise<void>
   toggleFocus(): void
-  setSheetOpen(open: boolean): void
+  setSheetOpen(open: boolean, tab?: SheetTab): void
   notify(msg: string): void
   /** 问一句「真的要做吗」，等到用户答完才 resolve。见 `ConfirmRequest` */
   askConfirm(req: ConfirmRequest): Promise<boolean>
@@ -883,6 +902,8 @@ export const useStore = create<AppState>()((set, get) => {
     toast: null,
 
     settings: DEFAULT_SETTINGS,
+    snippets: [] as Snippet[],
+    snippetsPaused: false,
     prefersDark: false,
 
     mode: 'diary',
@@ -933,6 +954,7 @@ export const useStore = create<AppState>()((set, get) => {
 
     focus: false,
     sheetOpen: false,
+    sheetTab: 'look' as SheetTab,
 
     palette: null,
     paletteNewTab: false,
@@ -966,6 +988,14 @@ export const useStore = create<AppState>()((set, get) => {
       try {
         const settings = await window.kestrel.settings.all()
         set({ settings, prefersDark: window.matchMedia('(prefers-color-scheme: dark)').matches })
+
+        /* 片段（期-09b）。三路铃里的「启动」这一路，外加 watch 那一路的订阅——
+         *  窗口聚焦那一路在主进程那一侧，它也是往这条通道吱一声，不另起一条路。 */
+        void get().reloadSnippets()
+        window.kestrel.snippets.onChanged(() => void get().reloadSnippets())
+        // 「开应用落在哪一档」从此有人管了（以前每次启动都回 rich）。必须在 `applyEntry` 之前，
+        // 因为那一趟闸门按当前档位决定跑不跑
+        if (settings.editorModeDefault !== 'rich') set({ editorMode: settings.editorModeDefault })
 
         window
           .matchMedia('(prefers-color-scheme: dark)')
@@ -1645,9 +1675,25 @@ export const useStore = create<AppState>()((set, get) => {
       }
     },
 
-    toggleFocus() {
-      set((s) => ({ focus: !s.focus }))
+    async reloadSnippets() {
+      try {
+        const list = await window.kestrel.snippets.list()
+        set({ snippets: list })
+        applySnippets(list, get().snippetsPaused)
+      } catch (err) {
+        // 读不到清单不动界面：宁可不刷新，也不要把正在生效的片段整个拆掉——
+        // 拆掉之后人看到的是「我的样式表忽然不认了」，而那件事最像应用坏了
+        get().notify(`片段清单没读到：${errorMessage(err)}`)
+      }
     },
+
+    setSnippetsPaused(paused) {
+      set({ snippetsPaused: paused })
+      applySnippets(get().snippets, paused)
+    },
+
+    toggleFocus() {
+      set((s) => ({ focus: !s.focus }))    },
 
     /** 切编辑器模式。切到非源码那一档要过闸门，切回源码永远放行。
      *  进入 reading 与进入 rich 走同一条判据（§4.1）：都不写回、但读视图看不到被 schema
@@ -1681,8 +1727,8 @@ export const useStore = create<AppState>()((set, get) => {
       if (mode === 'rich' && out !== s.content) s.setContent(out)
     },
 
-    setSheetOpen(open) {
-      set({ sheetOpen: open })
+    setSheetOpen(open, tab) {
+      set(tab ? { sheetOpen: open, sheetTab: tab } : { sheetOpen: open })
     },
 
     notify(msg) {

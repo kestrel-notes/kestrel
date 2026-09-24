@@ -124,6 +124,13 @@ export interface Settings {
   backupEnabled: boolean
   /** 滚动保留几份快照。3–30，超出就贴边（判据见 `shared/backupFormat.ts` 的 `keepClamp`） */
   backupKeep: number
+  /** 关掉的 CSS 片段文件名（期-09b §二）。存「关掉的」而不是「开着的」，理由写在
+   *  `docs/期-09b-设计稿.md` §七 决策 40：丢进目录就生效是承诺，而缺这一格时的默认值 `[]`
+   *  恰好等于「全开」，老库不必迁移。 */
+  snippetsOff: string[]
+  /** 启动时套一次的编辑器档位。`editorMode` 本身仍是运行态（每次换文档都可能被闸门按回 source），
+   *  这一格只管「开应用落在哪一档」 */
+  editorModeDefault: 'rich' | 'source' | 'reading'
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -137,6 +144,32 @@ export const DEFAULT_SETTINGS: Settings = {
   importLastDir: null,
   backupEnabled: true,
   backupKeep: 7,
+  snippetsOff: [],
+  editorModeDefault: 'rich',
+}
+
+/** 关于那一格要的几件事（期-09b §四）。版本与路径都在主进程那一侧，渲染进程猜不出来，
+ *  而「我的日记存在哪儿」这一格恰恰是人最容易问、也最不该由界面编的一句话。 */
+export interface AppInfo {
+  version: string
+  /** `pragma user_version` */
+  schema: number
+  dbFile: string
+  snippetsDir: string
+  backupsDir: string
+}
+
+/** 一份 CSS 片段（期-09b §二）。清单是**只读**的：文件就是数据，库里不留第二份。
+ *  `css` 为 null 表示这一份没读进来（超限或读坏了），`note` 给一句为什么——
+ *  不显示出来的话，人只会以为「我明明放了文件怎么没反应」。 */
+export interface Snippet {
+  /** 文件名，就是它的身份（也是生效顺序的排序键：按名字升序） */
+  name: string
+  bytes: number
+  mtime: number
+  on: boolean
+  css: string | null
+  note?: '太大' | '读不了' | '本次停用'
 }
 
 /* ── 流通（期-08）：导出 / 导入 / 备份 ────────────────────────────
@@ -792,6 +825,18 @@ export interface KestrelApi {
     load(): Promise<Workspace | null>
     save(ws: Workspace): Promise<boolean>
   }
+  /** CSS 片段（期-09b）。只有「问」和「听」两条，没有「写」——写由人在文件管理器里做，
+   *  应用不把用户手写的 .css 变成第二套编辑面。 */
+  snippets: {
+    list(): Promise<Snippet[]>
+    /** 目录变了的一声铃。回调不带文件名（M4：一次保存 4 个事件，名字不可信） */
+    onChanged(cb: () => void): () => void
+  }
+  /** 打开 Kestrel 自己的目录（设置页那几颗「打开这个文件夹」）。名字是闭集，路径在主进程拼 */
+  shell: {
+    openDir(which: 'snippets' | 'backups'): Promise<boolean>
+    info(): Promise<AppInfo>
+  }
   revisions: {
     list(entryId: number): Promise<RevisionSummary[]>
     /** 取正文。列表刻意不带 content，预览时才取这一份 */
@@ -915,6 +960,16 @@ export const IPC = {
   /** 工作区（期-09a）：开着哪几篇、哪个在当前、各自滚到哪儿。独立于 settings:* 的两条，理由见 shared/workspace.ts 头上 */
   workspaceLoad: 'workspace:load',
   workspaceSave: 'workspace:save',
+  /** CSS 片段（期-09b）：清单只读，主进程那侧拼路径，渲染进程给不出也不该给出路径 */
+  snippetList: 'snippet:list',
+  /** 关于那一格：版本 / schema / 库在哪 / 两个目录在哪 */
+  appInfo: 'app:info',
+  /** 主进程 watching 到目录变了 ⇒ 推一声。渲染层收到就去 `snippet:list` 重问一遍，
+   *  不信这一声里带的文件名（M4 实测：一次保存给 4 个事件，名字与类型都不可信） */
+  snippetChanged: 'snippet:changed',
+  /** 打开 Kestrel 自己的目录。只认闭集名字（§七 决策 48）：一个接受任意字符串去
+   *  `shell.openPath` 的通道，等于把「让资源管理器打开任何目录」交给渲染层 */
+  shellOpenDir: 'shell:openDir',
   devSql: 'dev:sql',
   winMinimize: 'win:minimize',
   winToggleMaximize: 'win:toggleMaximize',

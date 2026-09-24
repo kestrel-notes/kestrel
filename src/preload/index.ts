@@ -112,6 +112,19 @@ const api: KestrelApi = {
     load: () => ipcRenderer.invoke(IPC.workspaceLoad),
     save: (ws) => ipcRenderer.invoke(IPC.workspaceSave, ws),
   },
+  snippets: {
+    list: () => ipcRenderer.invoke(IPC.snippetList),
+    // 铃里不携带文件名：一次保存会给出好几个事件，名字与类型都不可信（期-09b §〇 M4）
+    onChanged: (cb) => {
+      const listener = (): void => cb()
+      ipcRenderer.on(IPC.snippetChanged, listener)
+      return () => ipcRenderer.off(IPC.snippetChanged, listener)
+    },
+  },
+  shell: {
+    openDir: (which) => ipcRenderer.invoke(IPC.shellOpenDir, which),
+    info: () => ipcRenderer.invoke(IPC.appInfo),
+  },
   revisions: {
     list: (entryId) => ipcRenderer.invoke(IPC.revisionList, entryId),
     get: (id) => ipcRenderer.invoke(IPC.revisionGet, id),

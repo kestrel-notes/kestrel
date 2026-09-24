@@ -175,10 +175,39 @@ export const COMMANDS: Command[] = [
   },
   {
     id: 'view.settings',
-    title: '设置 · 外观',
+    title: '设置',
     group: '视图',
     keys: ['Ctrl+,'],
-    run: (s) => s.setSheetOpen(true),
+    run: (s) => s.setSheetOpen(true, 'look'),
+  },
+  {
+    id: 'view.settingsSnippets',
+    title: '设置 · CSS 片段',
+    group: '视图',
+    run: (s) => s.setSheetOpen(true, 'snippets'),
+  },
+  {
+    id: 'view.snippetsPause',
+    title: '暂停全部片段（本次会话）',
+    group: '视图',
+    // 再按一次就恢复。这一颗存在的全部理由：片段能把界面改到设置页本身都摸不到（期-09b §七 决策 44）
+    run: (s) => {
+      const next = !s.snippetsPaused
+      s.setSnippetsPaused(next)
+      s.notify(next ? '本次会话不再挂任何片段（界面已回到主题本身）' : '片段已挂回来')
+    },
+  },
+  {
+    id: 'data.snippetsReload',
+    title: '重读 CSS 片段',
+    group: '数据',
+    run: (s) => {
+      void s.reloadSnippets().then(() =>
+        s.notify(
+          `片段目录里 ${s.snippets.length} 份，挂着 ${s.snippets.filter((x) => x.on && x.css !== null).length} 份`
+        )
+      )
+    },
   },
   {
     id: 'view.palette',

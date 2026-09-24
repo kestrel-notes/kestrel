@@ -50,6 +50,7 @@
     <ul aria-labelledby="g-feature">
       <li><a href="#record">记录</a></li>
       <li><a href="#organize">组织</a></li>
+      <li><a href="#looks">外观与片段</a></li>
       <li><a href="#safety">安全网四层</a></li>
       <li><a href="#keys">快捷键</a></li>
       <li><a href="#first-run">第一次打开</a></li>
@@ -203,6 +204,20 @@
       </ul>
     </section>
 
+    <section id="looks">
+      <h2>外观与 CSS 片段</h2>
+      <p><kbd>Ctrl+,</kbd> 是<strong>设置</strong>：外观（四套主题、强调色、毛玻璃参数、跟随系统深浅色）/ 编辑器（开应用落在哪一档）/ 片段 / 快捷键（全部键位的只读清单，可搜）/ 数据（每日快照开不开、留几份）/ 关于（版本、库结构、库文件在哪）。每一项都落进库里，重启还在。</p>
+      <p>再深一层不该由我们替你猜，所以留了一扇门：<strong>把 <code>.css</code> 丢进 <code>%APPDATA%\Kestrel\snippets\</code>，立刻改外观</strong>，删掉就撤回来。</p>
+      <ul>
+        <li>生效顺序按<strong>文件名升序</strong>，跟你什么时候存盘无关；两份撞同一条选择器时，名字靠后那一份赢。</li>
+        <li>设置页那一格里能看到每一份的大小与改过的时间，能单独关掉某一份——<strong>关着的状态重启还在</strong>。超过 1 MB 的那一份不生效，但会列出来并写着为什么：静默失灵是最难查的那种失灵。</li>
+        <li>写坏了、把界面藏起来了？<kbd>Ctrl+K</kbd> 搜「暂停全部片段」，或启动时加 <code>--no-snippets</code>。这是不用重装就能自救的那两扇门，暂停只影响本次运行，不改任何勾。</li>
+        <li>一句实测出来的经验：<strong>直接改类选择器最稳</strong>（<code>.md-prose { ... }</code> 这种，不用加 <code>!important</code> 就盖得住应用自己那份样式表）。要换主题变量得写成 <code>body[data-theme] { --text-1: ... }</code>——写成 <code>body {}</code> 或 <code>:root {}</code> 都压不住主题那一层。</li>
+        <li>片段是<strong>文件</strong>，不在库里：每日快照、导出、换库都不含它们。备份覆盖不到什么，这一条说在前头。</li>
+        <li>片段里写 <code>@import url(http://…)</code> 或背景图外链都<strong>出不了网</strong>——CSP 现场就拦下（日志里那一句是 <em>violates the following Content Security Policy directive</em>，实测 <code>responseReceived</code> 计数为零）。这与「零网络请求」那句承诺是同一件事。</li>
+      </ul>
+    </section>
+
     <section id="safety">
       <h2>安全网四层</h2>
       <p>记东西的应用最怕「改坏了回不去」。这里的网有四层：</p>
@@ -247,10 +262,10 @@
           <tr><td class="keys"><kbd>Ctrl+D</kbd></td><td>收藏 / 取消收藏当前记录</td><td></td></tr>
           <tr><td class="keys"><kbd>Ctrl+Shift+F</kbd></td><td>专注模式</td><td></td></tr>
           <tr><td class="keys"><kbd>Ctrl+Shift+T</kbd></td><td>焦点给标签树</td><td></td></tr>
-          <tr><td class="keys"><kbd>Ctrl+,</kbd></td><td>设置 · 外观</td><td>四套主题与强调色</td></tr>
+          <tr><td class="keys"><kbd>Ctrl+,</kbd></td><td>设置</td><td>外观 / 编辑器 / 片段 / 快捷键 / 数据 / 关于</td></tr>
         </tbody>
       </table>
-      <p>只从命令面板进、没有键位的：<strong>升格为文章</strong>、<strong>主题管理</strong>、<strong>回收站</strong>、<strong>删除当前记录</strong>、<strong>收藏列表</strong>、<strong>插入查询块</strong>、<strong>查询与模板</strong>（存查询 / 模板管理）、表格那一组，以及 <strong>导出为 Markdown</strong>、<strong>从 Markdown 导回</strong>、<strong>备份与恢复</strong>这三条。导出那一档一年用不了几次，占一个键位不如让人搜得到。</p>
+      <p>只从命令面板进、没有键位的：<strong>升格为文章</strong>、<strong>主题管理</strong>、<strong>回收站</strong>、<strong>删除当前记录</strong>、<strong>收藏列表</strong>、<strong>插入查询块</strong>、<strong>查询与模板</strong>（存查询 / 模板管理）、表格那一组，<strong>设置 · CSS 片段</strong>、<strong>重读 CSS 片段</strong>、<strong>暂停全部片段（本次会话）</strong>，以及 <strong>导出为 Markdown</strong>、<strong>从 Markdown 导回</strong>、<strong>备份与恢复</strong>这三条。导出那一档一年用不了几次，占一个键位不如让人搜得到。</p>
       <p><kbd>Ctrl+F</kbd> 是站内搜索，<kbd>Ctrl+Shift+F</kbd> 是专注模式——这一对与 Obsidian 的键位不一样，别按习惯按。</p>
       <p>开几篇同时在手：在侧栏的文章卡上 <kbd>Ctrl+单击</kbd> 或按鼠标中键就是新开一格；中键点已经开着的那一篇是切到它那一格，不会多出第二格；<strong>双击</strong>标签固定它（固定的永远排最前，<kbd>Ctrl+W</kbd> 关不掉，得先取消固定）。固定没有键位，命令面板里有那一条。</p>
     </section>

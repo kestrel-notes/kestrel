@@ -7,7 +7,7 @@ import { TitleBar } from '@/components/TitleBar'
 import { Sidebar } from '@/components/Sidebar'
 import { Editor } from '@/components/Editor'
 import { Rail } from '@/components/Rail'
-import { ThemeSheet } from '@/components/ThemeSheet'
+import { Settings } from '@/components/Settings'
 import { Palette } from '@/components/Palette'
 import { SearchPanel } from '@/components/SearchPanel'
 import { GraphOverlay } from '@/components/GraphOverlay'
@@ -157,7 +157,7 @@ export default function App(): JSX.Element {
         <Editor />
         <Rail />
       </div>
-      <ThemeSheet />
+      <Settings />
       <PromoteCard />
       <RecycleBin />
       <Bookmarks />

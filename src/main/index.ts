@@ -1,7 +1,7 @@
 import { app, BrowserWindow, dialog, ipcMain, shell } from 'electron'
 import { copyFileSync, existsSync, mkdirSync } from 'node:fs'
 import { join } from 'node:path'
-import { closeDatabase, getDatabase, openDatabase } from './db'
+import { closeDatabase, databaseFile, getDatabase, openDatabase } from './db'
 import { importAsset, mountAssetProtocol, registerAssetScheme } from './attachments'
 import * as entries from './db/entries'
 import * as fts from './db/fts'
@@ -22,9 +22,11 @@ import * as exporter from './db/export'
 import * as importer from './db/import'
 import * as backup from './db/backup'
 import * as workspace from './db/workspace'
+import * as snippets from './db/snippets'
 import { parseQueryBlock } from '../shared/queryLang'
 import {
   IPC,
+  type AppInfo,
   type BookmarkKind,
   type CreateEntryInput,
   type EntryPatch,
@@ -108,6 +110,16 @@ function createWindow(): BrowserWindow {
   const emitMaximize = () => win.webContents.send(IPC.winMaximizeChanged, win.isMaximized())
   win.on('maximize', emitMaximize)
   win.on('unmaximize', emitMaximize)
+
+  /* 片段那声铃（期-09b §五 ②）。两个来源收进同一条路：目录 watch 去抖之后吱一声，
+   *  窗口重新聚焦时也吱一声——后者管的是「人在资源管理器里改完，切回来就该变」，
+   *  而 watch 万一没挂上（只读盘、权限）它还能自己活。 */
+  const 吱一声 = (): void => {
+    if (!win.webContents.isDestroyed()) win.webContents.send(IPC.snippetChanged)
+  }
+  win.on('focus', 吱一声)
+  snippets.pauseForFlag()
+  snippets.startWatch(吱一声)
 
   // 外链一律交给系统浏览器；应用内不开新窗口
   win.webContents.setWindowOpenHandler(({ url }) => {
@@ -228,6 +240,29 @@ function registerIpc(): void {
   handle(IPC.workspaceSave, (ws: Workspace) => {
     workspace.save(ws)
     return true
+  })
+
+  /* CSS 片段（期-09b）。只有「问清单」和「开目录」两条，没有「写文件」那一条：
+   *  片段是人在文件管理器里放的，应用不把自己变成第二个编辑面。 */
+  handle(IPC.snippetList, () => snippets.list())
+  // 关于那一格：版本号 / schema / 库在哪 / 两个目录在哪。全是主进程现值，渲染进程猜不出来
+  handle(IPC.appInfo, (): AppInfo => {
+    const 版 = getDatabase()
+      .prepare('pragma user_version')
+      .get() as unknown as { user_version: number }
+    return {
+      version: app.getVersion(),
+      schema: 版.user_version,
+      dbFile: databaseFile(),
+      snippetsDir: snippets.snippetRoot(),
+      backupsDir: backup.backupRoot(),
+    }
+  })
+  // 闭集名字：一个接受任意字符串去 `shell.openPath` 的通道，等于把「打开任何目录」交给渲染层
+  handle(IPC.shellOpenDir, async (which: 'snippets' | 'backups') => {
+    const 表 = { snippets: snippets.snippetRoot(), backups: backup.backupRoot() } as const
+    if (!(which in 表)) return false
+    return (await shell.openPath(表[which])) === ''
   })
 
   handle(IPC.topicList, () => topics.list())
@@ -386,5 +421,8 @@ if (!app.requestSingleInstanceLock()) {
   })
 
   // 退出前把连接关掉，让 WAL 正常回写主库文件
-  app.on('before-quit', () => closeDatabase())
+  app.on('before-quit', () => {
+    snippets.stopWatch()
+    closeDatabase()
+  })
 }
