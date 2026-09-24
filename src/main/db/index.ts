@@ -11,10 +11,14 @@ import { MIGRATIONS } from './schema'
  *  对象参数要自己序列化）都收在这个目录里，将来要换驱动只动这一层。 */
 
 let db: DatabaseSync | null = null
+/** 当前开着的是哪个文件。`closeDatabase()` 之后仍然留着：换库（备份恢复）要在关掉之后
+ *  才知道该把哪一份写回哪儿，而那个路径只有这一层知道。 */
+let file: string | null = null
 
-export function openDatabase(file: string): DatabaseSync {
-  mkdirSync(dirname(file), { recursive: true })
-  const conn = new DatabaseSync(file)
+export function openDatabase(next: string): DatabaseSync {
+  file = next
+  mkdirSync(dirname(next), { recursive: true })
+  const conn = new DatabaseSync(next)
 
   // WAL：读写不互相阻塞。桌面应用边打字边存，这个比什么都重要
   conn.exec('pragma journal_mode = WAL')
@@ -53,6 +57,18 @@ function migrate(conn: DatabaseSync): void {
 export function getDatabase(): DatabaseSync {
   if (!db) throw new Error('数据库尚未打开')
   return db
+}
+
+/** 连接现在开着没。开屏之后那一段延后跑的活（备份、裁剪）用它判断「窗口已经关了，别跑」——
+ *  它们跑在定时器里，赶不上就整个进程都要退了。 */
+export function isOpen(): boolean {
+  return db !== null
+}
+
+/** 当前库文件的路径（`userData` 那一侧，不是导出物）。备份与恢复都围着我转。 */
+export function databaseFile(): string {
+  if (!file) throw new Error('数据库尚未打开')
+  return file
 }
 
 export function closeDatabase(): void {

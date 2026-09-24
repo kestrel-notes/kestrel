@@ -1,3 +1,4 @@
+import { keepClamp } from '../../shared/backupFormat'
 import { DEFAULT_SETTINGS, type Settings, type ThemeName } from '../../shared/types'
 import { getDatabase } from './index'
 
@@ -38,6 +39,10 @@ function coerce(raw: Partial<Settings>): Settings {
     // 今天没插——那也要能告诉用户「上次是这儿」
     exportLastDir: typeof raw.exportLastDir === 'string' ? raw.exportLastDir : null,
     importLastDir: typeof raw.importLastDir === 'string' ? raw.importLastDir : null,
+    backupEnabled:
+      typeof raw.backupEnabled === 'boolean' ? raw.backupEnabled : DEFAULT_SETTINGS.backupEnabled,
+    // 0 或负数不当「一份都别留」用：那一档留的是「删错了还能回哪去」，宁可贴到下限
+    backupKeep: keepClamp(raw.backupKeep),
   }
 }
 

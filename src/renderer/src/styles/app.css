@@ -3983,6 +3983,48 @@ input[type='range'] {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+/* 快照清单：一份一行，名字 + 日子 + 几篇 + 多大 + 那颗「换到这一份」。
+   高度给得比 .tr-list 松，因为这一档的清单是让人挑的，不是让人扫一眼错误条数的 */
+.bk-list {
+  max-height: 232px;
+}
+.bk-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  list-style: none;
+}
+.bk-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--text-1);
+}
+.bk-meta {
+  flex: 0 0 auto;
+  color: var(--text-3);
+  font-variant-numeric: tabular-nums;
+}
+/* 自保那几份与每日那几份分得开一点：它们不参与滚动保留，是「换错了」那一档的退路 */
+.bk-before {
+  border-left: 2px solid var(--border);
+  padding-left: 7px;
+  margin-left: -7px;
+}
+.bk-row .chip {
+  flex: 0 0 auto;
+  padding: 2px 8px;
+  font-size: 11px;
+}
+.bk-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-right: auto;
+  color: var(--text-2);
+  font-size: 12px;
+}
 .tr-progress {
   height: 4px;
   overflow: hidden;

@@ -358,6 +358,16 @@ export const COMMANDS: Command[] = [
     },
   },
   {
+    id: 'backup.pane',
+    title: '备份与恢复 · 一天一份，最近的几份换得回去',
+    group: '数据',
+    // 只开面板，不在这儿就把那一份落下去：按一次回车就写盘的东西不该做成命令的默认行为
+    run: (s) => {
+      s.setTransferTab('backup')
+      s.setTransferOpen(true)
+    },
+  },
+  {
     id: 'entry.remove',
     title: '删除当前记录',
     group: '数据',

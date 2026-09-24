@@ -101,6 +101,12 @@ const api: KestrelApi = {
     all: () => ipcRenderer.invoke(IPC.settingsAll),
     patch: (patch) => ipcRenderer.invoke(IPC.settingsPatch, patch),
   },
+  backup: {
+    status: () => ipcRenderer.invoke(IPC.backupStatus),
+    now: () => ipcRenderer.invoke(IPC.backupNow),
+    restore: (name) => ipcRenderer.invoke(IPC.backupRestore, name),
+    prune: () => ipcRenderer.invoke(IPC.backupPrune),
+  },
   revisions: {
     list: (entryId) => ipcRenderer.invoke(IPC.revisionList, entryId),
     get: (id) => ipcRenderer.invoke(IPC.revisionGet, id),

@@ -20,6 +20,7 @@ import * as templates from './db/templates'
 import * as queryBlock from './db/queryBlock'
 import * as exporter from './db/export'
 import * as importer from './db/import'
+import * as backup from './db/backup'
 import { parseQueryBlock } from '../shared/queryLang'
 import {
   IPC,
@@ -97,6 +98,9 @@ function createWindow(): BrowserWindow {
     // 全文索引的回填排在窗口出现之后：它跑到第一批之前是同步的（最坏几百毫秒），
     // 排在前面等于让大库升级后的首帧多白屏一截。回填本身可续，见 db/fts.ts 头注。
     void fts.ensureIndex().catch((err) => console.error('[fts] 索引回填失败:', err))
+    // 每日备份与 30 天裁剪排在首屏之后（期-03 那条 ≤3000ms 红线是硬的，这两件都不许挤进去）。
+    // 裁剪跑在备份之后是同一条链里的顺序，见 db/backup.ts 头注。
+    backup.scheduleMaintenance()
   })
 
   const emitMaximize = () => win.webContents.send(IPC.winMaximizeChanged, win.isMaximized())
@@ -207,6 +211,12 @@ function registerIpc(): void {
   handle(IPC.importRun, async (dir: string) => importer.run(dir))
   handle(IPC.importProgress, () => importer.getProgress())
   handle(IPC.importCancel, () => importer.requestCancel())
+
+  // 备份这一档只认文件名：路径由主进程自己拼（`backupRoot()`），渲染进程给不出也别想给出一条
+  handle(IPC.backupStatus, () => backup.status())
+  handle(IPC.backupNow, () => backup.snapshotNow())
+  handle(IPC.backupRestore, (name: string) => backup.restore(name))
+  handle(IPC.backupPrune, () => backup.pruneHistory())
 
   handle(IPC.topicList, () => topics.list())
   handle(IPC.topicCreate, (name: string) => topics.create(name))

@@ -116,6 +116,10 @@ export interface Settings {
   /** 上一次导入用的目录。与导出那一档分开记：往返测试里「导出去的地方」和
    *  「从哪儿导回来」常常是同一个目录，但混成一个键会让「上次导到哪」这句话有歧义 */
   importLastDir: string | null
+  /** 每天开应用时自动落一份快照（期-08 §四）。关掉之后「立即备份一份」那颗按钮还在 */
+  backupEnabled: boolean
+  /** 滚动保留几份快照。3–30，超出就贴边（判据见 `shared/backupFormat.ts` 的 `keepClamp`） */
+  backupKeep: number
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -127,6 +131,8 @@ export const DEFAULT_SETTINGS: Settings = {
   followSystem: false,
   exportLastDir: null,
   importLastDir: null,
+  backupEnabled: true,
+  backupKeep: 7,
 }
 
 /* ── 流通（期-08）：导出 / 导入 / 备份 ────────────────────────────
@@ -213,6 +219,51 @@ export interface ImportProgress {
   running: boolean
   done: number
   total: number
+}
+
+/* ── 备份与恢复（期-08 §四） ── */
+
+/** 一份快照。`entries` 是把那一份只读打开数出来的：数不出来（文件坏了、不是自家的库）
+ *  就是 null，界面宁可写「数不出来」也不要显示一个 0 骗人。 */
+export interface BackupInfo {
+  name: string
+  /** daily=一天一份那一种，manual=同一天里手动多按的那一份，
+   *  before=换库之前对当前库的自保（它不参与滚动保留） */
+  kind: 'daily' | 'manual' | 'before'
+  /** 文件名里那个本地时刻 */
+  at: string
+  size: number
+  entries: number | null
+}
+
+export interface BackupStatus {
+  dir: string
+  enabled: boolean
+  keep: number
+  /** 今天（本地）那一天，判据是「这一天的那一份在不在」 */
+  today: string
+  hasToday: boolean
+  /** 新→旧 */
+  snapshots: BackupInfo[]
+  /** 30 天那一刀现在会砍掉多少。摆在这里是为了让「保留期」不再只是一行显示（#76） */
+  pending: { revisions: number; entries: number }
+}
+
+export interface BackupRun {
+  /** false = 今天已经有那一份了（或自动备份被关了），不是失败 */
+  made: boolean
+  name: string | null
+  /** 滚动保留删掉的文件名（只可能是自家那两种快照） */
+  pruned: string[]
+  ms: number
+}
+
+export interface RestoreResult {
+  /** 换进来的那一份 */
+  from: string
+  /** 换出去之前，当前库被存成了哪一份 */
+  saved: string
+  entries: number | null
 }
 
 /** 一次保存的入参：只带真正会变的字段 */
@@ -715,6 +766,17 @@ export interface KestrelApi {
     all(): Promise<Settings>
     patch(patch: Partial<Settings>): Promise<Settings>
   }
+  /** 备份与恢复（期-08 §四）。目录固定在 `<userData>/backups`，渲染进程给不出也不该给出路径：
+   *  所有方法只认文件名，主进程那一侧再拼回目录（拼错了也跑不出去）。 */
+  backup: {
+    status(): Promise<BackupStatus>
+    /** 立即落一份（`VACUUM INTO`），并按保留名额滚掉最旧的 */
+    now(): Promise<BackupRun>
+    /** 换到某一份快照。之前会把当前库存成 `kestrel-before-restore-*`，之后界面要重读一遍 */
+    restore(name: string): Promise<RestoreResult>
+    /** 手动跑一次 30 天那一刀（自动那一跑在开屏之后，这里只是给人对着账） */
+    prune(): Promise<{ revisions: number; entries: number }>
+  }
   revisions: {
     list(entryId: number): Promise<RevisionSummary[]>
     /** 取正文。列表刻意不带 content，预览时才取这一份 */
@@ -828,6 +890,10 @@ export const IPC = {
   importRun: 'import:run',
   importProgress: 'import:progress',
   importCancel: 'import:cancel',
+  backupStatus: 'backup:status',
+  backupNow: 'backup:now',
+  backupRestore: 'backup:restore',
+  backupPrune: 'backup:prune',
   devSql: 'dev:sql',
   winMinimize: 'win:minimize',
   winToggleMaximize: 'win:toggleMaximize',
