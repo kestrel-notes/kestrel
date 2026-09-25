@@ -81,33 +81,42 @@ export function linkByKey(outgoing: OutgoingLink[], key: string): OutgoingLink |
   return outgoing.find((l) => l.key === key) ?? null
 }
 
-/** `[[Kestrel 设计|这个项目]]` 在界面上显示成什么：有别名用别名，否则用目标（去掉锚点） */
-export function rawLabel(raw: string): string {
-  const inner = raw.replace(/^\[\[|\]\]$/g, '')
-  const bar = inner.indexOf('|')
-  if (bar !== -1) {
-    const alias = inner.slice(bar + 1).trim()
-    if (alias) return alias
-  }
-  const left = bar === -1 ? inner : inner.slice(0, bar)
-  const hash = left.indexOf('#')
-  return (hash === -1 ? left : left.slice(0, hash)).trim()
-}
-
-/** `[[ 目标 #锚点 |别名 ]]` → 节点属性。目标为空（`[[#某标题]]`）不是链接。
+/** `[[ 目标 #锚点 |别名 ]]` → 节点属性。
+ *
+ *  拆不出目标的形状（`[[#小节]]`、`[[ ]]`）**也返回一份属性**，只是 target 是空的：
+ *  这一串字要原样留在树上，不能不认得就没有了。返回 null 只发生在这压根不是 `[[…]]` 形状。
  *
  *  导出是给 `[[` 补全用的（期-05b）：补全选中之后落进正文的那一个节点，
  *  必须与 InputRule 那一条走同一把规范化——两处各拆一次竖线与锚点，早晚会漂。 */
-export function wikiAttrs(raw: string): {
+export function wikiAttrs(raw: string): WikiAttrs | null {
+  const inner = /^\[\[([^[\]\n]*)\]\]$/.exec(raw)?.[1]
+  if (inner === undefined) return null
+  const parts = splitLinkInner(inner)
+  return parts
+    ? { raw, target: parts.target, alias: parts.alias, anchor: parts.anchor }
+    : { raw, target: '', alias: null, anchor: null }
+}
+
+export interface WikiAttrs {
   raw: string
   target: string
   alias: string | null
   anchor: string | null
-} | null {
-  const inner = /^\[\[([^[\]\n]*)\]\]$/.exec(raw)?.[1]
-  if (inner === undefined) return null
-  const parts = splitLinkInner(inner)
-  return parts ? { raw, target: parts.target, alias: parts.alias, anchor: parts.anchor } : null
+}
+
+/** 屏幕上那一串字。认得出的用目标/别名，认不出的就把源码原样摆出来。
+ *
+ *  最后那一个 `|| a.raw` 是承重的：`[[#小节]]` 这种拆不出目标的形状，
+ *  以前既不成节点也不留字，整串在所见即所得里就地蒸发（期-05f §十五）。 */
+export function wikiLabel(a: Partial<WikiAttrs>): string {
+  return a.alias || a.target || a.raw || ''
+}
+
+/** `[[Kestrel 设计|这个项目]]` 在界面上显示成什么：有别名用别名，否则用目标（去掉锚点）。
+ *  与 `wikiAttrs` 共用同一把拆分——两处各拆一次竖线与锚点，早晚会漂。 */
+export function rawLabel(raw: string): string {
+  const a = wikiAttrs(raw)
+  return a ? wikiLabel(a) : raw
 }
 
 /** 双链节点：inline atom。
@@ -142,7 +151,6 @@ const WikiLink = Node.create<{ bridge: LinkBridge | null }>({
 
   renderHTML({ HTMLAttributes }) {
     // 复制粘贴走的是 HTML 这条路，raw 得带上，否则粘出去的链接粘回来会散架
-    const label = HTMLAttributes.alias || HTMLAttributes.target || ''
     return [
       'span',
       mergeAttributes(HTMLAttributes, {
@@ -150,7 +158,7 @@ const WikiLink = Node.create<{ bridge: LinkBridge | null }>({
         class: 'wl wl-dangling',
         'data-key': HTMLAttributes.target,
       }),
-      label,
+      wikiLabel(HTMLAttributes),
     ]
   },
 
@@ -158,8 +166,9 @@ const WikiLink = Node.create<{ bridge: LinkBridge | null }>({
     const bridge = this.options.bridge
     return ({ node }) => {
       const dom = document.createElement('span')
-      const label = (node.attrs.alias as string) || (node.attrs.target as string) || ''
-      const target = (node.attrs.target as string) || ''
+      const attrs = node.attrs as WikiAttrs
+      const label = wikiLabel(attrs)
+      const target = attrs.target
       dom.textContent = label
 
       let nodeKey: string | null = null
@@ -196,8 +205,7 @@ const WikiLink = Node.create<{ bridge: LinkBridge | null }>({
         dom,
         update: (next) => {
           if (next.type.name !== node.type.name) return false
-          const nextLabel = (next.attrs.alias as string) || (next.attrs.target as string) || ''
-          if (nextLabel !== label) return false
+          if (wikiLabel(next.attrs as WikiAttrs) !== label) return false
           return true
         },
         // 分型色是 paint() 直接改 dom.className/title 上去的，ProseMirror 并不管这块 DOM。
@@ -244,7 +252,12 @@ const WikiLink = Node.create<{ bridge: LinkBridge | null }>({
 
   parseMarkdown: (token, helpers) => {
     const attrs = wikiAttrs(token.raw ?? '')
-    return attrs ? helpers.createNode('wikiLink', attrs) : []
+    // 兜底那一支现在到不了（`[[…]]` 形状一定拆得出 attrs），留着是因为这条路上丢过一次用户的字：
+    // 返回 `[]` 会让 tiptap 落进 parseFallbackToken 的 default 分支，而自定义 token 没有
+    // `.tokens` ⇒ 直接 null，整串就地蒸发。谁再往这里写 `[]`，同一跤重摔一遍。
+    return attrs
+      ? helpers.createNode('wikiLink', attrs)
+      : helpers.createTextNode(token.raw ?? '')
   },
 
   renderMarkdown: (node) => node.attrs?.raw ?? '',
@@ -490,12 +503,21 @@ function describeLoss(before: JSONContent, after: JSONContent): string[] {
   return out.length ? out : ['内容对不上']
 }
 
+/** `[[…]]` 的形状，与 `findLinkRanges` 那一条同一个写法（不认代码区：md 与 out 两边
+ *  各算一次，代码块里的那些自然抵消）。
+ *
+ *  数的是**个数**，与 STYLE_ATTR / diffUnknownTags 同族——都是「parse 一上来就吃光、
+ *  两棵树相等」那一类的第三道口子，期-05f §十五 撞出来的：`[[#小节]]` 拆不出目标，
+ *  旧代码让它返回空数组，于是整串字在树上根本不存在，闸门一路绿灯，落库少了六个字。 */
+const WIKI_SPAN = /\[\[[^[\]\n]*\]\]/g
+
 /** 把 Markdown 过一遍「解析 → 序列化 → 再解析」，报告这一趟到底动了什么。
  *
  *  无损的判据是**树**相等，不是文本逐字节相等。逐字节相等的判据会把
  *  `* 项目符号`、`__粗体__` 全判成有损，那等于永远进不了所见即所得
- *  （实测见 scratch/md-spike.mjs）。树相等之外还有两个口子：样式属性（STYLE_ATTR）、
- *  未识别标签（diffUnknownTags）——两个都是「parse 一上来就吃光、树看不出差别」的那一类。 */
+ *  （实测见 scratch/md-spike.mjs）。树相等之外还有三个口子：样式属性（STYLE_ATTR）、
+ *  未识别标签（diffUnknownTags）、被吃光的 `[[…]]`（WIKI_SPAN）——三个都是
+ *  「parse 一上来就吃光、树看不出差别」的那一类。 */
 export function roundTrip(md: string): RoundTrip {
   const tree = manager.parse(md)
   const out = manager.serialize(tree)
@@ -513,6 +535,8 @@ export function roundTrip(md: string): RoundTrip {
   const htmlLost: string[] = []
   if (styles > 0) htmlLost.push(`${styles} 处 HTML 属性（style/class/on*）`)
   if (tags.n > 0) htmlLost.push(`${tags.n} 处 HTML 标签：${tags.names.join(' ')}`)
+  const eaten = countMatches(md, WIKI_SPAN) - countMatches(out, WIKI_SPAN)
+  if (eaten > 0) htmlLost.push(`${eaten} 处 [[…]] 没能原样出来`)
   if (!lossless) {
     const lost = describeLoss(tree, again)
     return { out, lossless: false, notes: [], lost: [...htmlLost, ...lost] }
