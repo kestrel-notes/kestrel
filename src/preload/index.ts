@@ -65,6 +65,7 @@ const api: KestrelApi = {
     graph: (entryId, depth) => ipcRenderer.invoke(IPC.linkGraph, entryId, depth),
     graphAll: () => ipcRenderer.invoke(IPC.linkGraphAll),
     outgoing: (entryId) => ipcRenderer.invoke(IPC.linkOutgoing, entryId),
+    candidates: (上限) => ipcRenderer.invoke(IPC.linkCandidates, 上限),
   },
   search: {
     run: (query, limit, order) => ipcRenderer.invoke(IPC.searchRun, query, limit, order),

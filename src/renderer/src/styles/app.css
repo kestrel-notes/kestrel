@@ -2605,6 +2605,13 @@ input[type='range'] {
   font-family: var(--font-mono);
   color: var(--text-3);
 }
+/* 补全菜单底部那一句"还有几条没列进来"：它不是某一行的提示，是一整条脚注 */
+.wc-more {
+  flex-shrink: 1;
+  padding: 4px 10px 2px;
+  white-space: normal;
+  line-height: 1.5;
+}
 
 /* ── 站内搜索面板（期-03 §4.1）── 容器与列表沿用 .palette-card / .pal-*，
    这里只补「一行结果有三行信息」所需的那点排布。不新增颜色 token：

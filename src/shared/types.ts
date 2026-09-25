@@ -212,6 +212,17 @@ export interface ShareWrite {
   renamed: boolean
 }
 
+/** `[[` 补全的一条候选（期-05b）。只有两种来源能被名字指到：主题名与带标题的记录。
+ *
+ *  **日期不在这里**：日记普遍没有标题（实测 5001 篇的库里带标题的是 0 篇），
+ *  日期那一族由渲染层按查询本身生成（`今天`/`昨天` 这类相对词与数字前缀），
+ *  不枚举几千个日子往 IPC 里塞。`hint` 是行右侧那一点补充——同名两行靠它分开。 */
+export interface Candidate {
+  kind: 'entry' | 'topic'
+  name: string
+  hint: string
+}
+
 /** 一簇「反复提到」（期-11b）：同一个目标被这些篇在 ≥3 个不同月份各自提过，
  *  且**这些篇彼此一条链都没有**（有一条就不算这一簇，判据见 `main/db/repeats.ts`）。
  *
@@ -843,6 +854,9 @@ export interface KestrelApi {
     graphAll(): Promise<GlobalGraph>
     /** 这篇指向谁：正文里每一条链接落到了哪，编辑器照着分型着色 */
     outgoing(entryId: number): Promise<OutgoingLink[]>
+    /** `[[` 补全那一份候选（主题名 + 带标题的记录）。一次弹层取一次，不跨弹层缓存。
+     *  `还有` 是被上限截掉的那部分条数——截断要说出来，不能让用户以为"库里没有" */
+    candidates(上限?: number): Promise<{ 名录: Candidate[]; 还有: number }>
   }
   /** 全文搜索（期-03）。查询串的语法只有一份实现：`shared/query.ts`。
    *  空串**不该发过来**（面板自己拦，见 §10 第 8 项），主进程再兜一道。 */
@@ -1041,6 +1055,8 @@ export const IPC = {
   linkGraph: 'link:graph',
   linkGraphAll: 'link:graphAll',
   linkOutgoing: 'link:outgoing',
+  /** 期-05b：`[[` 补全的候选清单（只读，一次弹层取一次） */
+  linkCandidates: 'link:candidates',
   settingsAll: 'settings:all',
   settingsPatch: 'settings:patch',
   searchRun: 'search:run',

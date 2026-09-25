@@ -332,6 +332,8 @@ function registerIpc(): void {
   handle(IPC.linkGraph, (entryId: number, depth: number) => links.graph(entryId, depth))
   handle(IPC.linkGraphAll, () => links.graphAll())
   handle(IPC.linkOutgoing, (entryId: number) => links.outgoing(entryId))
+  // 期-05b：`[[` 补全那份候选。只读、一次弹层取一次（不跨弹层缓存，理由写在 links.ts 那段）
+  handle(IPC.linkCandidates, (上限?: number) => links.candidates(上限))
 
   handle(IPC.settingsAll, () => settings.all())
   handle(IPC.settingsPatch, (patch: Partial<Settings>) => settings.patch(patch))

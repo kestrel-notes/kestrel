@@ -10,6 +10,7 @@ import { normalizeLinkKey, parseLinks } from '../../shared/links'
 import type { ParsedLink } from '../../shared/links'
 import type {
   Backlink,
+  Candidate,
   DanglingLink,
   EntryKind,
   GlobalGraph,
@@ -263,6 +264,41 @@ export function outgoing(entryId: number): OutgoingLink[] {
       targetType: kind,
     }
   })
+}
+
+/** `[[` 补全要的那一份候选（期-05b）。
+ *
+ *  **只取"能被名字指到的东西"**：主题名与带标题的记录。日记**不靠标题**被指——
+ *  实测那份 5001 篇的库里带标题的是 0 篇（`scratch/p05b-pre.mjs`），日期那一族由渲染层
+ *  按查询本身生成（相对词 / 数字前缀），不枚举几千个日子往 IPC 里塞。
+ *
+ *  每一次弹层开起来取一次、不做进程级缓存（与 11b 决策 93 同族）：新建与改名下一趟就看得见。
+ *  代价量在真界面上：5001 篇那一份库，一次往返 13–14ms（含 3024 行过 IPC），
+ *  从打下 `[[` 到画出第一行 14ms。 */
+export function candidates(上限 = 3000): { 名录: Candidate[]; 还有: number } {
+  const db = getDatabase()
+  const 出: Candidate[] = []
+  for (const t of db.prepare('select id, name from Topic order by sort_order, id').all() as unknown as {
+    id: number
+    name: string
+  }[])
+    出.push({ kind: 'topic', name: t.name, hint: '主题' })
+  const 篇 = db
+    .prepare(
+      `select id, kind, title, entry_date from Entry
+       where deleted_at is null and title is not null and trim(title) <> ''
+       order by updated_at desc limit ?`
+    )
+    .all(上限) as unknown as { id: number; kind: 'diary' | 'article'; title: string; entry_date: string }[]
+  for (const e of 篇) 出.push({ kind: 'entry', name: e.title, hint: e.kind === 'diary' ? e.entry_date : '文章' })
+  // 截断了就要说出来（11b §三 第 7 条那一条口径）：宁可说一句"还有 N 个没列进来"，
+  // 也不让用户以为自己打的那个名字"库里没有"
+  const 有标题 = db
+    .prepare(
+      `select count(*) c from Entry where deleted_at is null and title is not null and trim(title) <> ''`
+    )
+    .get() as { c: number }
+  return { 名录: 出, 还有: Math.max(0, Number(有标题.c) - 篇.length) }
 }
 
 /* ─ 读：局部图谱 ─ */

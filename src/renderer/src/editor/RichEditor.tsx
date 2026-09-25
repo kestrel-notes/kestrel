@@ -23,6 +23,7 @@ import { useStore } from '@/store'
 import { releaseRichEditor, releaseRichView, setRichView, setRichEditor } from '@/editor/richView'
 import { buildExtensions, resolveLink, type LinkBridge } from '@/editor/markdown'
 import { SlashMenu, SlashPopup } from '@/editor/SlashMenu'
+import { WikiComplete, WikiCompletePopup } from '@/editor/wikiComplete'
 import { Folding } from '@/editor/folding'
 import { FootnoteNumbers } from '@/editor/footnote'
 import { Attachments } from '@/editor/assets'
@@ -73,7 +74,7 @@ export function RichEditor({
   // QueryBlocks 两档都挂：查询结果是**读**出来的，且它是纯装饰器（不进 schema、不进 md），
   // 挂进 buildExtensions() 反而会把这份名单污染成闸门的 schema（期-07 §一）。
   const extensions = useMemo(
-    () => [...buildExtensions(bridge), SlashMenu, Folding, FootnoteNumbers, Attachments, QueryBlocks],
+    () => [...buildExtensions(bridge), SlashMenu, WikiComplete, Folding, FootnoteNumbers, Attachments, QueryBlocks],
     [bridge]
   )
 
@@ -195,6 +196,7 @@ export function RichEditor({
     <div className="md-body">
       <EditorContent editor={editor} />
       {冻结 ? null : <SlashPopup />}
+      {冻结 ? null : <WikiCompletePopup />}
     </div>
   )
 }

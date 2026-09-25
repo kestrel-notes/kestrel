@@ -79,8 +79,11 @@ export function rawLabel(raw: string): string {
   return (hash === -1 ? left : left.slice(0, hash)).trim()
 }
 
-/** `[[ 目标 #锚点 |别名 ]]` → 节点属性。目标为空（`[[#某标题]]`）不是链接。 */
-function wikiAttrs(raw: string): {
+/** `[[ 目标 #锚点 |别名 ]]` → 节点属性。目标为空（`[[#某标题]]`）不是链接。
+ *
+ *  导出是给 `[[` 补全用的（期-05b）：补全选中之后落进正文的那一个节点，
+ *  必须与 InputRule 那一条走同一把规范化——两处各拆一次竖线与锚点，早晚会漂。 */
+export function wikiAttrs(raw: string): {
   raw: string
   target: string
   alias: string | null
