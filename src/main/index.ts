@@ -11,6 +11,7 @@ import * as topics from './db/topics'
 import * as tags from './db/tags'
 import * as text from './db/text'
 import * as links from './db/links'
+import * as mentions from './db/mentions'
 import * as props from './db/props'
 import * as bookmarks from './db/bookmarks'
 import * as revisions from './db/revision'
@@ -33,6 +34,7 @@ import {
   type BookmarkKind,
   type CreateEntryInput,
   type EntryPatch,
+  type MentionLinkAsk,
   type PromoteInput,
   type PreviewAsk,
   type PropType,
@@ -338,6 +340,9 @@ function registerIpc(): void {
   handle(IPC.linkCandidates, (上限?: number) => links.candidates(上限))
   // 期-05d：悬浮预览那一张卡。只读，且是**窄**查询——整篇正文不过这条通道（links.ts 里那段注释）
   handle(IPC.linkPreview, (问: PreviewAsk) => links.preview(问))
+  // 期-05e：未链接提及。取那一组只读；"连上"那一颗改的是**另一篇**的正文，所以带条件写
+  handle(IPC.linkMentions, (entryId: number) => mentions.mentionsOf(entryId))
+  handle(IPC.linkMentionOne, (问: MentionLinkAsk) => mentions.linkMention(问))
   // 期-05c：全局别名。加与删都会动 Link（当场认领 / 放回悬空），所以这两个不是纯 CRUD
   handle(IPC.aliasList, () => links.aliases())
   handle(IPC.aliasAdd, (name: string, targetType: 'entry' | 'topic', targetId: number) =>

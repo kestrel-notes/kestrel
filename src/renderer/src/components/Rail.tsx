@@ -19,8 +19,10 @@ export function Rail(): JSX.Element {
   const savedAt = useStore((s) => s.savedAt)
   const dirty = useStore((s) => s.dirty)
   const backlinks = useStore((s) => s.backlinks)
+  const mentions = useStore((s) => s.mentions)
   const graph = useStore((s) => s.graph)
   const openNode = useStore((s) => s.openNode)
+  const linkMentionOne = useStore((s) => s.linkMentionOne)
   const setGraphOpen = useStore((s) => s.setGraphOpen)
   const activeHeading = useStore((s) => s.activeHeading)
   const jumpToHeading = useStore((s) => s.jumpToHeading)
@@ -94,8 +96,15 @@ export function Rail(): JSX.Element {
           没有出链时整块不渲染——正文空着的时候这两块都不该占位子 */}
       <Outgoing />
 
+      {/* 「未链接提及」挂在反链同一块里（期-05e）：那两组说的是同一件事的两头——
+          "已经连上的谁 pointing 这里" 与 "平写着但没连上的"。分开两块会让人以为是两套东西 */}
       <RailBlock title="反向链接" count={backlinks.length}>
-        <Backlinks backlinks={backlinks} onOpen={(key) => void openNode(key)} />
+        <Backlinks
+          backlinks={backlinks}
+          mentions={mentions}
+          onOpen={(key) => void openNode(key)}
+          onLink={(h) => void linkMentionOne({ id: h.id, 绝对位: h.绝对位, 串: h.串, 那一刻: h.那一刻 })}
+        />
       </RailBlock>
 
       {/* 编年史与上面那两块是同一件事的两个轴：反链与局部图谱看"谁连着这一篇"（空间轴），

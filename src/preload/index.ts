@@ -67,6 +67,8 @@ const api: KestrelApi = {
     outgoing: (entryId) => ipcRenderer.invoke(IPC.linkOutgoing, entryId),
     candidates: (上限) => ipcRenderer.invoke(IPC.linkCandidates, 上限),
     preview: (问) => ipcRenderer.invoke(IPC.linkPreview, 问),
+    mentionsOf: (entryId) => ipcRenderer.invoke(IPC.linkMentions, entryId),
+    linkMention: (问) => ipcRenderer.invoke(IPC.linkMentionOne, 问),
     aliases: () => ipcRenderer.invoke(IPC.aliasList),
     addAlias: (name, targetType, targetId) =>
       ipcRenderer.invoke(IPC.aliasAdd, name, targetType, targetId),

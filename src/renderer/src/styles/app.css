@@ -2201,6 +2201,62 @@ body.no-glass .go-members {
   background: var(--border);
   order: 2;
 }
+/* ── 未链接提及（期-05e）──
+   这组挂在反链同一块里，行与反链行同形（复用 .bl），只在三处不同：
+   右侧多一颗「连上」、命中那截要加亮、组标题要把现算的代价写出来。
+   加亮用 mark 而不加 padding——它在 .bl-ctx 那行 nowrap 省略号里，
+   一padding 就把行高顶起来，整组的间距跟着错位 */
+.mt-group {
+  margin-top: 2px;
+}
+.mt-cost {
+  font-size: 9.5px;
+  color: var(--text-3);
+  letter-spacing: 0.02em;
+  opacity: 0.85;
+}
+.mt-row {
+  display: flex;
+  flex-direction: column;
+  padding-right: 8px;
+}
+/* 一行两栏会把下面那行上下文挤掉四十来像素，正好挤掉加亮的那一截（实机截图里看得见）。
+   所以名字与「连上」占第一行，上下文自己占满第二行——两行都是同一篇的入口，点哪儿都跳 */
+.mt-top {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.mt-row .bl {
+  width: 100%;
+}
+.mt-name {
+  flex: 1;
+  min-width: 0;
+  padding-bottom: 0;
+}
+.mt-ctx {
+  padding-top: 0;
+}
+.mt-via {
+  font-size: 9.5px;
+  padding: 1px 5px;
+  border-radius: var(--radius-xs);
+  border: 1px dashed var(--border-strong);
+  color: var(--text-3);
+  flex-shrink: 0;
+}
+.mt-hit {
+  background: var(--accent-soft);
+  color: var(--text-1);
+  border-radius: var(--radius-xs);
+}
+.mt-link {
+  flex-shrink: 0;
+  height: 20px;
+  padding: 0 8px;
+  font-size: 10.5px;
+}
 .outline {
   display: flex;
   flex-direction: column;

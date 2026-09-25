@@ -21,6 +21,8 @@ import {
   type Entry,
   type EntrySummary,
   type LocalGraph,
+  type MentionLinkAsk,
+  type MentionList,
   type OutgoingLink,
   type PromoteInput,
   type PropKeyInfo,
@@ -175,6 +177,9 @@ export interface AppState {
   graph: LocalGraph | null
   /** 当前这篇指向谁。编辑器给正文里的 [[双链]] 分型着色靠它（§9.1） */
   outgoing: OutgoingLink[]
+  /** 别处**平写**着这一篇的名字（或它的别名）而没写成双链的那几处（§十三）。
+   *  null 是"还没算过"，空列表是"算了，没有"——空态那两句话不一样，不能并成一格 */
+  mentions: MentionList | null
 
   editorMode: EditorMode
   /** 上一次切模式的说明：规范化了什么，或为什么没切过去 */
@@ -393,6 +398,10 @@ export interface AppState {
   addAlias(name: string, targetType: 'entry' | 'topic', targetId: number): Promise<void>
   /** 删一条别名。它 holding 的那几条会当场掉回悬空，那条数要报给用户 */
   dropAlias(id: number): Promise<void>
+  /** 未链接提及（§十三）：**开那一格才算一次**，不进保存路径、不跨篇缓存 */
+  refreshMentions(): Promise<void>
+  /** 把某一处平写的名字套上 `[[ ]]`。改的是**另一篇**的正文，条件写不成就上 toast 说清楚 */
+  linkMentionOne(问: MentionLinkAsk): Promise<void>
   setGraphOpen(open: boolean): void
   setGraphMode(mode: 'force' | 'time'): void
   /** 演示当前这一篇（期-09c）。空正文也开得起来——那一页是空白的，提示语照样在场 */
@@ -548,6 +557,9 @@ export const useStore = create<AppState>()((set, get) => {
     // 跨年同日：只在打开**日记**时算一次（§二）。不跟着每次保存重算——
     // 那件事正在被用户写着，一边写一边改他右栏那张卡是打扰，不是提示。
     void refreshCrossYear(entry)
+    // 未链接提及与它同一条纪律（§十三）：开一篇算一次，**不进保存路径**。
+    // 代价量过（3002 篇 12–19 ms），但跟着每次敲键重算会把右栏那一列反复掀起来
+    void get().refreshMentions()
     // 新建的那一篇自动套默认模板（期-07 §五「套用的时机」第一条）
     void autoApplyDefault(entry)
     // 这一篇的 props 里可能有从没登记过的名字（导入进来的），读一次登记表就补上了（§4.3）。
@@ -973,7 +985,7 @@ export const useStore = create<AppState>()((set, get) => {
     backlinks: [],
     graph: null,
     outgoing: [],
-
+    mentions: null,
     editorMode: 'rich',
     gateNote: null,
     gateBlocked: false,
@@ -2191,6 +2203,50 @@ export const useStore = create<AppState>()((set, get) => {
           r.released
             ? `已解绑「${r.name}」· 那 ${r.released} 处现在悬空了`
             : `已解绑「${r.name}」`
+        )
+      } catch (err) {
+        get().notify(errorMessage(err))
+      }
+    },
+
+    async refreshMentions() {
+      const id = get().currentId
+      if (id === null) {
+        set({ mentions: null })
+        return
+      }
+      try {
+        const 列 = await window.kestrel.links.mentionsOf(id)
+        // 算的过程中可能已经切走了：那一列属于上一篇
+        if (get().currentId !== id) return
+        set({ mentions: 列 })
+      } catch {
+        // 与 refreshNetwork 同一条规矩：右栏那一格是附加信息，算不出来不该打断写作
+        set({ mentions: null })
+      }
+    },
+
+    async linkMentionOne(问) {
+      try {
+        const r = await window.kestrel.links.linkMention(问)
+        if (!r.ok) {
+          // 条件写没成就把这一列重数一遍：屏幕上那份已经是过期的了
+          get().notify(`没连上 —— ${r.原因 ?? '未知原因'}`)
+          void get().refreshMentions()
+          return
+        }
+        // 那一处从"平写"变成了真链接：反链与出链都跟着动（理由与 addAlias 那两处一样）
+        refreshNetworkForced()
+        void get().refreshMentions()
+        // 那一篇开在别的标签里时要说清它不会跟着变：`activateTab` 每次都是从库里重读的
+        // （store.ts:1197），切过去看到的已经是连上之后的样子。不写这一句会让人以为
+        // 那一格还停在旧文字上，跑去"刷新"它——那一按就是把刚写进去的那四个字符抹掉。
+        // 判据用 `tabs` 不用 `tabLabels`：后者是名字缓存，摘掉标签的那几篇也还在里头
+        const 挂着 = get().tabs.some((t) => t.entryId === 问.id)
+        get().notify(
+          挂着
+            ? `连上了 · 那一处现在是 ${r.变成}（那一篇开在另一个标签里，切过去就是这一版）`
+            : `连上了 · 那一处现在是 ${r.变成}`
         )
       } catch (err) {
         get().notify(errorMessage(err))

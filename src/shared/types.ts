@@ -530,6 +530,58 @@ export interface PreviewCard {
   最近: string | null
 }
 
+/** 未链接提及的一行（期-05e §十三）：别处正文里**平写**着这一篇的名字或它的别名，而没加 `[[ ]]`。
+ *
+ *  这一族**不落库**：`Link.kind` 里那个 `mention` 仍然没人写。"你提到过但没连"是**算出来的视图**，
+ *  把它存进 `Link` 等于替用户把"还没决定"当成"已经连上"（同族的判断见 09c「分页是读时算出来的」）。 */
+export interface MentionHit {
+  id: number
+  /** 跳过去用的节点键（`e:12`） */
+  点: string
+  名字: string
+  种类: EntryKind | null
+  日期: string | null
+  /** 命中的那串字：可能是别名，不是标题 */
+  串: string
+  /** 这串字从哪一层来：文章标题 / 日记的日期键 / 别名 */
+  经: 'title' | 'date' | 'alias'
+  /** 上下文那一行（行首空白与引用符去掉，别的原样） */
+  行: string
+  /** 命中在那一行里的起点（界面上加亮那一截用） */
+  行内位: number
+  /** 命中在整篇正文里的起点（写回去要靠它） */
+  绝对位: number
+  /** 那一篇此刻的 `updated_at`：连上时拿它当条件，变了就不写 */
+  那一刻: string
+}
+
+/** 那一整组的量 */
+export interface MentionList {
+  /** 这一组拿什么当针。界面上要能说"找的是这几个词"，不然空态那句话没人信 */
+  针: { 串: string; 经: MentionHit['经'] }[]
+  命中: MentionHit[]
+  /** 被上限截掉的那几处。截断要报数，不能让人以为"就这么多了" */
+  还有: number
+  /** 现算一次花了多少毫秒——这一档是开那一格才算的，把代价说出来比什么都有说服力 */
+  ms: number
+}
+
+/** 「连上」那一颗按钮递过来的东西：整条命中行原样回传即可 */
+export interface MentionLinkAsk {
+  id: number
+  绝对位: number
+  串: string
+  那一刻: string
+}
+
+export interface MentionLinkResult {
+  ok: boolean
+  /** 没写成的人话原因。界面上是一句 toast，**绝不静默**（这一档改的是另一篇的正文） */
+  原因?: string
+  /** 写成了的话，那一处现在长什么样 */
+  变成?: string
+}
+
 /** 局部图谱：当前记录 N 跳内的邻居。静态布局，只查一次，不做每帧重排 */
 export interface LocalGraph {
   center: GraphNode
@@ -916,6 +968,12 @@ export interface KestrelApi {
     /** 悬浮预览那一张卡（期-05d）。**只读**，且是唯一一条"渲染进程为三行字发出去"的查询——
      *  所以它窄：整篇正文永远不过 IPC（理由见 `PreviewCard`） */
     preview(问: PreviewAsk): Promise<PreviewCard>
+    /** 未链接提及（期-05e §十三）。**开那一格才现算**：不落库、不进保存路径、不建索引
+     *  （3002 篇 × 97 万字实测 12–19 ms，为它维护任何常驻结构都不划算） */
+    mentionsOf(entryId: number): Promise<MentionList>
+    /** 把某一处平写的名字套上 `[[ ]]`：**只动那一处**（不搞 replaceAll），且带 `updated_at` 条件——
+     *  那一篇在这期间被人改过就当这次没写成，宁可让人重数一遍也不覆盖别人的字 */
+    linkMention(问: MentionLinkAsk): Promise<MentionLinkResult>
     /** `[[` 补全那一份候选（主题名 + 带标题的记录）。一次弹层取一次，不跨弹层缓存。
      *  `还有` 是被上限截掉的那部分条数——截断要说出来，不能让用户以为"库里没有" */
     candidates(上限?: number): Promise<{ 名录: Candidate[]; 还有: number }>
@@ -1130,6 +1188,9 @@ export const IPC = {
   linkCandidates: 'link:candidates',
   /** 期-05d：悬浮预览那一张卡（只读，一次悬停取一次；渲染进程拿不到整篇正文） */
   linkPreview: 'link:preview',
+  /** 期-05e：未链接提及。取那一组是只读的，"连上"那一颗改的是**另一篇**的正文 */
+  linkMentions: 'link:mentions',
+  linkMentionOne: 'link:mention-one',
   /** 期-05c：全局别名（列 / 加 / 删；加与删会连带动 Link） */
   aliasList: 'alias:list',
   aliasAdd: 'alias:add',
