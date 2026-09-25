@@ -177,6 +177,11 @@ export interface AppState {
   graph: LocalGraph | null
   /** 当前这篇指向谁。编辑器给正文里的 [[双链]] 分型着色靠它（§9.1） */
   outgoing: OutgoingLink[]
+  /** 每一**挂着**的标签各自那份出链（#172）。`outgoing` 那一格只跟着"当前那一篇"走，
+   *  而期-09a 之后一屏底下同时挂着好几棵（`Editor.tsx:504` 那一排 `.tab-pane`）：
+   *  只留那一格的话，别人一激活，切走那几棵里的双链会全部掉成悬空、嵌入卡片会退成
+   *  "还没有创建"——实测见 `docs/期-05-设计稿.md` §二十一。键是 entryId，只保 `live` 里那些（`存出链` 裁）。 */
+  outgoingByEntry: Record<number, OutgoingLink[]>
   /** 别处**平写**着这一篇的名字（或它的别名）而没写成双链的那几处（§十三）。
    *  null 是"还没算过"，空列表是"算了，没有"——空态那两句话不一样，不能并成一格 */
   mentions: MentionList | null
@@ -586,6 +591,25 @@ export const useStore = create<AppState>()((set, get) => {
     return 后.slice(Math.max(0, 后.length - MAX_LIVE))
   }
 
+  /** 把某一篇的出链表存进**它自己那一格**，顺手把不是「挂着」的那些裁掉（#172）。
+   *
+   *  为什么需要这一格：`outgoing` 那"一格全局"跟着当前篇走，而期-09a 之后一屏底下同时挂着
+   *  好几棵编辑器（`Editor.tsx:504` 那一排 `.tab-pane`）——只留那一格的话，别人一激活，
+   *  切走那几棵里每一颗 `[[双链]]` 都会掉成悬空、每一颗嵌入都会退成"还没有创建"，
+   *  实测与那条谎话的出处见 `docs/期-05-设计稿.md` §二十一（判据 `scratch/p05g-out.out`）。
+   *  上限就是 `MAX_LIVE` 那个 6：每一格几 KB，且**这一格只读、不参与落盘**。 */
+  function 存出链(id: number, 链: OutgoingLink[]): Record<number, OutgoingLink[]> {
+    const 留 = new Set(get().live)
+    留.add(id)
+    const 后: Record<number, OutgoingLink[]> = {}
+    for (const [k, v] of Object.entries(get().outgoingByEntry)) {
+      const 号 = Number(k)
+      if (留.has(号) && 号 !== id) 后[号] = v
+    }
+    后[id] = 链
+    return 后
+  }
+
   /** 与 `entryLabel` 同一条取法，只是这儿手上只有 id / title / kind / entryDate 那四个 */
   function 标签文案(e: {
     title: string | null
@@ -693,10 +717,20 @@ export const useStore = create<AppState>()((set, get) => {
       // 查的过程中可能已经切走了，这份结果属于上一篇，扔掉
       if (get().currentId !== currentId) return
       networkKey = key
-      set({ backlinks, graph, outgoing })
+      // 两格都写：`outgoing` 那"一格全局"仍然代表"当前那一篇"（右栏那几块与源码模式读它），
+      // `outgoingByEntry` 是给每一棵挂着的编辑器自己那一份（#172）
+      set({ backlinks, graph, outgoing, outgoingByEntry: 存出链(currentId, outgoing) })
     } catch {
-      // 网络只是右栏的附加信息，查不出来不该打断写作
-      set({ backlinks: [], graph: null, outgoing: [] })
+      // 网络只是右栏的附加信息，查不出来不该打断写作。
+      // `outgoing` 那照旧无条件清成空（它指的就是"当前那一篇"），但**按篇那一格要先看一眼还在不在**：
+      // 查的路上已经切走了的话，把空表 stamp 到上一篇那一格上会让它回来之后一片悬空
+      const 还在 = get().currentId === currentId
+      set({
+        backlinks: [],
+        graph: null,
+        outgoing: [],
+        ...(还在 ? { outgoingByEntry: 存出链(currentId, []) } : {}),
+      })
     }
   }
 
@@ -993,6 +1027,7 @@ export const useStore = create<AppState>()((set, get) => {
     backlinks: [],
     graph: null,
     outgoing: [],
+    outgoingByEntry: {},
     mentions: null,
     editorMode: 'rich',
     gateNote: null,

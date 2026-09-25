@@ -24,6 +24,7 @@ import { releaseRichEditor, releaseRichView, setRichView, setRichEditor } from '
 import { buildExtensions, linkKey, resolveLink, type LinkBridge } from '@/editor/markdown'
 import type { PreviewAsk } from '../../../shared/types'
 import { SlashMenu, SlashPopup } from '@/editor/SlashMenu'
+import { 刷新嵌入 } from '@/editor/embed'
 import { WikiComplete, WikiCompletePopup } from '@/editor/wikiComplete'
 import { Folding } from '@/editor/folding'
 import { FootnoteNumbers } from '@/editor/footnote'
@@ -55,7 +56,14 @@ export function RichEditor({
 
   const bridge = useMemo<LinkBridge>(
     () => ({
-      resolve: (raw) => resolveLink(useStore.getState().outgoing, raw, entryDate),
+      /** 读**自己这一格**那份出链表，不读"当前那一篇"那一格（#172）。
+       *  为什么：期-09a 之后一屏底下同时挂着好几棵（`Editor.tsx:504` 那一排 `.tab-pane`），
+       *  而 `bridge.subscribe` 是 `useStore.subscribe`——每次 set 每一棵都会重画一遍。
+       *  只留 `state.outgoing` 那一格的话，别人一激活，切走那几棵里每一颗双链都掉成悬空、
+       *  每一颗嵌入都退成「还没有创建」（实测：`docs/期-05-设计稿.md` §二十一）。
+       *  没到货那一趟回 `[]` 是对的：`store.ts` 的 `refreshNetwork` 一落地就 set 一次，
+       *  订阅会再画一遍（与丙原有那条"出链是异步的"同一条路，见 `embed.ts` 里那段注释）。 */
+      resolve: (raw) => resolveLink(useStore.getState().outgoingByEntry[entryId] ?? [], raw, entryDate),
       open: (nodeKey, label, 落点) => {
         const s = useStore.getState()
         if (落点?.samePage) {
@@ -78,7 +86,8 @@ export function RichEditor({
       // 期-05d：编辑与阅读这两档给这根线。**幻灯片那份 bridge 不给**，于是那边
       // 连 mouseenter 都不会挂（判据 7 要的是结构保证，不是运行时开关）
       preview: (raw, 显示): PreviewAsk => {
-        const hit = resolveLink(useStore.getState().outgoing, raw, entryDate)
+        // 与上面 `resolve` 同一格表（#172）：悬停只会发生在看得见那一棵上，读自己那一格正好
+        const hit = resolveLink(useStore.getState().outgoingByEntry[entryId] ?? [], raw, entryDate)
         // 悬空的那一条 resolveLink 回 null，键还是要自己算：卡片上那个"被写了几处"按的就是它
         return { nodeKey: hit?.nodeKey ?? null, key: hit?.key ?? linkKey(raw, entryDate), 显示 }
       },
@@ -165,6 +174,20 @@ export function RichEditor({
       releaseRichView(view)
       releaseRichEditor(editor)
     }
+  }, [editor, visible])
+
+  /** 切回来这一趟，把这一棵里那些嵌入重新取一遍（#168）。
+   *  为什么挂在"看得见"这一档：9a 让切标签不再重新解析（那是本期最大的省钱），
+   *  于是嵌进来的那一截会一直停在**挂载那一刻**的那一份上——那一头改了正文看不见。
+   *  第一次看得见不喊：那时节点视图自己已经取过一趟，别取两遍。
+   *  **这一声要跟在 #172 后面才有活干**：在那之前切走那一格会先按别人的出链表退化成一行，
+   *  切回来时那个跳变顺带就把卡片重取了，这一声完全是多余的一次往返（A/B 两跑逐条同色）。
+   *  代价：每颗一次窄查询，20 颗实测几十毫秒（`期-05-设计稿.md` §19.4、§二十二）。 */
+  const 见过 = useRef(false)
+  useEffect(() => {
+    if (!editor || !visible) return
+    if (见过.current) 刷新嵌入(editor)
+    见过.current = true
   }, [editor, visible])
 
   /** 看不见之前把这一格的光标记下来。滚动不在这里量：那一段属于外面那个共用的
