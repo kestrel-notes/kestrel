@@ -5,6 +5,7 @@ import { TextSelection } from '@tiptap/pm/state'
 import { countChars, formatDateZh, relativeTime } from '../../../shared/date'
 import { useStore, entryLabel, type SearchJump } from '@/store'
 import { outlineLines } from '@/outline'
+import { 滚到锚点, 滚到锚点源码 } from '@/editor/anchor'
 import { getCmView } from '@/editor/cmView'
 import { getRichView } from '@/editor/richView'
 import { RichEditor } from '@/editor/RichEditor'
@@ -33,9 +34,7 @@ function headingYs(box: HTMLElement | null, rich: boolean, content: string): num
   if (rich) {
     const 那格 = 看得见那一格(box)
     if (!那格) return []
-    return [...那格.querySelectorAll<HTMLElement>('.md-prose h1, .md-prose h2, .md-prose h3')].map(
-      (el) => el.getBoundingClientRect().top
-    )
+    return [...那格.querySelectorAll<HTMLElement>(标题们)].map((el) => el.getBoundingClientRect().top)
   }
   const v = getCmView()
   if (!v) return []
@@ -45,6 +44,11 @@ function headingYs(box: HTMLElement | null, rich: boolean, content: string): num
     .map((h) => v.documentTop + v.lineBlockAt(doc.line(h.line + 1).from).top)
 }
 
+/** 富文本里标题的选择器。**必须与 `outlineLines` 同一套层级**：它收 h1–h6，
+ *  这边以前只捞 h1–h3，于是带 h4 往下的那一篇，大纲点下去会滚到别的标题、
+ *  当前标题高亮也会错一格（期-05f 乙读大纲落点时撞见）。 */
+const 标题们 = '.md-prose h1, .md-prose h2, .md-prose h3, .md-prose h4, .md-prose h5, .md-prose h6'
+
 /** 滚到第 n 个标题。**不动光标位置**：改选区会打断正在打字的人（设计文档 §3.5）
  *
  *  源码模式交给 CM 自己滚，别换成「量一下再写 scrollTop」：CM6 只渲染视口附近那几十行，
@@ -53,9 +57,7 @@ function headingYs(box: HTMLElement | null, rich: boolean, content: string): num
  *  测量帧里自己校正。（代价：窗口不在前台时那一帧不来，点了像没反应——验证时先把窗口调出来。） */
 function scrollToHeading(box: HTMLElement | null, rich: boolean, content: string, index: number): void {
   if (rich) {
-    看得见那一格(box)
-      ?.querySelectorAll<HTMLElement>('.md-prose h1, .md-prose h2, .md-prose h3')
-      [index]?.scrollIntoView({ block: 'start' })
+    看得见那一格(box)?.querySelectorAll<HTMLElement>(标题们)[index]?.scrollIntoView({ block: 'start' })
     return
   }
   const v = getCmView()
@@ -65,6 +67,9 @@ function scrollToHeading(box: HTMLElement | null, rich: boolean, content: string
     effects: EditorView.scrollIntoView(v.state.doc.line(h.line + 1).from, { y: 'start' }),
   })
 }
+
+/** 滚到段尾写着 `^块id` 的那一段（期-05f 乙）。id 就住在正文里，读时现算、不建表。
+ *  两档各自的找法在 `editor/anchor.ts`，与幻灯片共用。 */
 
 /** 搜索结果的命中定位（§4.4）。返回 false = 这一拍没动着任何东西，调用方可以换一帧再试。
  *
@@ -184,6 +189,7 @@ export function Editor(): JSX.Element {
   const openEntry = useStore((s) => s.openEntry)
   const openDate = useStore((s) => s.openDate)
   const headingJump = useStore((s) => s.headingJump)
+  const anchorJump = useStore((s) => s.anchorJump)
   const searchJump = useStore((s) => s.searchJump)
   const bookmarked = useBookmarkedCurrent()
   const toggleBookmark = useStore((s) => s.toggleBookmark)
@@ -215,6 +221,9 @@ export function Editor(): JSX.Element {
     const 格 = s.tabs[s.activeTab]
     // 源码模式底下 `.panes` 整块不显示，容器没有位置可言（那一格存的还是富文本那一档的）
     if (!box || !格 || !rich) return
+    // 这一格正等着落点（`[[x#小节]]` / `[[x^块]]` 点进来的）：归位要让路，
+    // 否则第二帧那一发会把刚滚过去的落点又拽回旧位置（判据 3c 红在这儿）
+    if (s.anchorJump?.entryId === 格.entryId) return
     归位中.current = true
     box.scrollTop = 格.scroll
     // 第一次挂出来的那一棵要到下一帧才量得准高度（与大纲跳转同一类），补一次就收手。
@@ -254,6 +263,31 @@ export function Editor(): JSX.Element {
     if (!headingJump) return
     scrollToHeading(scrollRef.current, rich, useStore.getState().content, headingJump.index)
   }, [headingJump, rich])
+
+  // 点了带锚点/块 id 的双链 → 滚到那一节 / 那一段（期-05f 乙）。
+  // 认 entryId 而不是认「最新一次请求」：跨文档那一发是"先换文档、再落点"两拍，
+  // 前一拍内容还是上一篇的。
+  useEffect(() => {
+    if (!anchorJump) return
+    const s = useStore.getState()
+    if (s.entry?.id !== anchorJump.entryId) return
+    const 锚 = anchorJump.anchor
+    const 块 = anchorJump.block
+    const 试 = (): boolean =>
+      rich
+        ? 滚到锚点(看得见那一格(scrollRef.current)?.querySelector('.md-prose') ?? null, 锚, 块)
+        : 滚到锚点源码(getCmView(), useStore.getState().content, 锚, 块)
+    // 第一发常常落不准：刚换完文档时那一棵还在往上长（09a 归位那段说的"下一帧才量得准高度"
+    // 是同一件事），`scrollIntoView` 按旧几何算，实测差 399px。所以**不论第一发成没成都补一帧**，
+    // 补完还不成才报"没找到"——与搜索命中那条 effect 同一形状
+    const 第一发 = 试()
+    const raf = requestAnimationFrame(() => {
+      if (useStore.getState().anchorJump?.at !== anchorJump.at) return
+      if (!(试() || 第一发)) useStore.getState().notify(`这一篇里没找到「${锚 ?? 块}」`)
+      useStore.getState().clearAnchorJump(anchorJump.at)
+    })
+    return () => cancelAnimationFrame(raf)
+  }, [anchorJump, rich, entry?.id])
 
   // 搜索命中 → 滚过去并选中那一串字（§4.4）
   useEffect(() => {

@@ -12,8 +12,14 @@ export interface ParsedLink {
   isDate: boolean
   /** `[[目标|别名]]` 里写的显示名 */
   alias: string | null
-  /** `[[目标#锚点]]` 里写的锚点。v1 只存不用（锚点跳转是 v2） */
+  /** `[[目标#锚点]]` 里写的锚点。期-05f 乙起真的用来跳 */
   anchor: string | null
+  /** `[[目标^块id]]` 里写的那个段尾 id。**不进 Link 表**（那要加一列 ⇒ 迁移），
+   *  真相就是正文里那一串 `^id` 本身，跳转时读时现算 */
+  block: string | null
+  /** `[[#小节]]` / `[[^块id]]`：目标为空，指的是**当前这一篇**。
+   *  它不进 Link 表——同页自指会把反链与图谱染成噪音；只给编辑器染色与跳转用 */
+  samePage: boolean
 }
 
 /** 查链接用的规范化：去掉所有空白 + 转小写。
@@ -162,26 +168,41 @@ function blankInlineCode(text: string, units: string[], from: number, to: number
   }
 }
 
-/** 拆 `[[ 目标 #锚点 |别名 ]]`。目标为空（`[[#某标题]]` 这种同页锚点）返回 null。 */
+/** 拆 `[[ 目标 #锚点 ^块 |别名 ]]`。
+ *
+ *  顺序：先摘别名（第一个 `|` 之后），剩下的左半截按**第一个 `#` 或 `^`** 切出目标，
+ *  后面那截里 `#…` 归锚点、`^…` 归块（谁先谁后都认，`[[x#甲^乙]]` 与 `[[x^乙#甲]]` 同解）。
+ *  这样 `^` 永远不会漏进查找键里——甲之前 `[[x^id]]` 的键是 `x^id`，规范化之后谁也认不得它。
+ *
+ *  目标可以为空（`[[#小节]]`、`[[^块id]]` 这种同页写法），但**三样全空**才算不是链接：
+ *  `[[ ]]`、`[[#]]`、`[[|别名]]` 仍然返回 null，那一串字由节点带着 raw 原样留在树上
+ *  （期-05f 甲：不认得也不许吃字）。
+ *
+ *  代价要写明：名字里真带 `^` 的主题（`[[上^下]]`）会被切成目标 `上` + 块 `下`。
+ *  Obsidian 同一条规矩，而真库/老库的 `Link.target_raw` 里没有一个 `^`（判据 A9 现场查）。 */
 export function splitLinkInner(inner: string): {
   target: string
   anchor: string | null
+  block: string | null
   alias: string | null
 } | null {
   const bar = inner.indexOf('|')
-  const left = bar === -1 ? inner : inner.slice(0, bar)
+  const 左 = (bar === -1 ? inner : inner.slice(0, bar)).trimEnd()
   const rawAlias = bar === -1 ? '' : inner.slice(bar + 1)
 
-  const hash = left.indexOf('#')
-  const target = (hash === -1 ? left : left.slice(0, hash)).trim()
-  const rawAnchor = hash === -1 ? '' : left.slice(hash + 1)
-
-  if (!target) return null
-  return {
-    target,
-    anchor: rawAnchor.trim() || null,
-    alias: rawAlias.trim() || null,
+  const 切 = /^([^#^]*)([\s\S]*)$/.exec(左)
+  const target = (切?.[1] ?? '').trim()
+  let anchor: string | null = null
+  let block: string | null = null
+  for (const 段 of 切?.[2].match(/[#^][^#^]*/g) ?? []) {
+    const 值 = 段.slice(1).trim()
+    if (!值) continue
+    if (段[0] === '#') anchor ??= 值
+    else block ??= 值
   }
+
+  if (!target && !anchor && !block) return null
+  return { target, anchor, block, alias: rawAlias.trim() || null }
 }
 
 /** 正文里每一处 `[[…]]` 以及它在原文中的下标。
@@ -218,8 +239,13 @@ export function findLinkRanges(text: string, entryDate: string): LinkRange[] {
       isDate: date !== null,
       alias: parts.alias,
       anchor: parts.anchor,
+      block: parts.block,
+      samePage: !parts.target,
     }
-    if (!link.key) continue
+    // 乙之后这一条已经走不到（`splitLinkInner` 里"三样全空才算 null"与它同一条判据）：
+    // 拆得出 parts 就一定有键、或者算自指。留着是因为拆法还可能长出新形状——它拦的是
+    // "有形状但没有可查的东西"，那种一行进了表就会变成谁也点不动的边。
+    if (!link.key && !link.samePage) continue
 
     out.push({ from: m.index, to: m.index + m[0].length, raw: m[0], link })
   }
@@ -238,6 +264,9 @@ export function parseLinks(text: string, entryDate: string): ParsedLink[] {
   const seen = new Set<string>()
 
   for (const { link } of findLinkRanges(text, entryDate)) {
+    // 同页写法指的是这一篇自己。它不是边：进了表就会在反链与图谱里长出一条自环，
+    // 而「这一篇提到了自己」从来不是一个值得记的事实（编辑器那一半边照 findLinkRanges 拿）
+    if (link.samePage) continue
     const dedupe = `${link.kind}:${link.key}`
     if (seen.has(dedupe)) continue
     seen.add(dedupe)

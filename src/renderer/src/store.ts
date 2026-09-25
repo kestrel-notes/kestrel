@@ -287,6 +287,9 @@ export interface AppState {
 
   /** 大纲点击 → 编辑器滚动。存的是自增的请求号，编辑器听着它滚一次 */
   headingJump: { index: number; at: number } | null
+  /** `[[x#小节]]` / `[[x^块id]]` 的落点（期-05f 乙）。存 entryId 而不是"最新一次请求"：
+   *  换文档与落点是两拍，前一拍可能还没切过来，认 id 才不会把上一篇的坐标打到这篇上 */
+  anchorJump: { entryId: number; anchor: string | null; block: string | null; at: number } | null
   /** 编辑器回报的「当前所在的标题序号」，右栏用它高亮 */
   activeHeading: number | null
 
@@ -453,6 +456,11 @@ export interface AppState {
   closeVersion(): void
   restoreVersion(id: number): Promise<void>
   jumpToHeading(index: number): void
+  /** 点了带锚点/块 id 的双链：等这一篇落到 entryId 那一格，再滚到那一节 / 那一段 */
+  jumpToAnchor(entryId: number, 落点: { anchor: string | null; block: string | null }): void
+  /** 落点兑现了就要清掉：`归位` 那一发拿"还有没有待落的锚点"当跳过自己的依据，
+   *  不清的话下次切回这一格就不还原滚动位置了 */
+  clearAnchorJump(at: number): void
   setActiveHeading(index: number | null): void
   loadMoreRecent(): Promise<void>
   loadMoreTag(): Promise<void>
@@ -1030,6 +1038,7 @@ export const useStore = create<AppState>()((set, get) => {
     transferTab: 'export',
     transferBusy: false,
     headingJump: null,
+    anchorJump: null,
     activeHeading: null,
     recentLimit: RECENT_LIMIT,
     confirm: null,
@@ -2337,6 +2346,15 @@ export const useStore = create<AppState>()((set, get) => {
     jumpToHeading(index) {
       // 每次都是新对象：连点同一个标题也要能再滚一次
       set({ headingJump: { index, at: Date.now() } })
+    },
+
+    jumpToAnchor(entryId, 落点) {
+      set({ anchorJump: { entryId, anchor: 落点.anchor, block: 落点.block, at: Date.now() } })
+    },
+
+    clearAnchorJump(at) {
+      // 只清"还是我这一发"的那一个：连点两处时后一发的落点不能被前一发的收尾抹掉
+      if (get().anchorJump?.at === at) set({ anchorJump: null })
     },
 
     setActiveHeading(index) {

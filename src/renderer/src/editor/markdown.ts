@@ -25,14 +25,23 @@ import { 停上, 移开 } from '@/editor/hoverPreview'
 import { normalizeLinkKey, resolveDateRef, splitLinkInner } from '../../../shared/links'
 import type { OutgoingLink, PreviewAsk } from '../../../shared/types'
 
+/** `[[x#小节]]` / `[[x^块id]]` 里那半截落点（期-05f 乙）。
+ *  `同页` 为真时指的是**当前这一篇**，那一头没有 nodeKey 可开。 */
+export interface LinkJump {
+  anchor: string | null
+  block: string | null
+  samePage: boolean
+}
+
 /** 渲染进程这边给双链节点接的两根线：怎么染色、点了去哪。
  *  用注入而不是让 markdown.ts 直接 import store：store 要用 roundTrip() 做闸门，
  *  反过来再 import 就成环了。 */
 export interface LinkBridge {
   /** 正文里的写法（如 `昨天`、`Kestrel 设计`）→ 落点；悬空返回 null */
   resolve(targetRaw: string): OutgoingLink | null
-  /** 点链接。nodeKey 为 null 表示目标还不存在，只提示不跳 */
-  open(nodeKey: string | null, label: string): void
+  /** 点链接。nodeKey 为 null 表示目标还不存在（或压根不指别处），只提示不跳。
+   *  `落点` 不带就是"打开那一头"，带了还要落到那一节 / 那一段上 */
+  open(nodeKey: string | null, label: string, 落点?: LinkJump): void
   /** 出链落点变了要重新染色：节点视图是裸 DOM，React 不会替它重画 */
   subscribe(cb: () => void): () => void
   /** 点正文里的 `#标签`（§6）：切到标签视图并选中它。走的是 store，不碰文档 */
@@ -93,8 +102,15 @@ export function wikiAttrs(raw: string): WikiAttrs | null {
   if (inner === undefined) return null
   const parts = splitLinkInner(inner)
   return parts
-    ? { raw, target: parts.target, alias: parts.alias, anchor: parts.anchor }
-    : { raw, target: '', alias: null, anchor: null }
+    ? {
+        raw,
+        target: parts.target,
+        alias: parts.alias,
+        anchor: parts.anchor,
+        block: parts.block,
+        samePage: !parts.target,
+      }
+    : { raw, target: '', alias: null, anchor: null, block: null, samePage: false }
 }
 
 export interface WikiAttrs {
@@ -102,14 +118,17 @@ export interface WikiAttrs {
   target: string
   alias: string | null
   anchor: string | null
+  block: string | null
+  /** 目标为空而锚点/块非空：指的是当前这一篇（`[[#小节]]`） */
+  samePage: boolean
 }
 
-/** 屏幕上那一串字。认得出的用目标/别名，认不出的就把源码原样摆出来。
+/** 屏幕上那一串字。认得出的用目标/别名，同页锚点用那一节的名字，都不认得就把源码原样摆出来。
  *
  *  最后那一个 `|| a.raw` 是承重的：`[[#小节]]` 这种拆不出目标的形状，
  *  以前既不成节点也不留字，整串在所见即所得里就地蒸发（期-05f §十五）。 */
 export function wikiLabel(a: Partial<WikiAttrs>): string {
-  return a.alias || a.target || a.raw || ''
+  return a.alias || a.target || a.anchor || a.raw || ''
 }
 
 /** `[[Kestrel 设计|这个项目]]` 在界面上显示成什么：有别名用别名，否则用目标（去掉锚点）。
@@ -142,6 +161,11 @@ const WikiLink = Node.create<{ bridge: LinkBridge | null }>({
       target: { default: '' },
       alias: { default: null },
       anchor: { default: null },
+      // 这两样必须登记在这里：Tiptap 会把 `addAttributes` 没列出的键从节点上抹掉，
+      // 于是 `samePage` 一路走到节点视图时已经是 undefined——同页锚点会被染成
+      // "不是链接"，点了不动（判据 1a/1b 红过之后才看出来）
+      block: { default: null },
+      samePage: { default: false },
     }
   },
 
@@ -172,19 +196,39 @@ const WikiLink = Node.create<{ bridge: LinkBridge | null }>({
       dom.textContent = label
 
       let nodeKey: string | null = null
+      /** 有锚点/块/同页任一样，才谈得上"落点"；光 `[[目标]]` 那种不带 */
+      const 落点: LinkJump | null =
+        attrs.anchor || attrs.block ? { anchor: attrs.anchor, block: attrs.block, samePage: attrs.samePage } : null
+      const 跳 = 落点 ? (落点.anchor ? `，跳到「${落点.anchor}」` : 落点.block ? `，跳到那一段` : '') : ''
+
       const paint = (): void => {
         if (!bridge) return
+        if (attrs.samePage) {
+          // 指的是当前这一篇：库里没有、也不该有这一行（parseLinks 把它挡了），
+          // 所以不查 resolve、不染色成悬空——它是"这一篇里的另一处地方"
+          nodeKey = null
+          dom.className = 'wl wl-page'
+          dom.title = `跳到这一篇的「${label}」`
+          return
+        }
+        if (!target) {
+          // 甲那六种拆不出目标的形状：字要留着，但它压根不是链接，别染成"还没写"
+          nodeKey = null
+          dom.className = 'wl wl-plain'
+          dom.title = '这一串不是链接：没拆出目标'
+          return
+        }
         const hit = bridge.resolve(target)
         nodeKey = hit?.nodeKey ?? null
         dom.className = `wl ${linkClass(hit)}`
-        dom.title = nodeKey ? `打开「${label}」` : `「${label}」还没有创建`
+        dom.title = nodeKey ? `打开「${label}」${跳}` : `「${label}」还没有创建`
       }
       paint()
       const off = bridge?.subscribe(paint)
 
       const onClick = (e: MouseEvent): void => {
         e.preventDefault()
-        bridge?.open(nodeKey, label)
+        bridge?.open(nodeKey, label, 落点 ?? undefined)
       }
       dom.addEventListener('click', onClick)
 

@@ -144,16 +144,20 @@ export function renameTag(fromName: string, toName: string): { entries: number; 
 
 /* ─ 主题（正文里的 `[[主题名]]`） ─ */
 
-/** `[[旧名]]` / `[[旧名|别名]]` / `[[旧名#锚点]]` 三种写法都要改到，
- *  别名与锚点原样留着。重建时按解析器认得的那个顺序：目标 → `#锚点` → `|别名`。 */
+/** `[[旧名]]` / `[[旧名|别名]]` / `[[旧名#锚点]]` / `[[旧名^块]]` 那几种写法都要改到，
+ *  别名、锚点与块 id 原样留着。重建时按解析器认得的那个顺序：目标 → `#锚点` → `^块` → `|别名`
+ *  （与 `splitLinkInner` 的拆法严格对着——它先摘别名、再从剩下的末尾摘 `^块`，最后才分 `#`）。 */
 function linkEdits(content: string, entryDate: string, key: string, toName: string): Edit[] {
   const edits: Edit[] = []
 
   for (const r of findLinkRanges(content, entryDate)) {
-    if (r.link.isDate || r.link.key !== key) continue
-    const inner = [toName, r.link.anchor ? `#${r.link.anchor}` : '', r.link.alias ? `|${r.link.alias}` : ''].join(
-      ''
-    )
+    if (r.link.isDate || r.link.samePage || r.link.key !== key) continue
+    const inner = [
+      toName,
+      r.link.anchor ? `#${r.link.anchor}` : '',
+      r.link.block ? `^${r.link.block}` : '',
+      r.link.alias ? `|${r.link.alias}` : '',
+    ].join('')
     edits.push({ from: r.from, to: r.to, text: `[[${inner}]]` })
   }
 

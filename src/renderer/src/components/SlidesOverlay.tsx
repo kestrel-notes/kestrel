@@ -14,6 +14,7 @@ import type { JSX } from 'react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { EditorContent, useEditor } from '@tiptap/react'
 import { slideSplit } from '../../../shared/slides'
+import { 滚到锚点 } from '@/editor/anchor'
 import { useStore, entryLabel } from '@/store'
 import { buildExtensions, resolveLink, type LinkBridge } from '@/editor/markdown'
 import { Folding } from '@/editor/folding'
@@ -26,8 +27,15 @@ function SlideBody({ md, entryDate }: { md: string; entryDate: string }): JSX.El
   const bridge = useMemo<LinkBridge>(
     () => ({
       resolve: (raw) => resolveLink(useStore.getState().outgoing, raw, entryDate),
-      open: (nodeKey, label) => {
+      open: (nodeKey, label, 落点) => {
         const s = useStore.getState()
+        if (落点?.samePage) {
+          // 演示层滚的是**这一页那一棵**，不是背后那台编辑器：走 store 那条路会把
+          // 覆盖层底下那一篇滚走，人却看不见——那是最坏的一种"没反应"
+          const 根 = document.querySelector('.slides-overlay .md-prose')
+          if (!滚到锚点(根, 落点.anchor, 落点.block)) s.notify('这一页里没有那一处')
+          return
+        }
         // 演示中途点了一个链接就是「我要去看那一头」：先收层再跳。
         // 留层在跳转之后的话，屏幕上还是旧的那一篇，比跳不过去更让人迷糊
         s.closeSlides()

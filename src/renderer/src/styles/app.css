@@ -1250,6 +1250,19 @@ input.doc-title::placeholder {
   border-bottom: 1px dashed color-mix(in srgb, var(--text-3) 80%, transparent);
   cursor: default;
 }
+/* 同页锚点 `[[#小节]]`：点的是这一篇里的另一处地方，不是别的一篇。
+   第五种线型（点线）——实线=日记、双线=文章、药丸=主题、虚线=还没写，都各有其义，
+   这一种再复用任何一条都会让人以为它指向别处（期-05f 乙） */
+.wl-page {
+  color: var(--accent);
+  border-bottom: 1px dotted color-mix(in srgb, var(--accent) 70%, transparent);
+}
+/* 拆不出目标的那一串（`[[#]]`、`[[ ]]`）：字要留着，但它压根不是链接，
+   所以既不给颜色也不给手型——看着像正文就是正文 */
+.wl-plain {
+  color: inherit;
+  cursor: text;
+}
 .wl-diary:hover,
 .wl-article:hover {
   background: var(--accent-soft);

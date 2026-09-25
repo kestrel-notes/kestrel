@@ -29,6 +29,7 @@ import { useStore } from '@/store'
 import { findLinkRanges } from '../../../shared/links'
 import { findTagRanges, tagColorIndex } from '../../../shared/tags'
 import { linkByKey, linkClass, rawLabel } from '@/editor/markdown'
+import { 滚到锚点源码 } from '@/editor/anchor'
 import { setCmView } from '@/editor/cmView'
 import type { OutgoingLink } from '../../../shared/types'
 
@@ -66,9 +67,13 @@ function wikiDecorations(view: EditorView): DecorationSet {
     const hit = linkByKey(outgoing, r.link.key)
     const label = rawLabel(r.raw)
     return Decoration.mark({
-      class: `wl ${linkClass(hit)}`,
+      class: r.link.samePage ? 'wl wl-page' : `wl ${linkClass(hit)}`,
       attributes: {
-        title: hit?.nodeKey ? `Ctrl+点击打开「${label}」` : `「${label}」还没有创建`,
+        title: r.link.samePage
+          ? `跳到这一篇的「${label}」`
+          : hit?.nodeKey
+            ? `Ctrl+点击打开「${label}」`
+            : `「${label}」还没有创建`,
       },
     }).range(r.from, r.to)
   })
@@ -190,10 +195,20 @@ export function SourceEditor(): JSX.Element {
           if (!at) return false
 
           e.preventDefault()
-          const hit = linkByKey(s.outgoing, at.link.key)
           const label = rawLabel(at.raw)
-          if (hit?.nodeKey) void s.openNode(hit.nodeKey)
-          else s.notify(`「${label}」还没有创建`)
+          const 落点 = { anchor: at.link.anchor, block: at.link.block }
+          if (at.link.samePage) {
+            // 滚的是**这一格自己的** CM 视图，不是 `getCmView()` 那一棵（一屏底下好几格）
+            if (!滚到锚点源码(v, v.state.doc.toString(), 落点.anchor, 落点.block))
+              s.notify(`这一篇里没找到「${label}」`)
+            return true
+          }
+          const hit = linkByKey(s.outgoing, at.link.key)
+          if (hit?.nodeKey) {
+            void s.openNode(hit.nodeKey)
+            const id = hit.nodeKey.startsWith('e:') ? Number(hit.nodeKey.slice(2)) : NaN
+            if (Number.isFinite(id) && (落点.anchor || 落点.block)) s.jumpToAnchor(id, 落点)
+          } else s.notify(`「${label}」还没有创建`)
           return true
         },
       }),

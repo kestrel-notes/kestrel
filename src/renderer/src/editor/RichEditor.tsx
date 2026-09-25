@@ -56,9 +56,19 @@ export function RichEditor({
   const bridge = useMemo<LinkBridge>(
     () => ({
       resolve: (raw) => resolveLink(useStore.getState().outgoing, raw, entryDate),
-      open: (nodeKey, label) => {
+      open: (nodeKey, label, 落点) => {
         const s = useStore.getState()
-        if (nodeKey) void s.openNode(nodeKey)
+        if (落点?.samePage) {
+          // 指的是当前这一篇：不换文档，只在这篇里滚过去（期-05f 乙）
+          if (s.entry) s.jumpToAnchor(s.entry.id, 落点)
+          return
+        }
+        if (nodeKey) {
+          void s.openNode(nodeKey)
+          // 只认 `e:` 那一头：主题的 nodeKey 也是数字，拿它当 entryId 会撞上另一篇
+          const id = nodeKey.startsWith('e:') ? Number(nodeKey.slice(2)) : NaN
+          if (落点 && Number.isFinite(id)) s.jumpToAnchor(id, 落点)
+        }
         // 悬空只提示不跳（原型的规矩）
         else s.notify(`「${label}」还没有创建`)
       },
