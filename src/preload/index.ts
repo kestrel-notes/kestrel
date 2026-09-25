@@ -36,7 +36,7 @@ const api: KestrelApi = {
     list: () => ipcRenderer.invoke(IPC.topicList),
     create: (name) => ipcRenderer.invoke(IPC.topicCreate, name),
     update: (id, patch) => ipcRenderer.invoke(IPC.topicUpdate, id, patch),
-    rename: (id, to, rewriteLinks) => ipcRenderer.invoke(IPC.topicRename, id, to, rewriteLinks),
+    rename: (id, to, mode) => ipcRenderer.invoke(IPC.topicRename, id, to, mode),
     impact: (from) => ipcRenderer.invoke(IPC.topicImpact, from),
     remove: (id, detach) => ipcRenderer.invoke(IPC.topicRemove, id, detach),
     reorder: (orderedIds) => ipcRenderer.invoke(IPC.topicReorder, orderedIds),
@@ -66,6 +66,10 @@ const api: KestrelApi = {
     graphAll: () => ipcRenderer.invoke(IPC.linkGraphAll),
     outgoing: (entryId) => ipcRenderer.invoke(IPC.linkOutgoing, entryId),
     candidates: (上限) => ipcRenderer.invoke(IPC.linkCandidates, 上限),
+    aliases: () => ipcRenderer.invoke(IPC.aliasList),
+    addAlias: (name, targetType, targetId) =>
+      ipcRenderer.invoke(IPC.aliasAdd, name, targetType, targetId),
+    removeAlias: (id) => ipcRenderer.invoke(IPC.aliasRemove, id),
   },
   search: {
     run: (query, limit, order) => ipcRenderer.invoke(IPC.searchRun, query, limit, order),

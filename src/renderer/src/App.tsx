@@ -15,6 +15,7 @@ import { SlidesOverlay } from '@/components/SlidesOverlay'
 import { PromoteCard } from '@/components/PromoteCard'
 import { RecycleBin } from '@/components/RecycleBin'
 import { Bookmarks } from '@/components/Bookmarks'
+import { AliasSheet } from '@/components/AliasSheet'
 import { Library } from '@/components/Library'
 import { Transfer } from '@/components/Transfer'
 import { KestrelMark } from '@/components/KestrelMark'
@@ -102,6 +103,7 @@ export default function App(): JSX.Element {
         else if (s.promoteOpen) s.setPromoteOpen(false)
         else if (s.topicSheetOpen) s.setTopicSheetOpen(false)
         else if (s.bookmarkOpen) s.setBookmarkOpen(false)
+        else if (s.aliasOpen) s.setAliasOpen(false)
         else if (s.binOpen) s.setBinOpen(false)
         else if (s.libraryOpen) s.setLibraryOpen(false)
         else if (s.transferOpen) {
@@ -165,6 +167,7 @@ export default function App(): JSX.Element {
       <PromoteCard />
       <RecycleBin />
       <Bookmarks />
+      <AliasSheet />
       <Library />
       <Transfer />
       <TagRenameCard />

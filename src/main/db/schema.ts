@@ -274,4 +274,37 @@ export const MIGRATIONS: Migration[] = [
       create unique index idx_template_default on Template(scope) where is_default = 1;
     `,
   },
+  {
+    version: 7,
+    name: 'Alias: 全局别名（链接一等公民 5c）',
+    sql: `
+      -- 一个名字绑到一条记录或一个主题上。目标是**多态**的，与 Link.target_* 同一法
+      -- （多态就没有外键可建，删除那一侧由代码负责：见 links.ts 的 addAlias / removeAlias，
+      --  以及 entries.purge 与 topics.remove 那两处跟着清）。
+      --
+      -- 为什么值这个迁移：解析器今天是 日期 → 主题名 → 标题 → 悬空，
+      -- 改了名（或本来就是两个叫法）的那些写法会一律掉进悬空。别名补的是最后那一层兜底。
+      --
+      -- 实测（scratch/p05c-pre.mjs）三份库里 5735 条链接：行内别名 0 条、
+      -- 像"改名留下的"悬空 0 条 —— 今天没有证据证明有人要用它。
+      -- 所以这一档只做"表 + 兜底层 + 认领/回退 + 重命名那一个入口"，
+      -- 不做别名建议、不做模糊匹配自动绑定（设计稿 期-05 §9.1、§9.3）。
+      create table Alias(
+        id          integer primary key,
+        name        text not null,
+        target_type text not null check(target_type in ('entry','topic')),
+        target_id   integer not null,
+        created_at  text not null
+      );
+
+      -- 查找键的算法与解析器那三层**一模一样**（lower + 去空格），不是另一把尺：
+      -- Topic / Entry 那两条查询用的就是这个表达式（links.ts:77、:84）。
+      -- 同一个名字绑到两个目标是可以的（解析时按 target_type 定序），所以唯一索引建在
+      -- (规范化名, 目标) 而不是规范化名上——"一个名字只能有一个去处"这条要的是解析层不歧义，
+      -- 但同一目标写两遍才是真重复。
+      create unique index idx_alias_key on Alias(lower(replace(name, ' ', '')), target_type, target_id);
+      -- 反查"这一条记录有哪些别名"（右栏与别名窗都是这个形状）
+      create index idx_alias_target on Alias(target_type, target_id);
+    `,
+  },
 ]

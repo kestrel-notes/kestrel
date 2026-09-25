@@ -223,6 +223,24 @@ export interface Candidate {
   hint: string
 }
 
+/** 一条全局别名（期-05c）：一个写法绑到一个目标上。
+ *
+ *  `active` 说的是"这一条现在轮得到吗"——`addAlias` 会挡撞名，但挡不住先建别名、
+ *  后建同名主题那一种；被占着时 `shadowedBy` 给出占着它的是谁，界面上要说出来，
+ *  留一个不起作用的入口装没事是最坏的。 */
+export interface AliasRow {
+  id: number
+  name: string
+  targetType: 'entry' | 'topic'
+  targetId: number
+  targetName: string
+  targetKind: string
+  active: boolean
+  shadowedBy: string | null
+  /** 正靠这一条连着的链接有几篇（删之前要知道自己会松开几条） */
+  holding: number
+}
+
 /** 一簇「反复提到」（期-11b）：同一个目标被这些篇在 ≥3 个不同月份各自提过，
  *  且**这些篇彼此一条链都没有**（有一条就不算这一簇，判据见 `main/db/repeats.ts`）。
  *
@@ -632,11 +650,18 @@ export interface RenameImpact {
   hits: number
 }
 
-/** 主题改名的回执：干跑那两个数字之外，多一个「顺手认领了几条悬空」。
- *  `[[还没建出来的主题]]` 早写在正文里，把名字改回它的那一刻就该连上（§10 第 12 项），
- *  那一瞬间 `hits` 是 0——只报 hits 的话这句反馈会变成「0 处跟着搬过去」，等于没说 */
+/** 主题改名的三档（期-05c 把 §8-D4 那一勾拆成三档）。默认 `'alias'`：
+ *  三档里只有它既不写正文、又不让链接掉下来。 */
+export type TopicRenameMode = 'rewrite' | 'alias' | 'detach'
+
+/** 主题改名的回执：干跑那两个数字之外，多两个「改名之后发生了什么」。
+ *  `claimed`：`[[还没建出来的主题]]` 早写在正文里，把名字改回它的那一刻就该连上（§10 第 12 项），
+ *  那一瞬间 `hits` 是 0——只报 hits 的话这句反馈会变成「0 处跟着搬过去」，等于没说。
+ *  `aliasMade`：选了 `'alias'` 而旧名没留成别名（被别的名字占着）时是 false，那一档退化成
+ *  "旧写法掉成悬空"，必须报出来，不能装成没事。 */
 export interface TopicRenameResult extends RenameImpact {
   claimed: number
+  aliasMade: boolean
 }
 
 /* ── 属性层（期-02-设计 §2.1、§3.2、§3.3）──
@@ -795,8 +820,8 @@ export interface KestrelApi {
     create(name: string): Promise<Topic>
     /** 图标 / 颜色 / 归档 / 排序。名字不在这里改，见 `TopicPatch` */
     update(id: number, patch: TopicPatch): Promise<Topic>
-    /** 改名。`rewriteLinks` 是 §8-D4 那个勾选框：带着全库正文里的 `[[旧名]]` 一起走 */
-    rename(id: number, to: string, rewriteLinks: boolean): Promise<TopicRenameResult>
+    /** 改名。`mode` 是三档（期-05c）：带着全库正文里的 `[[旧名]]` 一起走 / 留下旧名当别名 / 什么都不搬 */
+    rename(id: number, to: string, mode: TopicRenameMode): Promise<TopicRenameResult>
     /** 改名前先问代价，与 `tags.impact` 同形 */
     impact(from: string): Promise<RenameImpact>
     /** 删除。主题下有文章时拦住，`detach` 是弹层给的那条出路（清空归属，内容一篇不动） */
@@ -857,6 +882,15 @@ export interface KestrelApi {
     /** `[[` 补全那一份候选（主题名 + 带标题的记录）。一次弹层取一次，不跨弹层缓存。
      *  `还有` 是被上限截掉的那部分条数——截断要说出来，不能让用户以为"库里没有" */
     candidates(上限?: number): Promise<{ 名录: Candidate[]; 还有: number }>
+    /** 全局别名（期-05c）。加与删都会动 Link（当场认领 / 放回悬空），
+     *  所以返回值带条数——界面要能说"这一条连上了 3 篇"，而不是只说"好了"。 */
+    aliases(): Promise<AliasRow[]>
+    addAlias(
+      name: string,
+      targetType: 'entry' | 'topic',
+      targetId: number
+    ): Promise<{ ok: boolean; id?: number; claimed?: number; 原因?: string }>
+    removeAlias(id: number): Promise<{ released: number; name: string }>
   }
   /** 全文搜索（期-03）。查询串的语法只有一份实现：`shared/query.ts`。
    *  空串**不该发过来**（面板自己拦，见 §10 第 8 项），主进程再兜一道。 */
@@ -1057,6 +1091,10 @@ export const IPC = {
   linkOutgoing: 'link:outgoing',
   /** 期-05b：`[[` 补全的候选清单（只读，一次弹层取一次） */
   linkCandidates: 'link:candidates',
+  /** 期-05c：全局别名（列 / 加 / 删；加与删会连带动 Link） */
+  aliasList: 'alias:list',
+  aliasAdd: 'alias:add',
+  aliasRemove: 'alias:remove',
   settingsAll: 'settings:all',
   settingsPatch: 'settings:patch',
   searchRun: 'search:run',

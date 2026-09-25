@@ -6,9 +6,10 @@
  *  2. 悬空 ⟺ `target_id` 为空（表上的 check 约束钉着）。目标一出现就回头认领。 */
 
 import { formatDateZh, formatMonthDayZh } from '../../shared/date'
-import { normalizeLinkKey, parseLinks } from '../../shared/links'
+import { normalizeLinkKey, parseLinks, resolveDateRef } from '../../shared/links'
 import type { ParsedLink } from '../../shared/links'
 import type {
+  AliasRow,
   Backlink,
   Candidate,
   DanglingLink,
@@ -59,9 +60,16 @@ function keyFrom(type: LinkTargetType | LinkSourceType, id: number): string {
 
 /*  写入：正文 → Link 行 ─ */
 
-/** 把一个 `[[目标]]` 解析成真实节点。日期 → 主题名 → 文章标题，层层后退，认不出来就是悬空。
+/** 把一个 `[[目标]]` 解析成真实节点。日期 → 主题名 → 文章标题 → **别名**，层层后退，认不出来就是悬空。
  *
- *  主题名优先于文章标题：主题是用户刻意建出来的分类，跟文章撞名时按主题理解更接近意图。 */
+ *  主题名优先于文章标题：主题是用户刻意建出来的分类，跟文章撞名时按主题理解更接近意图。
+ *
+ *  别名为什么排在**最后**（期-05c §9.2 第 2 条）：前三层的结果一个字都不会变，
+ *  已入库的 Link 行不会因为建了表而改指向——这是"兜底层"三个字的全部意思。
+ *  反过来（别名优先）等于把期-02/05/11b 三批验收重做一遍。
+ *
+ *  日期那一路**不吃别名**：`[[昨天]]` 认不出来就是"那一天还没写"，
+ *  让别名去救它，"那一天到底存不存在"就变成不可判了。 */
 function resolveTarget(link: ParsedLink): { id: number; type: LinkTargetType } | null {
   const db = getDatabase()
 
@@ -73,9 +81,19 @@ function resolveTarget(link: ParsedLink): { id: number; type: LinkTargetType } |
     return diary ? { id: diary.id, type: 'date' } : null
   }
 
+  const hit = resolveNameLayers(link.key)
+  return hit ?? aliasTarget(link.key)
+}
+
+/** 前三层里的"名字那两层"（主题名 → 文章标题）。拆出来是给别名那一层做撞名检查用的：
+ *  一个名字如果这里已经认得，就别再建别名——那条别名永远不会生效，界面上留着一个不起作用的
+ *  入口比少一个入口更糟（期-05c §9.4 判据 3 把设计稿里那句"不拦，只说"改成了拦，理由在此）。 */
+export function resolveNameLayers(key: string): { id: number; type: LinkTargetType } | null {
+  const db = getDatabase()
+
   const topic = db
     .prepare(`select id from Topic where lower(replace(name, ' ', '')) = ?`)
-    .get(link.key) as { id: number } | undefined
+    .get(key) as { id: number } | undefined
   if (topic) return { id: topic.id, type: 'topic' }
 
   const entry = db
@@ -85,8 +103,21 @@ function resolveTarget(link: ParsedLink): { id: number; type: LinkTargetType } |
        order by case kind when 'article' then 0 else 1 end, updated_at desc
        limit 1`
     )
-    .get(link.key) as { id: number } | undefined
+    .get(key) as { id: number } | undefined
   return entry ? { id: entry.id, type: 'entry' } : null
+}
+
+/** 最后一层：全局别名。规范化写法与那三层同一把尺（`lower + 去空格`，不是 normalizeLinkKey）。 */
+function aliasTarget(key: string): { id: number; type: LinkTargetType } | null {
+  const row = getDatabase()
+    .prepare(
+      `select target_id id, target_type type from Alias
+       where lower(replace(name, ' ', '')) = ?
+       order by case target_type when 'topic' then 0 else 1 end, id
+       limit 1`
+    )
+    .get(key) as { id: number; type: LinkTargetType } | undefined
+  return row ?? null
 }
 
 /** 全量重解析一条记录的出链：先删该 source 的所有行，再按正文重插。
@@ -140,6 +171,158 @@ export function claimForTopic(topicId: number): number {
     | { id: number; name: string }
     | undefined
   return row ? claimDangling(row.name, row.id, 'topic') : 0
+}
+
+/* ─ 全局别名（期-05c） ─ */
+
+/** 别名那一层的查找键：与 Topic / Entry 那两条查询同一把尺（去空格 + 小写）。
+ *  不复用 `normalizeLinkKey`（它去掉**所有**空白）：那三层用的就是这个表达式，
+ *  尺要一模一样，不然会出现"标题层认得、别名层说撞名"这种两头都不认的名字。 */
+function 名字键(s: string): string {
+  return s.toLowerCase().replace(/ /g, '')
+}
+
+/** 日期写法不做别名（`resolveTarget` 里那一段的理由）。认的就是解析器认的那几种：
+ *  相对词（今天 / 昨天 / 去年今天）与打全了的数字日期——`resolveDateRef` 一处到底，
+ *  不在这里再写一遍词汇表（那两份名单早晚会漂）。`from` 给什么都不影响"是不是日期写法"这个判断。 */
+function 像日期(s: string): boolean {
+  return resolveDateRef(s.trim(), '2026-01-02') !== null
+}
+
+export function aliases(): AliasRow[] {
+  const db = getDatabase()
+  const 行 = db
+    .prepare(
+      `select a.id id, a.name name, a.target_type tt, a.target_id tid,
+              coalesce(nullif(trim(t.name), ''), nullif(trim(e.title), ''), e.entry_date) nm,
+              case when a.target_type = 'topic' then '主题'
+                   when e.kind = 'diary' then '日记' else '文章' end kd
+       from Alias a
+       left join Topic t on a.target_type = 'topic' and t.id = a.target_id
+       left join Entry e on a.target_type = 'entry' and e.id = a.target_id
+       order by a.name`
+    )
+    .all() as unknown as {
+    id: number
+    name: string
+    tt: 'entry' | 'topic'
+    tid: number
+    nm: string | null
+    kd: string
+  }[]
+
+  const 连着 = db.prepare(
+    `select count(*) c from Link where target_raw = ? and target_id = ? and target_type = ?`
+  )
+
+  return 行.map((r) => {
+    const key = 名字键(r.name)
+    // 与解析层同一把尺：直接问 resolveNameLayers，不在这里再写一遍那两条 SQL
+    const 占着 = resolveNameLayers(key)
+    const 同 = 占着?.type === (r.tt === 'topic' ? 'topic' : 'entry') && 占着?.id === r.tid
+    return {
+      id: r.id,
+      name: r.name,
+      targetType: r.tt,
+      targetId: r.tid,
+      targetName: r.nm || `#${r.tid}`,
+      targetKind: r.kd,
+      active: !占着 || !!同,
+      shadowedBy: 占着 && !同 ? `${名字种类(占着.type)}「${显示名(占着.type, 占着.id)}」` : null,
+      holding: Number(连着.get(key, r.tid, r.tt === 'topic' ? 'topic' : 'entry')?.c ?? 0),
+    }
+  })
+}
+
+/** "这个名字被谁占了"要说得出名字，不能只说类型 */
+function 显示名(type: LinkTargetType, id: number): string {
+  const db = getDatabase()
+  if (type === 'topic')
+    return (db.prepare('select name from Topic where id = ?').get(id) as { name: string } | undefined)?.name ?? `#${id}`
+  const e = db
+    .prepare('select kind, title, entry_date from Entry where id = ?')
+    .get(id) as { kind: EntryKind; title: string | null; entry_date: string } | undefined
+  if (!e) return `#${id}`
+  return e.title?.trim() || e.entry_date
+}
+
+function 名字种类(type: LinkTargetType): string {
+  return type === 'topic' ? '主题' : type === 'date' ? '日记' : '记录'
+}
+
+export interface AddAliasResult {
+  ok: boolean
+  id?: number
+  /** 加完顺手认领了几条悬空 */
+  claimed?: number
+  原因?: string
+}
+
+/** 建一条别名，并当场回头认领那些写着这个写法的悬空链接。
+ *
+ *  三件事在写之前就拦下来（拦而不是"建了再说"：一条永远轮不到的别名，会在界面上留一个不起作用的入口）：
+ *  ① 空名字；② 日期写法（`resolveTarget` 那一段的理由）；③ 前三层已经认得这个名字。 */
+export function addAlias(name: string, targetType: 'entry' | 'topic', targetId: number): AddAliasResult {
+  const 原 = name.trim()
+  const key = 名字键(原)
+  if (!key) return { ok: false, 原因: '名字是空的' }
+  if (像日期(原)) return { ok: false, 原因: '日期写法（今天 / 昨天 / 2026-09-25）不做别名——那一族由解析器直接解' }
+
+  const db = getDatabase()
+  const 目标 =
+    targetType === 'topic'
+      ? db.prepare('select id from Topic where id = ?').get(targetId)
+      : db.prepare('select id from Entry where id = ? and deleted_at is null').get(targetId)
+  if (!目标) return { ok: false, 原因: '目标不在了' }
+
+  const 占着 = resolveNameLayers(key)
+  if (占着) {
+    const 是它自己 =
+      占着.type === (targetType === 'topic' ? 'topic' : 'entry') && 占着.id === targetId
+    return { ok: false, 原因: 是它自己 ? '这就是它现在的名字，不用别名' : '这个名字已经指向别处了，先改那边' }
+  }
+  // 别名层自己也要不歧义：`aliasTarget` 那一条查询里排了序（主题在前、再按 id），
+  // 但"同一个名字两条别名指两处"是用户没说过的话，不能由排序替他选一个 ⇒ 直接拦
+  const 别的别名 = getDatabase()
+    .prepare(
+      `select id from Alias
+       where lower(replace(name, ' ', '')) = ? and (target_type <> ? or target_id <> ?)
+       limit 1`
+    )
+    .get(key, targetType, targetId)
+  if (别的别名) return { ok: false, 原因: '这个名字已经是另一条别名了，先删那个' }
+
+  try {
+    const r = db
+      .prepare('insert into Alias(name, target_type, target_id, created_at) values (?,?,?,?)')
+      .run(原, targetType, targetId, new Date().toISOString())
+    // 认领走那一条老路：正文里早就写着这个写法、一直悬空的那些行，当场连上
+    const claimed = claimDangling(原, targetId, targetType)
+    return { ok: true, id: Number(r.lastInsertRowid), claimed }
+  } catch (err) {
+    return { ok: false, 原因: `这一条已经有了（${String((err as Error).message).slice(0, 40)}）` }
+  }
+}
+
+/** 删一条别名，并把它 holding 的那些链接**放回悬空**——不是静默少一行（判据 9.4-6）。
+ *
+ *  为什么按 target_raw 挑而不是按目标挑：同一个目标可以同时被"真标题"和"别名"两条路连着，
+ *  只有写法等于这条别名的行才该松开。 */
+export function removeAlias(id: number): { released: number; name: string } {
+  const db = getDatabase()
+  const 行 = db
+    .prepare('select name, target_type tt, target_id tid from Alias where id = ?')
+    .get(id) as { name: string; tt: 'entry' | 'topic'; tid: number } | undefined
+  if (!行) return { released: 0, name: '' }
+  const key = 名字键(行.name)
+  db.prepare('delete from Alias where id = ?').run(id)
+  const r = db
+    .prepare(
+      `update Link set target_id = null, target_type = null
+       where target_raw = ? and target_id = ? and target_type = ?`
+    )
+    .run(key, 行.tid, 行.tt === 'topic' ? 'topic' : 'entry')
+  return { released: Number(r.changes), name: 行.name }
 }
 
 /* ─ 读：反向链接 ─ */
@@ -291,6 +474,17 @@ export function candidates(上限 = 3000): { 名录: Candidate[]; 还有: number
     )
     .all(上限) as unknown as { id: number; kind: 'diary' | 'article'; title: string; entry_date: string }[]
   for (const e of 篇) 出.push({ kind: 'entry', name: e.title, hint: e.kind === 'diary' ? e.entry_date : '文章' })
+  // 别名也进候选（期-05c 判据 9.4-7）：打 `[[玻璃` 要能捞出绑在「毛玻璃工艺」上的那个写法，
+  // 否则别名在写作时是隐形的——只有管理窗里没有查找口，学不到
+  for (const a of db
+    .prepare(
+      `select a.name n, a.target_type tt from Alias a
+       where a.target_type = 'topic'
+          or exists (select 1 from Entry e where e.id = a.target_id and e.deleted_at is null)
+       order by a.name`
+    )
+    .all() as unknown as { n: string; tt: 'entry' | 'topic'}[])
+    出.push({ kind: a.tt === 'topic' ? 'topic' : 'entry', name: a.n, hint: '别名' })
   // 截断了就要说出来（11b §三 第 7 条那一条口径）：宁可说一句"还有 N 个没列进来"，
   // 也不让用户以为自己打的那个名字"库里没有"
   const 有标题 = db

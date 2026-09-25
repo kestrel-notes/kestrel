@@ -2741,6 +2741,14 @@ input[type='range'] {
 .rename-card {
   width: min(430px, 92vw);
 }
+/* 主题改名比标签多一层"旧名字怎么处理"（期-05c 那一档三块），430px 里三行说明会挤成一坨。
+   只放宽这一张：标签改名那张一个字都没变。 */
+.topic-rename-card {
+  width: min(560px, 94vw);
+}
+.topic-rename-card .field input {
+  max-width: 340px;
+}
 
 /* ─ 确认弹层（替掉原生 window.confirm）──
    这一层比 .sheet 压得更暗、虚化得更狠。.sheet 那些面板是「在旁边看一眼」，
@@ -3130,6 +3138,150 @@ input[type='range'] {
 .tm-rewrite input {
   accent-color: var(--accent);
   flex-shrink: 0;
+}
+
+/* 主题改名那三档（期-05c：原来那一勾拆成三档，默认从"不勾"换成"留别名"）。
+   选中那一档才展开说明——三行都摊开会把弹层撑成一块说明书。 */
+.rn-modes {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 6px;
+}
+.rn-mode {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 12.5px;
+  cursor: pointer;
+}
+.rn-mode.on {
+  border-color: var(--accent);
+  background: color-mix(in oklab, var(--accent) 8%, transparent);
+}
+.rn-mode input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+.rn-t {
+  color: var(--text-1);
+}
+.rn-s {
+  color: var(--text-3);
+  line-height: 1.5;
+}
+
+/* ── 别名窗（期-05c §9.2 第 5 件）──
+   上面是「绑一条」那一格（写法 + 绑到什么），下面是全库台账。
+   一行两层与收藏那张列表同法：写法与目标分不开，但条数与状态标记要另起一行才读得清。 */
+.alias-card {
+  width: min(640px, 94vw);
+}
+.al-add {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr);
+  gap: 10px;
+  align-items: end;
+  padding-bottom: 14px;
+  margin-bottom: 4px;
+  border-bottom: 1px solid var(--border);
+}
+.al-add .chip.primary {
+  grid-column: 2;
+  justify-self: end;
+}
+.al-kind {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+.al-kind .chip {
+  padding: 3px 10px;
+}
+/* 选中那一档靠 .on 而不是 .primary：`.primary` 在这套语言里是"按下去会动手"的那颗，
+   两格都涂成主色就分不清哪一格才是「绑定」 */
+.al-kind .chip.on {
+  border-color: var(--accent);
+  background: color-mix(in oklab, var(--accent) 12%, transparent);
+  color: var(--text-1);
+}
+.al-target {
+  width: 100%;
+  font-family: inherit;
+  font-size: 13px;
+  color: var(--text-1);
+  background: var(--hover);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  padding: 8px 10px;
+  outline: none;
+}
+.al-target:focus {
+  border-color: var(--accent);
+}
+/* 目标就是当前那一篇时没有可挑的下拉，只有一行说明——同一格位置换成读得出来的字 */
+.al-target.as-text {
+  color: var(--text-2);
+  border-style: dashed;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.al-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 10px;
+  max-height: 320px;
+  overflow-y: auto;
+}
+.al-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 11px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+.al-row:hover {
+  border-color: var(--border-strong);
+}
+/* 轮不到的那几条淡下去但**留在列表里**（与收藏同一判据：不静悄悄消失），
+   旁边那枚徽章说清是谁占着这个名字 */
+.al-row.inactive {
+  opacity: 0.62;
+}
+.al-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  overflow: hidden;
+  white-space: nowrap;
+}
+.al-main b {
+  font-size: 13px;
+  font-weight: 550;
+  color: var(--text-1);
+}
+.al-arrow {
+  color: var(--text-3);
+}
+.al-to {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 12.5px;
+  color: var(--text-2);
+}
+.al-row .chip {
+  flex: 0 0 auto;
+  padding: 2px 8px;
 }
 
 /* ── 日记页：已升格横幅 ── */

@@ -434,6 +434,14 @@ export const COMMANDS: Command[] = [
     run: (s) => s.setTopicSheetOpen(true),
   },
   {
+    id: 'view.aliases',
+    title: '别名 · 全库写法绑定与解绑',
+    group: '视图',
+    // 不给键位：入口挂在命令面板里就够了（期-05c §9.2 第 5 件）。这一扇窗的处理频率
+    // 与「主题管理」同一档，占一个组合键是给写作添负担
+    run: (s) => s.setAliasOpen(true),
+  },
+  {
     id: 'entry.bin',
     title: '回收站',
     group: '数据',

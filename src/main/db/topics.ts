@@ -9,10 +9,10 @@
  *  3. **`Entry.topic_id` 的外键是 `on delete set null`**，所以删主题在数据库层面永远"成功"，
  *     文章只是静悄悄地没了归属。§3.5 那句"有文章时拦住"必须由代码来保证，不能指望约束。 */
 
-import type { Topic, TopicPatch, TopicRenameResult } from '../../shared/types'
+import type { Topic, TopicPatch, TopicRenameMode, TopicRenameResult } from '../../shared/types'
 import * as entries from './entries'
 import { bindable, getDatabase, transact, type BindValue } from './index'
-import { claimForTopic } from './links'
+import { addAlias, claimForTopic } from './links'
 import * as text from './text'
 
 interface TopicRow {
@@ -176,14 +176,23 @@ export function update(id: number, patch: TopicPatch): Topic {
   return get(id)
 }
 
-/** 改名。`rewriteLinks` 就是 §8-D4 那个勾选框：
- *  - 勾上 → 同一个事务里把全库正文的 `[[旧名]]` 改成 `[[新名]]`（每篇动手前先存一版历史，那是撤销）
- *  - 不勾 → 只改这一行，旧引用**降级成悬空**（`target_id` 清空、`target_raw` 留着旧名），
- *    所以它们会出现在悬空那一栏里而不是静悄悄消失（§10 第 12 项要的就是这个）。 */
-export function rename(id: number, to: string, rewriteLinks: boolean): TopicRenameResult {
+/** 改名的三档（期-05c 把原来的两档拆成三档）：
+ *  - `'rewrite'`：同一个事务里把全库正文的 `[[旧名]]` 改成 `[[新名]]`（每篇动手前先存一版历史，那是撤销）
+ *  - `'alias'`（**默认**）：正文一个字都不动，旧名绑成这个主题的一条别名 ⇒
+ *    将来任何一篇重解析时，`[[旧名]]` 走别名那一层照样指到这里
+ *  - `'detach'`：只改这一行，旧引用**降级成悬空**（`target_id` 清空、`target_raw` 留着旧名），
+ *    所以它们会列在悬空那一栏里而不是静悄悄消失（§10 第 12 项要的就是这个）。
+ *
+ *  为什么默认给 `'alias'`：三档里只有它既不写正文、又不让链接掉下来。
+ *  原来"不勾就是悬空"是把选择的代价藏在默认项里。
+ *
+ *  返回值里 `aliasMade=false` 说的是"旧名没能留成别名"——多半是这个名字被别的记录或主题占着了。
+ *  这一条必须报出去：改名照样发生，只是旧写法会掉成悬空，不报就是骗人
+ *  （离线判据 D14 量这一个字段；话是 store 那侧的 toast 说的）。 */
+export function rename(id: number, to: string, mode: TopicRenameMode): TopicRenameResult {
   const before = get(id)
   const trimmed = checkName(to, id)
-  if (trimmed === before.name) return { entries: 0, hits: 0, claimed: 0 }
+  if (trimmed === before.name) return { entries: 0, hits: 0, claimed: 0, aliasMade: false }
 
   // 干跑必须在动任何东西之前算：它数的是「正文里还写着旧名的地方」
   const impact = text.countTopicRename(before.name)
@@ -194,9 +203,20 @@ export function rename(id: number, to: string, rewriteLinks: boolean): TopicRena
       .run(trimmed, bindable(uniqueSlug(toSlug(trimmed), id)), id)
 
     let rewritten = 0
-    if (rewriteLinks) {
+    let aliasMade = false
+    if (mode === 'rewrite') {
       // 两个内核都不自己 begin：快照与重解析在 bulkRewriteContent 里层，事务边界在这一层
       rewritten = entries.bulkRewriteContent(text.topicLinkPlans(before.name, trimmed))
+    } else if (mode === 'alias') {
+      // 必须在 Topic 那行改完**之后**才建：旧名还占着主题名时，addAlias 会按撞名拒掉
+      aliasMade = addAlias(before.name, 'topic', id).ok
+      if (!aliasMade)
+        getDatabase()
+          .prepare(
+            `update Link set target_id = null, target_type = null
+             where target_type = 'topic' and target_id = ?`
+          )
+          .run(id)
     } else {
       getDatabase()
         .prepare(
@@ -207,7 +227,7 @@ export function rename(id: number, to: string, rewriteLinks: boolean): TopicRena
     }
     // 正文里可能早有一个悬空写着的 `[[新名]]`，这一下归它认领
     const claimed = claimForTopic(id)
-    return { entries: rewritten, hits: impact.hits, claimed }
+    return { entries: rewritten, hits: impact.hits, claimed, aliasMade }
   })
 }
 
@@ -224,6 +244,8 @@ export function remove(id: number, detach: boolean): void {
     db.prepare('update Entry set topic_id = null where topic_id = ?').run(id)
     // 收藏不留悬空行（§10 第 13 项）。正文里的 `[[这个名字]]` 反过来要留成悬空，看得见才修得了
     db.prepare(`delete from Bookmark where kind = 'topic' and ref = ?`).run(id)
+    // 别名也是多态引用（期-05c）：主题没了，那些写法就绑在空号上，留着永远轮不到
+    db.prepare(`delete from Alias where target_type = 'topic' and target_id = ?`).run(id)
     db.prepare(
       `update Link set target_id = null, target_type = null
        where target_type = 'topic' and target_id = ?`

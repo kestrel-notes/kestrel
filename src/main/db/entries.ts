@@ -382,8 +382,11 @@ export function purge(id: number): void {
     db.prepare(`delete from Link where source_id = ? and source_type = 'entry'`).run(id)
     db.prepare(`delete from Link where target_id = ? and target_type in ('entry','date')`).run(id)
     // 收藏也是多态引用（没有外键），不清就会留一行指向空号的收藏（§3.4 / §10 第 14 项）。
+    // 别名同一种引用（期-05c）：绑着一个已经不存在的记录，那一行永远轮不到。
+    // 软删（进回收站）时**不清**——恢复出来别名还在原地等着，那才是"只是暂存"的意思。
     // EntryTag 不用管：它有 cascade。
     db.prepare(`delete from Bookmark where kind = 'entry' and ref = ?`).run(id)
+    db.prepare(`delete from Alias where target_type = 'entry' and target_id = ?`).run(id)
   })
 }
 

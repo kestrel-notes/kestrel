@@ -38,6 +38,7 @@ import {
   type SearchOrder,
   type Settings,
   type TopicPatch,
+  type TopicRenameMode,
 } from '../shared/types'
 import type { Workspace } from '../shared/workspace'
 
@@ -300,8 +301,8 @@ function registerIpc(): void {
   handle(IPC.topicList, () => topics.list())
   handle(IPC.topicCreate, (name: string) => topics.create(name))
   handle(IPC.topicUpdate, (id: number, patch: TopicPatch) => topics.update(id, patch))
-  handle(IPC.topicRename, (id: number, to: string, rewriteLinks: boolean) =>
-    topics.rename(id, to, rewriteLinks)
+  handle(IPC.topicRename, (id: number, to: string, mode: TopicRenameMode) =>
+    topics.rename(id, to, mode)
   )
   handle(IPC.topicImpact, (from: string) => text.countTopicRename(from))
   handle(IPC.topicRemove, (id: number, detach: boolean) => topics.remove(id, detach))
@@ -334,6 +335,12 @@ function registerIpc(): void {
   handle(IPC.linkOutgoing, (entryId: number) => links.outgoing(entryId))
   // 期-05b：`[[` 补全那份候选。只读、一次弹层取一次（不跨弹层缓存，理由写在 links.ts 那段）
   handle(IPC.linkCandidates, (上限?: number) => links.candidates(上限))
+  // 期-05c：全局别名。加与删都会动 Link（当场认领 / 放回悬空），所以这两个不是纯 CRUD
+  handle(IPC.aliasList, () => links.aliases())
+  handle(IPC.aliasAdd, (name: string, targetType: 'entry' | 'topic', targetId: number) =>
+    links.addAlias(name, targetType, targetId)
+  )
+  handle(IPC.aliasRemove, (id: number) => links.removeAlias(id))
 
   handle(IPC.settingsAll, () => settings.all())
   handle(IPC.settingsPatch, (patch: Partial<Settings>) => settings.patch(patch))

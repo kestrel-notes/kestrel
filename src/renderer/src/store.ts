@@ -12,6 +12,7 @@ import { applySnippets } from './snippets'
 import type { PropConversion, PropType } from '../../shared/types'
 import {
   DEFAULT_SETTINGS,
+  type AliasRow,
   type Backlink,
   type Bookmark,
   type BookmarkKind,
@@ -35,6 +36,7 @@ import {
   type Template,
   type Topic,
   type TopicPatch,
+  type TopicRenameMode,
 } from '../../shared/types'
 
 /** 侧栏的视图（期-02-设计 §3.1）。「今天 / 主题」是**写作现场**（该写哪一篇），
@@ -230,6 +232,13 @@ export interface AppState {
   bookmarkOpen: boolean
   bookmarks: Bookmark[]
 
+  /** 别名窗（期-05c）。入口只有命令面板那一条，不占标题栏那一格——别名是"偶尔处理一次
+   *  名字"的地方，天天摊着会被忽略，也会在写作时抢注意力。
+   *  行列表**常驻 store 而不是组件里拉**：加与删都要顺手刷反链/出链（当场认领几条、
+   *  放回悬空几条），刷这两处的代码只在 store 这一侧够得着，拆开就会漏一半 */
+  aliasOpen: boolean
+  aliasRows: AliasRow[]
+
   /** 全屏图谱覆盖层（期-06a）。拓扑**不进 store**：开层现查（实测全库 22ms），
    *  进来就要管「保存一条就脏」的失效，不划算（设计稿决策 D10）。
    *  `graphMode` 是例外：它是用户挑的看法，不是数据 */
@@ -312,8 +321,8 @@ export interface AppState {
   setTopicRename(target: { id: number; from: string } | null): void
   /** 改名前的干跑：正文里还写着 `[[旧名]]` 的有几篇、几处 */
   topicImpact(from: string): Promise<RenameImpact>
-  /** 改名。`rewriteLinks` 是 §8-D4 那个勾选框，不勾则旧引用降级成悬空 */
-  renameTopic(id: number, to: string, rewriteLinks: boolean): Promise<void>
+  /** 改名。三档见 `TopicRenameMode`（期-05c 把原来那一勾拆成三档，默认 'alias'） */
+  renameTopic(id: number, to: string, mode: TopicRenameMode): Promise<void>
   /** 图标 / 颜色 / 归档。名字不在这里改，见 `TopicPatch` */
   patchTopic(id: number, patch: TopicPatch): Promise<void>
   /** 删除主题。`detach` = 先把文章清空归属再删（内容一篇不动） */
@@ -377,6 +386,13 @@ export interface AppState {
   restoreDeleted(id: number): Promise<void>
   purgeEntry(id: number): Promise<void>
   setBookmarkOpen(open: boolean): void
+  setAliasOpen(open: boolean): void
+  /** 重取全库别名（`active` 与 `holding` 都是读的时候现算的，开一次查一次） */
+  refreshAliases(): Promise<void>
+  /** 建一条别名。`claimed` 与"被谁挡回来了"都要说出来，所以这条路自己上 toast */
+  addAlias(name: string, targetType: 'entry' | 'topic', targetId: number): Promise<void>
+  /** 删一条别名。它 holding 的那几条会当场掉回悬空，那条数要报给用户 */
+  dropAlias(id: number): Promise<void>
   setGraphOpen(open: boolean): void
   setGraphMode(mode: 'force' | 'time'): void
   /** 演示当前这一篇（期-09c）。空正文也开得起来——那一页是空白的，提示语照样在场 */
@@ -983,6 +999,8 @@ export const useStore = create<AppState>()((set, get) => {
     binOpen: false,
     binRows: [],
     bookmarkOpen: false,
+    aliasOpen: false,
+    aliasRows: [],
     graphOpen: false,
     graphMode: 'force',
     slidesOpen: false,
@@ -1408,7 +1426,7 @@ export const useStore = create<AppState>()((set, get) => {
       return await window.kestrel.topics.impact(from)
     },
 
-    async renameTopic(id, to, rewriteLinks) {
+    async renameTopic(id, to, mode) {
       const from = get().topicRename?.from ?? null
       set({ topicRename: null })
       if (from === null) return
@@ -1420,7 +1438,7 @@ export const useStore = create<AppState>()((set, get) => {
           get().notify('这一篇还没存上，先别改名')
           return
         }
-        const impact = await window.kestrel.topics.rename(id, to, rewriteLinks)
+        const impact = await window.kestrel.topics.rename(id, to, mode)
         await refreshTopics()
         if (get().mode === 'topic') await refreshArticles(get().activeTopicId)
         refreshNetworkForced()
@@ -1433,11 +1451,16 @@ export const useStore = create<AppState>()((set, get) => {
         // 三种代价各说各的：搬走了多少处 / 留下多少处悬空 / 顺手认领了几条早就悬空写着的 [[新名]]。
         // 最后那条不能省：改名回到旧名字时 hits 是 0，只报 hits 会成「0 处跟着搬过去」这种废话
         const 搬 =
-          rewriteLinks && impact.hits > 0
+          mode === 'rewrite' && impact.hits > 0
             ? `，正文里那 ${impact.hits} 处跟着搬过去`
-            : !rewriteLinks && impact.hits > 0
-              ? `，正文里那 ${impact.hits} 处 [[${from}]] 现在悬空了`
-              : ''
+            : mode === 'alias' && impact.hits > 0
+              ? impact.aliasMade
+                ? `，正文里那 ${impact.hits} 处 [[${from}]] 一个字没动，旧名留成了别名`
+                // 旧名被别的记录占着 ⇒ 这一档实际退化成了 detach，必须说出来（不装没事）
+                : `，但「${from}」这个名字被别处占着，别名没留下 —— 正文里那 ${impact.hits} 处现在悬空了`
+              : mode === 'detach' && impact.hits > 0
+                ? `，正文里那 ${impact.hits} 处 [[${from}]] 现在悬空了`
+                : ''
         const 认领 = impact.claimed > 0 ? `，顺带把 ${impact.claimed} 条悬空的 [[${to}]] 接上了` : ''
         get().notify(`已改名为「${to}」${搬}${认领}`)
       } catch (err) {
@@ -2124,6 +2147,54 @@ export const useStore = create<AppState>()((set, get) => {
       await get().setMode('tag')
       await get().selectTag(bm.ref)
       get().notify(`#${bm.title}`)
+    },
+
+    /* ─ 别名（期-05c） ─ */
+
+    async refreshAliases() {
+      set({ aliasRows: await window.kestrel.links.aliases() })
+    },
+
+    setAliasOpen(open) {
+      set({ aliasOpen: open })
+      // 开一次现查一次：`active`（这一条轮不轮得到）看的是当下的主题名与文章标题，
+      // 常驻那份会因为改名而过期——标着"生效"其实早被顶掉了
+      if (open) void get().refreshAliases()
+    },
+
+    async addAlias(name, targetType, targetId) {
+      try {
+        const r = await window.kestrel.links.addAlias(name, targetType, targetId)
+        await get().refreshAliases()
+        // 当场认领了几条就要去右栏看一眼：那些链接从悬空变成了有落点，
+        // 而 backlinks / outgoing 缓存的是认领前的样子
+        if (r.claimed) refreshNetworkForced()
+        get().notify(
+          r.ok
+            ? r.claimed
+              ? `别名已绑上 · 顺手连上了 ${r.claimed} 条早就悬空写着这个写法的链接`
+              : '别名已绑上'
+            : `别名没绑上 —— ${r.原因 ?? '未知原因'}`
+        )
+      } catch (err) {
+        get().notify(errorMessage(err))
+      }
+    },
+
+    async dropAlias(id) {
+      try {
+        const r = await window.kestrel.links.removeAlias(id)
+        await get().refreshAliases()
+        // 这一条松开了落点，反链要跟着掉——与 addAlias 同一个理由
+        refreshNetworkForced()
+        get().notify(
+          r.released
+            ? `已解绑「${r.name}」· 那 ${r.released} 处现在悬空了`
+            : `已解绑「${r.name}」`
+        )
+      } catch (err) {
+        get().notify(errorMessage(err))
+      }
     },
 
     async restoreDeleted(id) {
