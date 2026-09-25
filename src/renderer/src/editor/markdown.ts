@@ -11,7 +11,7 @@
 import { InputRule, Node, mergeAttributes, type AnyExtension, type JSONContent } from '@tiptap/core'
 import { Markdown, MarkdownManager } from '@tiptap/markdown'
 import StarterKit from '@tiptap/starter-kit'
-import { TaskItem, TaskList } from '@tiptap/extension-list'
+import { ListItem, TaskItem, TaskList } from '@tiptap/extension-list'
 import { TableKit } from '@tiptap/extension-table'
 import Image from '@tiptap/extension-image'
 import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight'
@@ -364,9 +364,19 @@ const GuardedImage = Image.extend({
  *  不进门，只挂在 `RichEditor` 上。 */
 export function buildExtensions(bridge: LinkBridge | null = null): AnyExtension[] {
   return [
-    StarterKit.configure({ codeBlock: false, blockquote: false }),
+    // #171：列表项允许「嵌入打头」。不放开的话，列表项里单独一行 `![[x]]` 当场换不成卡
+    // （`落成嵌入` 问的是 `validContent([嵌入, 空段])`，那一串在 `paragraph block*` 下是否），
+    // 而重载之后 markdown 解析出的树本来就是 `listItem > embed`（解析不校验内容式）——
+    // 「活着时不换、重载后换」那两副样子就是这么来的。
+    // `paragraph` 仍排在第一位，所以 `createAndFill` 造空项长出的还是段落，不是空壳。
+    StarterKit.configure({ codeBlock: false, blockquote: false, listItem: false }),
+    ListItem.extend({ content: '(paragraph|embed) block*' }),
     CodeBlockLowlight.configure({ lowlight }),
     TaskList,
+    // 任务项**不跟着放开**（离线实测 `scratch/p171-off.mjs`【二】）：`- [ ] ![[x]]` 经 markdown
+    // 那一条解析出来是 `taskItem>paragraph>(text,wikiLink)`——那一行从来不是嵌入。
+    // 放开内容式只会让"当场换成卡、重载之后退回成一行 `!` 加链接"，那正是 #167 定的判据
+    // 里最坏的一档（反向的两副样子）。任务项里认不出嵌入是**解析**那一半的缺口，另账记着。
     TaskItem.configure({ nested: true }),
     TableKit.configure({ table: { resizable: false } }),
     GuardedImage,
