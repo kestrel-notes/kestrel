@@ -551,10 +551,37 @@ function sameAttrs(
   return true
 }
 
+/** 一块还没写完的图，两棵树里长得不一样，但不是丢了字。
+ *
+ *  ```` ```mermaid ```` 少了闭围栏时，`mermaidBlock` 那条词法规则不抢（「未闭合的一律不抢，
+ *  留给普通代码块」），它落进 `codeBlock`；序列化时 codeBlock 的 renderMarkdown 会把闭围栏补上，
+ *  于是**再解析**的那一头变成 `mermaidBlock`。字一个没少 —— 输出反而比输入长三格围栏 ——
+ *  可按类型对账就是「代码块 1 处、文字少了 N 字」，闸门因此把正在画图的人锁在源码档，
+ *  说的还是句谎话（实机见 scratch/p179-mermaid-live.mjs，离线判据见 scratch/p179d-gate-unclosed.mjs）。
+ *
+ *  判据用「代码体和 `code` 属性同字」，不是「类型不同也放行」：围栏里写着别的语言、
+ *  或者图被换了内容，仍然算丢。 */
+function isDiagramStillOpen(a: JSONContent, b: JSONContent): boolean {
+  const code = a.type === 'codeBlock' ? a : b.type === 'codeBlock' ? b : null
+  const diagram = code === null ? null : code === a ? b : a
+  if (!code || diagram?.type !== 'mermaidBlock') return false
+  if (code.attrs?.language !== 'mermaid') return false
+  const body = collectText(code).replace(/\n$/, '')
+  return body === (typeof diagram.attrs?.code === 'string' ? diagram.attrs.code : '')
+}
+
+/** 一棵子树里的字，按文档顺序接起来。 */
+function collectText(node: JSONContent): string {
+  let s = node.text ?? ''
+  for (const child of node.content ?? []) s += collectText(child)
+  return s
+}
+
 /** 树相等。手写深比而不是 `JSON.stringify` 对拍：stringify 受键序影响，
  *  同一棵树只是 `marks` 排在 `text` 前面就会被判成不一样（parseHTML 出来的节点
  *  正是这个键序），那是纯误报。 */
 function sameTree(a: JSONContent, b: JSONContent): boolean {
+  if (isDiagramStillOpen(a, b)) return true
   if (a.type !== b.type || a.text !== b.text) return false
   if (!sameAttrs(a.attrs, b.attrs)) return false
 
