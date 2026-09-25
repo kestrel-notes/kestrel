@@ -17,6 +17,7 @@
 import { Node, mergeAttributes, type Attribute } from '@tiptap/core'
 import type { EditorView } from '@tiptap/pm/view'
 import type { Mermaid, MermaidConfig } from 'mermaid'
+import { blockEnd } from '@/editor/blockBound'
 import { svgToInert } from '@/editor/inert'
 
 const str = (v: unknown, fallback = ''): string => (typeof v === 'string' ? v : fallback)
@@ -28,8 +29,15 @@ const OPEN = /^ {0,3}(`{3,}|~{3,})[ \t]*mermaid[ \t]*\r?\n/i
 /** 只看行首：OPEN 最长得 3 格缩进 + 一串围栏字符 + mermaid + 行尾空白，64 足够包住。 */
 const OPEN_WINDOW = 64
 
-function findMermaidFence(src: string): { at: number; len: number; code: string } | null {
-  for (let at = 0; at < src.length; at = nextLine(src, at)) {
+/** 找 `src` 里第一个**闭合了**的 mermaid 围栏。
+ *
+ *  `止` 只限"找开头"那一圈（`start` 用它把边界收到本段，见 `blockBound.ts`）；
+ *  闭围栏照旧往后读到哪算哪 —— 图里的空行是合法内容，把串剪短会让"开在本段、闭在段外"那一档认不出。 */
+function findMermaidFence(
+  src: string,
+  止: number = src.length
+): { at: number; len: number; code: string } | null {
+  for (let at = 0; at < 止; at = nextLine(src, at)) {
     const open = OPEN.exec(src.slice(at, at + OPEN_WINDOW))
     if (!open) continue
     const body = at + open[0].length
@@ -307,8 +315,17 @@ export const MermaidBlock = Node.create({
   markdownTokenizer: {
     name: 'mermaidBlock',
     level: 'block' as const,
-    start: (src: string) => findMermaidFence(src)?.at ?? -1,
+    /** 只在本段之内找开围栏（`blockEnd` 那颗函数与它的原因在 `blockBound.ts`）。
+     *  边界当**找开头的循环的上限**传进去，不剪串：闭围栏可以跨过段里的空行。 */
+    start: (src: string) => findMermaidFence(src, blockEnd(src))?.at ?? -1,
     tokenize(src: string) {
+      // 块级 tokenizer 的合同是"只能从第 0 颗字开始 matched"（marked 拿到 raw 就
+      // `e.substring(r.raw.length)`，从中间 matched 会把中间那段字整块丢掉）。
+      // 所以先只看行首那一小截，不对立刻走人 —— 少了这一句，`findMermaidFence` 会把整条剩余串
+      // 一行一行扫完（每行一次 slice + 一次 exec），回来只为判一句 `hit.at !== 0`。
+      // 实测（#177，`scratch/p177d.mjs` 按名字记账）：800 段那一趟里这一颗 52.9 ms，占整趟 29%；
+      // 换成锚定预检是 108×（`scratch/p177e-anchor.mjs`，两版对 1600 轮的 matched 结论逐轮一致）。
+      if (!OPEN.exec(src.slice(0, OPEN_WINDOW))) return undefined
       const hit = findMermaidFence(src)
       if (!hit || hit.at !== 0) return undefined
       return { type: 'mermaidBlock', raw: src.slice(0, hit.len), code: hit.code }
