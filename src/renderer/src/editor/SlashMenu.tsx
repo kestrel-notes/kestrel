@@ -342,6 +342,10 @@ export const SlashMenu = Extension.create({
           handleKeyDown(view, event) {
             const s = readState(view.state)
             if (!s.active || !view.editable) return false
+            // 输入法正在组合：这一声键是给候选字的，不是给菜单的（期-05b 判据 6 量出来的那条，#153）。
+            // PM 自己在真组合态下会把整条 keydown 挡在门外（读 view.composing，只由 compositionstart 置起），
+            // 但"标志位已设而组合态未起"那一段它不挡——真机上有输入法会发这种键，那时吞掉 Enter 就是毁一次选字。
+            if (event.isComposing || event.keyCode === 229) return false
             const items = filterItems(s.query)
 
             if (event.key === 'ArrowDown') {
