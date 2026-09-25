@@ -11,6 +11,7 @@ import { Settings } from '@/components/Settings'
 import { Palette } from '@/components/Palette'
 import { SearchPanel } from '@/components/SearchPanel'
 import { GraphOverlay } from '@/components/GraphOverlay'
+import { HoverPreviewCard } from '@/editor/hoverPreview'
 import { SlidesOverlay } from '@/components/SlidesOverlay'
 import { PromoteCard } from '@/components/PromoteCard'
 import { RecycleBin } from '@/components/RecycleBin'
@@ -180,6 +181,10 @@ export default function App(): JSX.Element {
       <GraphOverlay />
       <SlidesOverlay />
       <ConfirmDialog />
+      {/* 期-05d 那张悬浮预览卡：全局只此一张。挂在编辑器外面是因为 9a 之后隐藏的标签页里
+          那些 NodeView 还活着，各长一张就是屏上叠两三张（z-index 60，比各层弹层都低，
+          所以"卡还开着"时弹层盖得住它，不会出现在演示幕布上） */}
+      <HoverPreviewCard />
       {toast && <div className="toast on">{toast}</div>}
     </>
   )

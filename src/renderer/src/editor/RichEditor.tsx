@@ -21,7 +21,8 @@ import type { JSX } from 'react'
 import { useEffect, useMemo, useRef } from 'react'
 import { useStore } from '@/store'
 import { releaseRichEditor, releaseRichView, setRichView, setRichEditor } from '@/editor/richView'
-import { buildExtensions, resolveLink, type LinkBridge } from '@/editor/markdown'
+import { buildExtensions, linkKey, resolveLink, type LinkBridge } from '@/editor/markdown'
+import type { PreviewAsk } from '../../../shared/types'
 import { SlashMenu, SlashPopup } from '@/editor/SlashMenu'
 import { WikiComplete, WikiCompletePopup } from '@/editor/wikiComplete'
 import { Folding } from '@/editor/folding'
@@ -64,6 +65,13 @@ export function RichEditor({
       subscribe: (cb) => useStore.subscribe(cb),
       // 正文里的 `#标签`：Ctrl+点击切到标签视图并选中它（§6）。平点留给光标
       openTag: (name) => void useStore.getState().selectTagName(name),
+      // 期-05d：编辑与阅读这两档给这根线。**幻灯片那份 bridge 不给**，于是那边
+      // 连 mouseenter 都不会挂（判据 7 要的是结构保证，不是运行时开关）
+      preview: (raw, 显示): PreviewAsk => {
+        const hit = resolveLink(useStore.getState().outgoing, raw, entryDate)
+        // 悬空的那一条 resolveLink 回 null，键还是要自己算：卡片上那个"被写了几处"按的就是它
+        return { nodeKey: hit?.nodeKey ?? null, key: hit?.key ?? linkKey(raw, entryDate), 显示 }
+      },
     }),
     [entryDate]
   )

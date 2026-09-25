@@ -22,6 +22,8 @@ import type {
   LinkTargetType,
   LocalGraph,
   OutgoingLink,
+  PreviewAsk,
+  PreviewCard,
 } from '../../shared/types'
 import { getDatabase } from './index'
 
@@ -447,6 +449,137 @@ export function outgoing(entryId: number): OutgoingLink[] {
       targetType: kind,
     }
   })
+}
+
+/*  读：悬浮预览那一张卡（期-05d §十一）
+    与 `contextLine` 是两件事，没并成一支：那边取的是"命中那一行的原文"（反链面板要说
+    「你为什么被连过来」），这边取的是"这一篇自己开头说了什么"。共用一支函数只会让两边
+    各多几个开关参数。 */
+
+/** 卡片上那一截最多多少字。两行的量——比这更长就不是"预览"而是"读另一篇"了 */
+const 那一截上限 = 200
+/** 从库里取这么多字足够凑出那一截（正常正文 p50 是 49–325 字，`scratch/p05d-pre.mjs` M5） */
+const 取的字数 = 800
+
+/** markdown → 给人读的纯文本。只做"看得下去"这一档，不做渲染：
+ *  卡片上出现一个真表格、一张图、一段公式，都是 IPC 之外又多一事（§11.2 第 3 条：零 HTML）。 */
+function 纯文本(s: string): string {
+  return (
+    s
+      // 代码块整段去掉：卡片不演代码，围栏里的 `#` 还会被下面那一条误当标题
+      .replace(/```[\s\S]*?(```|$)/g, ' ')
+      // 双链按它在屏幕上显示的样子给（有行内别名用别名）
+      .replace(/!?\[\[[^\]\n|]*\|([^\]\n]*)\]\]/g, '$1')
+      .replace(/!?\[\[([^\]\n]*)\]\]/g, '$1')
+      .replace(/\[([^\]\n]*)\]\([^)\n]*\)/g, '$1')
+      .replace(/!\[[^\]\n]*\]\([^)\n]*\)/g, ' ')
+      .replace(/^#{1,6}\s+/gm, '')
+      .replace(/^[-*+]\s+/gm, '')
+      .replace(/^>\s?/gm, '')
+      .replace(/[*_~`$]/g, '')
+      .replace(/\s+/g, ' ')
+      .trim()
+  )
+}
+
+/** 从正文里取卡片上那一截。三条都是实测定的（§11.1 M5 / M6）：
+ *  · **跳过开头那一行 `#`**——两份夹具一份 100% 首段是标题行、一份 0%，"取首段"不能按字面做；
+ *  · **往后找到第一处真有字的**——真库首段 p50 只有 5 字，死板取首段会弹出一行五个字；
+ *  · **整篇除了标题没别的不返回空串就算"只有标题"**——那一种在真库 6 篇里占 3 篇，不能弹空白卡。 */
+function 那一截(原文: string, 取满了吗: boolean): { 那截: string; 截了: boolean; 只有标题: boolean } {
+  const 行 = 原文.split('\n')
+  let i = 0
+  while (i < 行.length && 行[i].trim() === '') i++
+  // 只跳开头那一行标题：正文中间的 `#` 是真内容
+  if (i < 行.length && /^#{1,6}\s/.test(行[i].trim())) i++
+  const 文 = 纯文本(行.slice(i).join('\n'))
+  if (!文) return { 那截: '', 截了: false, 只有标题: true }
+  if (文.length > 那一截上限) return { 那截: 文.slice(0, 那一截上限), 截了: true, 只有标题: false }
+  // 取满 800 字还没有句号，说明后面还有话——"截了"要跟着说，不能装作这就是全篇
+  return { 那截: 文, 截了: 取满了吗 && !/[。！？.!?]$/.test(文), 只有标题: false }
+}
+
+/** 悬空那一格：这个名字被写过几遍而还没落地。本档最值钱的一格，也是最快的一格
+ *  （`idx_link_dangling` 那条部分索引在 `schema.ts:93`，实测 2.3–4.6 µs）。 */
+function 悬空卡(写法: string, 显示: string): PreviewCard {
+  const r = getDatabase()
+    .prepare(
+      `select count(*) c, max(created_at) t from Link where target_raw = ? and target_id is null`
+    )
+    .get(写法) as unknown as { c: number; t: string | null }
+  return {
+    是: 'dangling',
+    名字: 显示 || 写法,
+    那截: '',
+    截了: false,
+    只有标题: false,
+    数: Number(r.c ?? 0),
+    最近: r.t ? String(r.t).slice(0, 10) : null,
+  }
+}
+
+/** 悬浮预览那一张卡。**一条窄查询**：整篇正文不过 IPC（M1b 那一篇 20 万字的，
+ *  取整篇 2229 µs / 200000 字、取一截 164 µs / 400 字）。
+ *
+ *  落点为 null（悬空）、或者落点已经指向一篇被彻底删除/软删的记录 ⇒ 都退成悬空那一格：
+ *  卡片说"还没有哪一篇叫这个"总归是真的，说"这一篇有 4 处反链"就会是在说别的东西。 */
+export function preview(问: PreviewAsk): PreviewCard {
+  const db = getDatabase()
+  const { nodeKey, key, 显示 } = 问
+
+  if (nodeKey?.startsWith('t:')) {
+    const t = db.prepare('select name, description from Topic where id = ?').get(Number(nodeKey.slice(2))) as
+      | { name: string; description: string | null }
+      | undefined
+    if (!t) return 悬空卡(key, 显示)
+    const 圈 = db
+      .prepare(
+        `select count(*) c, max(entry_date) d from Entry
+         where topic_id = ? and deleted_at is null`
+      )
+      .get(Number(nodeKey.slice(2))) as unknown as { c: number; d: string | null }
+    const 截 = 那一截(String(t.description ?? ''), false)
+    return {
+      是: 'topic',
+      名字: t.name,
+      那截: 截.那截,
+      截了: 截.截了,
+      // 主题没有"除了标题没别的"这一说：它本来就没有标题行，描述空就是空
+      只有标题: false,
+      数: Number(圈.c ?? 0),
+      最近: 圈.d ? String(圈.d) : null,
+    }
+  }
+
+  if (nodeKey?.startsWith('e:')) {
+    const 号 = Number(nodeKey.slice(2))
+    const r = db
+      .prepare(
+        `select kind, title, entry_date, substr(content, 1, ${取的字数}) c
+         from Entry where id = ? and deleted_at is null`
+      )
+      .get(号) as unknown as
+      | { kind: EntryKind; title: string | null; entry_date: string; c: string }
+      | undefined
+    if (!r) return 悬空卡(key, 显示)
+    // 这里不按 backlinks() 那条把自指剔掉：卡片说的是"那一头被几处指着"，
+    // 而"我这一篇指着它"本来就是其中一处。右栏那一块剔自指是另一件事（它是"谁把我连过来"）
+    const 指 = db
+      .prepare(`select count(*) c from Link where target_id = ? and target_type in ('entry','date')`)
+      .get(号) as unknown as { c: number }
+    const 截 = 那一截(String(r.c ?? ''), String(r.c ?? '').length >= 取的字数)
+    return {
+      是: r.kind === 'diary' ? 'diary' : 'article',
+      名字: r.title || formatDateZh(r.entry_date),
+      那截: 截.那截,
+      截了: 截.截了,
+      只有标题: 截.只有标题,
+      数: Number(指.c ?? 0),
+      最近: null,
+    }
+  }
+
+  return 悬空卡(key, 显示)
 }
 
 /** `[[` 补全要的那一份候选（期-05b）。

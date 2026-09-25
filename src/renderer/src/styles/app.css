@@ -1258,6 +1258,74 @@ input.doc-title::placeholder {
   background: color-mix(in srgb, var(--accent) 22%, transparent);
 }
 
+/* ── 悬浮预览那一张卡（期-05d §十一）──
+   全局单例、fixed 定位、坐标由 NodeView 现算（与 .slash-menu 同一条路子）。
+   z-index 60：比各层弹层（.sheet 80 / 图谱 90 / 演示 95）都低，所以就算卡没收干净，
+   它也不会出现在演示幕布上。
+   pointer-events: none 是承重的：它弹在链接正下方，接了鼠标就会吞掉一次本该落在正文上的点击 */
+.hp-card {
+  position: fixed;
+  z-index: 60;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 10px;
+  background: var(--bg-glass-strong);
+  backdrop-filter: blur(28px) saturate(1.8);
+  -webkit-backdrop-filter: blur(28px) saturate(1.8);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-glass);
+}
+.hp-name {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 13px;
+  color: var(--text-1);
+}
+.hp-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* 那枚种类徽章沿用 .wl-* 的分型语言：日记/文章是 accent，主题是药丸底，悬空是灰 */
+.hp-kind {
+  flex: none;
+  font-size: 11px;
+  color: var(--text-3);
+}
+.hp-diary .hp-kind,
+.hp-article .hp-kind {
+  color: var(--accent);
+}
+.hp-topic .hp-kind {
+  color: var(--accent);
+  background: var(--accent-soft);
+  padding: 0 6px;
+  border-radius: 999px;
+}
+.hp-snip {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-2);
+  /* 三行为止：再多就不是"预览"而是"在卡里读另一篇" */
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.hp-thin {
+  font-style: italic;
+  color: var(--text-3);
+}
+.hp-meta {
+  font-size: 11px;
+  color: var(--text-3);
+}
+
 /* ── 正文里的 #标签（期-02-设计 §6）──
    两个编辑器共用这一套类名（富文本那边是 ProseMirror 的 inline 装饰，源码那边是 CM 的
    mark 装饰），同一处标签在两种模式下必须是一个样子。颜色由使用方注入 `--tc`，

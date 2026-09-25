@@ -34,6 +34,7 @@ import {
   type CreateEntryInput,
   type EntryPatch,
   type PromoteInput,
+  type PreviewAsk,
   type PropType,
   type SearchOrder,
   type Settings,
@@ -335,6 +336,8 @@ function registerIpc(): void {
   handle(IPC.linkOutgoing, (entryId: number) => links.outgoing(entryId))
   // 期-05b：`[[` 补全那份候选。只读、一次弹层取一次（不跨弹层缓存，理由写在 links.ts 那段）
   handle(IPC.linkCandidates, (上限?: number) => links.candidates(上限))
+  // 期-05d：悬浮预览那一张卡。只读，且是**窄**查询——整篇正文不过这条通道（links.ts 里那段注释）
+  handle(IPC.linkPreview, (问: PreviewAsk) => links.preview(问))
   // 期-05c：全局别名。加与删都会动 Link（当场认领 / 放回悬空），所以这两个不是纯 CRUD
   handle(IPC.aliasList, () => links.aliases())
   handle(IPC.aliasAdd, (name: string, targetType: 'entry' | 'topic', targetId: number) =>

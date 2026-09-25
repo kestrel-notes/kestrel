@@ -21,8 +21,9 @@ import { Callout } from '@/editor/callout'
 import { MathBlock, MathInline } from '@/editor/math'
 import { FootnoteDef, FootnoteRef } from '@/editor/footnote'
 import { MermaidBlock } from '@/editor/mermaidBlock'
+import { 停上, 移开 } from '@/editor/hoverPreview'
 import { normalizeLinkKey, resolveDateRef, splitLinkInner } from '../../../shared/links'
-import type { OutgoingLink } from '../../../shared/types'
+import type { OutgoingLink, PreviewAsk } from '../../../shared/types'
 
 /** 渲染进程这边给双链节点接的两根线：怎么染色、点了去哪。
  *  用注入而不是让 markdown.ts 直接 import store：store 要用 roundTrip() 做闸门，
@@ -36,6 +37,12 @@ export interface LinkBridge {
   subscribe(cb: () => void): () => void
   /** 点正文里的 `#标签`（§6）：切到标签视图并选中它。走的是 store，不碰文档 */
   openTag(name: string): void
+  /** 按住 `Ctrl` 悬停要问库的那一问（期-05d）。
+   *
+   *  **它是可选的，而且这是判据 7 的结构保证**：节点视图只在拿到这根线的时候才挂
+   *  `mouseenter`，所以没给它的编辑器实例（幻灯片那一棵）连"弹卡"这条代码路径都不存在——
+   *  不靠运行时开关，也不靠"记得在里面写个 if" */
+  preview?(targetRaw: string, 显示: string): PreviewAsk | null
 }
 
 /** §9.1 的四种形态：实线日记 / 双线文章 / 药丸底主题 / 虚线悬空。
@@ -56,8 +63,16 @@ export function resolveLink(
   targetRaw: string,
   entryDate: string
 ): OutgoingLink | null {
-  const key = resolveDateRef(targetRaw, entryDate) ?? normalizeLinkKey(targetRaw)
+  const key = linkKey(targetRaw, entryDate)
   return key ? linkByKey(outgoing, key) : null
+}
+
+/** 写法 → 规范化查找键（与 `Link.target_raw` 同一把尺）。
+ *
+ *  拆出来是给悬浮预览那一问用的：悬空的写法 `resolveLink` 回 null，而卡片上那个
+ *  "这个写法被写了几处"按的就是这个键。两处各算一次早晚会漂（同族教训见 §10.3）。 */
+export function linkKey(targetRaw: string, entryDate: string): string {
+  return resolveDateRef(targetRaw, entryDate) ?? normalizeLinkKey(targetRaw)
 }
 
 /** 按规范化查找键取落点。源码模式拿到的就是键（findLinkRanges 已经算好了），
@@ -164,6 +179,19 @@ const WikiLink = Node.create<{ bridge: LinkBridge | null }>({
       }
       dom.addEventListener('click', onClick)
 
+      // 期-05d：按住 Ctrl 悬停弹卡。**这根线没给就一个监听都不挂**——
+      // 幻灯片那一棵因此不存在"弹卡"这条代码路径，而不是在里面写了个 if 把它关掉
+      const onEnter = (e: MouseEvent): void => {
+        if (!e.ctrlKey) return
+        const 问 = bridge?.preview?.(target, label)
+        if (问) 停上(dom, 问)
+      }
+      const onLeave = (): void => 移开(dom)
+      if (bridge?.preview) {
+        dom.addEventListener('mouseenter', onEnter)
+        dom.addEventListener('mouseleave', onLeave)
+      }
+
       return {
         dom,
         update: (next) => {
@@ -178,7 +206,10 @@ const WikiLink = Node.create<{ bridge: LinkBridge | null }>({
         ignoreMutation: () => true,
         destroy: () => {
           off?.()
+          移开(dom)
           dom.removeEventListener('click', onClick)
+          dom.removeEventListener('mouseenter', onEnter)
+          dom.removeEventListener('mouseleave', onLeave)
         },
       }
     }

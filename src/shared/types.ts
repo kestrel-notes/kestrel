@@ -496,6 +496,40 @@ export interface OutgoingLink {
   targetType: EntryKind | 'topic' | null
 }
 
+/** 悬浮预览那一次问的是什么（期-05d §十一）。
+ *
+ *  为什么三样都要给：`nodeKey` 有就能直接按 id 取，但**悬空那一路没有落点**，
+ *  只能按写法去数"这一串字被写了几处"；而写法是规范化过的键（`kestrel设计`），
+ *  拿它当卡片第一行会给出一串没人这么写过的字，所以显示用的那一串单独带。 */
+export interface PreviewAsk {
+  /** 已解析到的落点（`e:12` / `t:3`）；悬空为 null */
+  nodeKey: string | null
+  /** 规范化查找键，与 `Link.target_raw` 同一把尺 */
+  key: string
+  /** 此刻界面上显示的那串字（有行内别名时它是别名，不是目标名） */
+  显示: string
+}
+
+/** 那一张卡的量。**全部在主进程算完才过 IPC**：渲染进程为了三行字拿整篇正文，
+ *  在最坏的那一篇上是 20 万字一趟（`scratch/p05d-pre2.mjs`：整篇 2229µs/200000 字，
+ *  取一截 164µs/400 字）。字段之所以是这几个而不是"更多一点"，见 §11.2 那张表。 */
+export interface PreviewCard {
+  /** 那一条落在哪一类。目标在回收站里（软删）按悬空处理，与 `outgoing` 同一条规矩 */
+  是: 'diary' | 'article' | 'topic' | 'dangling'
+  /** 第一行：日记是那一天的日期、文章是标题、主题是名字、悬空是屏幕上那串写法 */
+  名字: string
+  /** 正文里第一处真有字的一截：跳过开头那一行 `#`、去掉 markdown 符号，最多 200 字 */
+  那截: string
+  /** 那一截是被截断的吗（现在 0% 的篇会截，长文会有——截了就要说出来，不能装作后面没有） */
+  截了: boolean
+  /** 整篇除了标题没别的（真库 6 篇里有 3 篇是这样）：这一格决定卡片不弹成空白 */
+  只有标题: boolean
+  /** 最后一行那个数：日记/文章 = 被几处指向，主题 = 圈着几篇，悬空 = 这个写法被写了几处 */
+  数: number
+  /** 最后一行那半个日期：主题 = 最近一篇，悬空 = 最近一次写它；日记/文章没有，留 null */
+  最近: string | null
+}
+
 /** 局部图谱：当前记录 N 跳内的邻居。静态布局，只查一次，不做每帧重排 */
 export interface LocalGraph {
   center: GraphNode
@@ -879,6 +913,9 @@ export interface KestrelApi {
     graphAll(): Promise<GlobalGraph>
     /** 这篇指向谁：正文里每一条链接落到了哪，编辑器照着分型着色 */
     outgoing(entryId: number): Promise<OutgoingLink[]>
+    /** 悬浮预览那一张卡（期-05d）。**只读**，且是唯一一条"渲染进程为三行字发出去"的查询——
+     *  所以它窄：整篇正文永远不过 IPC（理由见 `PreviewCard`） */
+    preview(问: PreviewAsk): Promise<PreviewCard>
     /** `[[` 补全那一份候选（主题名 + 带标题的记录）。一次弹层取一次，不跨弹层缓存。
      *  `还有` 是被上限截掉的那部分条数——截断要说出来，不能让用户以为"库里没有" */
     candidates(上限?: number): Promise<{ 名录: Candidate[]; 还有: number }>
@@ -1091,6 +1128,8 @@ export const IPC = {
   linkOutgoing: 'link:outgoing',
   /** 期-05b：`[[` 补全的候选清单（只读，一次弹层取一次） */
   linkCandidates: 'link:candidates',
+  /** 期-05d：悬浮预览那一张卡（只读，一次悬停取一次；渲染进程拿不到整篇正文） */
+  linkPreview: 'link:preview',
   /** 期-05c：全局别名（列 / 加 / 删；加与删会连带动 Link） */
   aliasList: 'alias:list',
   aliasAdd: 'alias:add',
