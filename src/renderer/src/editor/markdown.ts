@@ -10,6 +10,15 @@
 
 import { InputRule, Node, mergeAttributes, type AnyExtension, type JSONContent } from '@tiptap/core'
 import { Markdown, MarkdownManager } from '@tiptap/markdown'
+// #176：每份 manager 自带一个 Marked 实例。`@tiptap/markdown:351` 是
+// `options.marked ?? marked.marked`（不传就共用那个**全局**实例），而 `marked.use()` 是往
+// `defaults.extensions.startBlock` 上**追加、永不清空** —— 于是闸门一份、每个标签一份、
+// 每颗嵌入一份，那张钩子表越建越长。marked 的块循环每切一块都要拿"剩下的整篇"问一遍
+// 表里每一颗（`node_modules/marked/lib/marked.esm.js`），所以表长一倍、解析就慢一倍：
+// 实机同一份 800 段，第一格 846 ms → 第四格 1805 ms（`scratch/p132-cold-A.out`）。
+// 取不到 `Marked` 这条路只能从 marked 自己拿（`@tiptap/markdown` 没转出来），故 `marked`
+// 从 @tiptap/markdown 的传递依赖升成本项目的直接依赖（版本与它锁的 17.0.6 对齐）。
+import { Marked, marked as 那个全局 } from 'marked'
 import StarterKit from '@tiptap/starter-kit'
 import { ListItem, TaskItem, TaskList } from '@tiptap/extension-list'
 import { TableKit } from '@tiptap/extension-table'
@@ -392,14 +401,27 @@ export function buildExtensions(bridge: LinkBridge | null = null): AnyExtension[
     // 只挂在编辑器上而漏在这里 = 闸门那一棵没有这个节点类型 = 它吃字）
     Embed.configure({ 桥: bridge, 装配件: buildExtensions, 解链: resolveLink }),
     TagRefs.configure({ openTag: bridge ? (name) => bridge.openTag(name) : null }),
-    Markdown.configure({ indentation: { style: 'space', size: 2 } }),
+    // #176：`marked` 那一颗是承重的，理由见文件头上那段（共用全局 ⇒ 钩子表每建一个 manager 多一份）
+    Markdown.configure({ indentation: { style: 'space', size: 2 }, marked: 一份marked() }),
   ]
 }
 
-/** 闸门用的管理器：只做解析与序列化，不画界面，所以不带 bridge */
+/** 各 manager 自带一份 marked 的那"一份"。
+ *
+ *  Tiptap 把这个 option 标成了 `typeof marked` —— 那是 marked 的**函数**外加挂在它身上的
+ *  几颗 namespace 成员（`getDefaults`、可调用），而 `new Marked()` 是实例，缺的正是这两样。
+ *  运行时用得到的只有 `.use()` / `.Lexer` / `.defaults` / `.setOptions`，四颗实例上都有，
+ *  所以这是一次**类型侧**的收窄而不是"应该兼容"的赌：不兼容会在建 manager 那一声就抛，
+ *  而离线 43 条与实机 30 条判据全都跑在这声之后。 */
+const 一份marked = (): typeof 那个全局 => new Marked() as unknown as typeof 那个全局
+
+/** 闸门用的管理器：只做解析与序列化，不画界面，所以不带 bridge。
+ *  #176：它**也**要自带一份 marked —— 这一份在模块加载时就建，若共用全局，
+ *  等于在所有编辑器之前先给那张钩子表垫了一份（离线量的"第 1 个 manager 就有 16 颗"是这么来的）。 */
 const manager = new MarkdownManager({
   extensions: buildExtensions(),
   indentation: { style: 'space', size: 2 },
+  marked: 一份marked(),
 })
 
 export interface RoundTrip {
