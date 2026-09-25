@@ -530,6 +530,45 @@ export interface PreviewCard {
   最近: string | null
 }
 
+/** `![[…]]` 那一问（期-05f 丙）。`锚点` / `块` 至多一个有用：两个都给时主进程先认块 id
+ *  （`![[x#甲^乙]]` 说的就是那一段），这与乙那一次跳转的落点顺序是同一条规矩。 */
+export interface EmbedAsk {
+  /** 已解析到的落点（`e:12` / `t:3`）；悬空为 null */
+  nodeKey: string | null
+  /** 规范化查找键，与 `Link.target_raw` 同一把尺 */
+  key: string
+  锚点: string | null
+  块: string | null
+}
+
+/** 那一截嵌进来的正文。**切片算在主进程**：渲染进程为了画几行字去拿整篇，
+ *  在最坏那一篇上是 20 万字一趟（与 5d 那一张卡同一条理由）。
+ *
+ *  `是: 'topic'` 不是偷懒：主题本来就是一段描述文字，嵌它等于嵌那几行——
+ *  与悬浮预览那一档同一处理，画得出来就别硬说成"没有这一处"。 */
+export interface EmbedCard {
+  是: 'entry' | 'topic' | 'miss'
+  /** 头顶那一行写的名字：文章标题、日记那天的日期、主题名；miss 时是屏幕上那串写法 */
+  名字: string
+  /** 切好的 Markdown 原文（未渲染）。miss / 没命中时是空串 */
+  md: string
+  /** `是` 不为 miss 而这一锚点/块 id 对不上任何一处：与"目标不存在"分开报，两者说的话不一样 */
+  命中: boolean
+  /** 被 `嵌的字数` 按行截过：截了就要说出来，不能装作那一头只有这些 */
+  截了: boolean
+  /** 那一头是日记还是文章（头顶那一行的形状跟着走，与 5d 同一族） */
+  那种: 'diary' | 'article' | 'topic' | null
+  /** **那一头**自己的出链，跟着这一截一起过来。
+   *
+   *  不带的话嵌套那一棵里的链接会在嵌进来的字上撒谎：渲染层手上只有**当前这一篇**的
+   *  `outgoing`，被嵌的那一篇指向的主题会变成悬空虚线，点也点不动。带上它，
+   *  颜色与可点才与"打开那一头看到的"一致（一次 `outgoing(id)`，几行而已）。 */
+  出链: OutgoingLink[]
+  /** 那一头的 `entry_date`：日期写法（`昨天`、`去年的今天`）要按**它自己的那一天**换算，
+   *  与 `shared/links.ts` 那条 `from` 的规矩同一条 */
+  日子: string | null
+}
+
 /** 未链接提及的一行（期-05e §十三）：别处正文里**平写**着这一篇的名字或它的别名，而没加 `[[ ]]`。
  *
  *  这一族**不落库**：`Link.kind` 里那个 `mention` 仍然没人写。"你提到过但没连"是**算出来的视图**，
@@ -968,6 +1007,8 @@ export interface KestrelApi {
     /** 悬浮预览那一张卡（期-05d）。**只读**，且是唯一一条"渲染进程为三行字发出去"的查询——
      *  所以它窄：整篇正文永远不过 IPC（理由见 `PreviewCard`） */
     preview(问: PreviewAsk): Promise<PreviewCard>
+    /** 期-05f 丙：`![[…]]` 要的那一截。只读、不进保存路径、不落库——它是一次渲染，不是一个事实 */
+    embed(问: EmbedAsk): Promise<EmbedCard>
     /** 未链接提及（期-05e §十三）。**开那一格才现算**：不落库、不进保存路径、不建索引
      *  （3002 篇 × 97 万字实测 12–19 ms，为它维护任何常驻结构都不划算） */
     mentionsOf(entryId: number): Promise<MentionList>
@@ -1188,6 +1229,8 @@ export const IPC = {
   linkCandidates: 'link:candidates',
   /** 期-05d：悬浮预览那一张卡（只读，一次悬停取一次；渲染进程拿不到整篇正文） */
   linkPreview: 'link:preview',
+  /** 期-05f 丙：`![[…]]` 要的那一截正文（只读、主进程切好再回，整篇正文从不过 IPC） */
+  linkEmbed: 'link:embed',
   /** 期-05e：未链接提及。取那一组是只读的，"连上"那一颗改的是**另一篇**的正文 */
   linkMentions: 'link:mentions',
   linkMentionOne: 'link:mention-one',

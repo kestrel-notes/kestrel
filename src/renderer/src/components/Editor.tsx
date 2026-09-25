@@ -32,9 +32,7 @@ function 看得见那一格(box: HTMLElement | null): HTMLElement | null {
 function headingYs(box: HTMLElement | null, rich: boolean, content: string): number[] {
   if (!box) return []
   if (rich) {
-    const 那格 = 看得见那一格(box)
-    if (!那格) return []
-    return [...那格.querySelectorAll<HTMLElement>(标题们)].map((el) => el.getBoundingClientRect().top)
+    return 本篇标题(看得见那一格(box)).map((el) => el.getBoundingClientRect().top)
   }
   const v = getCmView()
   if (!v) return []
@@ -49,6 +47,16 @@ function headingYs(box: HTMLElement | null, rich: boolean, content: string): num
  *  当前标题高亮也会错一格（期-05f 乙读大纲落点时撞见）。 */
 const 标题们 = '.md-prose h1, .md-prose h2, .md-prose h3, .md-prose h4, .md-prose h5, .md-prose h6'
 
+/** 这一篇**自己**的那几级标题，DOM 序。
+ *
+ *  嵌进来的那一截（期-05f 丙）带的是**别人**的标题，而它外面套着 `.md-prose`——
+ *  混进来的话 `headingYs` 数它一格、`outlineLines`（源码档，读的是这一篇的原文）数不到它，
+ *  两边第 n 个不再是同一个标题，大纲高亮会一路错位。所以两处量 DOM 的都走这一份。 */
+function 本篇标题(根: HTMLElement | null): HTMLElement[] {
+  if (!根) return []
+  return [...根.querySelectorAll<HTMLElement>(标题们)].filter((el) => !el.closest('.kb-embed'))
+}
+
 /** 滚到第 n 个标题。**不动光标位置**：改选区会打断正在打字的人（设计文档 §3.5）
  *
  *  源码模式交给 CM 自己滚，别换成「量一下再写 scrollTop」：CM6 只渲染视口附近那几十行，
@@ -57,7 +65,7 @@ const 标题们 = '.md-prose h1, .md-prose h2, .md-prose h3, .md-prose h4, .md-p
  *  测量帧里自己校正。（代价：窗口不在前台时那一帧不来，点了像没反应——验证时先把窗口调出来。） */
 function scrollToHeading(box: HTMLElement | null, rich: boolean, content: string, index: number): void {
   if (rich) {
-    看得见那一格(box)?.querySelectorAll<HTMLElement>(标题们)[index]?.scrollIntoView({ block: 'start' })
+    本篇标题(看得见那一格(box))[index]?.scrollIntoView({ block: 'start' })
     return
   }
   const v = getCmView()

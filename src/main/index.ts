@@ -34,6 +34,7 @@ import {
   type BookmarkKind,
   type CreateEntryInput,
   type EntryPatch,
+  type EmbedAsk,
   type MentionLinkAsk,
   type PromoteInput,
   type PreviewAsk,
@@ -340,6 +341,9 @@ function registerIpc(): void {
   handle(IPC.linkCandidates, (上限?: number) => links.candidates(上限))
   // 期-05d：悬浮预览那一张卡。只读，且是**窄**查询——整篇正文不过这条通道（links.ts 里那段注释）
   handle(IPC.linkPreview, (问: PreviewAsk) => links.preview(问))
+  // 期-05f 丙：`![[…]]` 那一截。同样是窄查询——切片在主进程算完才过这条通道，
+  // 而且它**只读**：嵌入不落库、不进保存路径（算不算一条边是 §18.7 那个留给用户的决定）
+  handle(IPC.linkEmbed, (问: EmbedAsk) => links.embed(问))
   // 期-05e：未链接提及。取那一组只读；"连上"那一颗改的是**另一篇**的正文，所以带条件写
   handle(IPC.linkMentions, (entryId: number) => mentions.mentionsOf(entryId))
   handle(IPC.linkMentionOne, (问: MentionLinkAsk) => mentions.linkMention(问))

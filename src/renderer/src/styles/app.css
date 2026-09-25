@@ -1271,6 +1271,81 @@ input.doc-title::placeholder {
   background: color-mix(in srgb, var(--accent) 22%, transparent);
 }
 
+/* ── 嵌入 `![[…]]`（期-05f 丙）──
+   那一截住在**别人的那一篇**里，所以它要看着像引过来的：左边一道细条加一点底色，
+   不冒充这一篇自己的字。头顶那一行是地址，也是唯一的出口——点开它才算真的打开那一头。
+   .kb-flat 是没展开时的那一行：写法原样摆着，退化成一条普通链接，title 里说清为什么没展开 */
+.kb-embed {
+  margin: 10px 0;
+  padding: 6px 0 8px 12px;
+  border-left: 2px solid color-mix(in srgb, var(--accent) 32%, transparent);
+  border-radius: 0 var(--radius-xs) var(--radius-xs) 0;
+  background: color-mix(in srgb, var(--bg-glass) 45%, transparent);
+}
+.kb-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-3);
+}
+.kb-go {
+  flex: none;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--accent);
+}
+.kb-note {
+  flex: auto;
+  min-width: 0;
+  font-size: 11px;
+}
+.kb-body {
+  margin-top: 4px;
+}
+/* 嵌进来的那一截里，标题降一级来排：那张卡片是"引过来的"，让它的 h1 与这一篇自己的
+   h1 一般大，读起来就像这一篇忽然换了题目。字号沿用 `.md-prose` 那条阶梯的下一档，
+   不另立一套数（整条阶梯换成 rem 是 #139 那笔账） */
+.kb-body h1 {
+  font-size: 19px;
+  margin: 22px 0 10px;
+}
+.kb-body h2 {
+  font-size: 16px;
+  margin: 24px 0 10px;
+}
+.kb-body h3 {
+  font-size: 14.5px;
+  margin: 20px 0 8px;
+}
+/* 里面那一棵是 editable:false 的只读实例：不抢焦点环，首尾也不该自带间距 */
+.kb-body .ProseMirror {
+  outline: none;
+}
+.kb-body .ProseMirror > *:first-child {
+  margin-top: 0;
+}
+.kb-body .ProseMirror > *:last-child {
+  margin-bottom: 0;
+}
+.kb-flat {
+  margin: 6px 0;
+  padding-left: 12px;
+  border-left: 2px dotted color-mix(in srgb, var(--text-3) 55%, transparent);
+}
+.kb-flat-text {
+  color: var(--accent);
+}
+/* 退回来而这一头压根点不动（拆不出落点、或这一棵没给 open）：那就别给手型，
+   此刻它就是几个字——与 .wl-plain 同一条规矩 */
+.kb-noop {
+  color: var(--text-3);
+  cursor: text;
+}
+
 /* ── 悬浮预览那一张卡（期-05d §十一）──
    全局单例、fixed 定位、坐标由 NodeView 现算（与 .slash-menu 同一条路子）。
    z-index 60：比各层弹层（.sheet 80 / 图谱 90 / 演示 95）都低，所以就算卡没收干净，

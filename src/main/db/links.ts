@@ -6,6 +6,7 @@
  *  2. 悬空 ⟺ `target_id` 为空（表上的 check 约束钉着）。目标一出现就回头认领。 */
 
 import { formatDateZh, formatMonthDayZh } from '../../shared/date'
+import { 切片 } from '../../shared/embed'
 import { normalizeLinkKey, parseLinks, resolveDateRef } from '../../shared/links'
 import type { ParsedLink } from '../../shared/links'
 import type {
@@ -13,6 +14,8 @@ import type {
   Backlink,
   Candidate,
   DanglingLink,
+  EmbedAsk,
+  EmbedCard,
   EntryKind,
   GlobalGraph,
   GraphEdge,
@@ -580,6 +583,73 @@ export function preview(问: PreviewAsk): PreviewCard {
   }
 
   return 悬空卡(key, 显示)
+}
+
+/** `![[…]]` 要的那一截（期-05f 丙）。**只读、不落库**：一次嵌入是一次渲染，不是一个事实——
+ *  它进不进 `Link` 表是产品决定（`期-05-设计稿.md` §18.5 第 1 条），不是这一层顺手能定的。
+ *
+ *  切片算在这里而不是渲染进程：最坏那一篇整篇过一趟 IPC 是 20 万字 / 2229 µs
+ *  （§11.4 那一次量出来的），而这里回的最多 20000 字，通常几行。
+ *
+ *  软删（回收站里）与彻底删一样按 miss 处理：那一头已经不在人眼前了，
+ *  把它嵌进一篇活着的正文里，等于让回收站往正文里漏字。 */
+export function embed(问: EmbedAsk): EmbedCard {
+  const { nodeKey, 锚点, 块 } = 问
+  const 空 = (名字: string): EmbedCard => ({
+    是: 'miss',
+    名字,
+    md: '',
+    命中: false,
+    截了: false,
+    那种: null,
+    出链: [],
+    日子: null,
+  })
+
+  if (nodeKey?.startsWith('t:')) {
+    const t = getDatabase()
+      .prepare('select name, description from Topic where id = ?')
+      .get(Number(nodeKey.slice(2))) as { name: string; description: string | null } | undefined
+    if (!t) return 空(问.key)
+    const 切 = 切片(String(t.description ?? ''), null, null)
+    return {
+      是: 'topic',
+      名字: t.name,
+      md: 切.md,
+      命中: true,
+      截了: 切.截了,
+      那种: 'topic',
+      // 主题的"出链"就是描述里那几条：`outgoing` 吃的是 entryId，主题这一头交白卷——
+      // 那棵树里的链接因此一律按写法本身显示，不假装有落点
+      出链: [],
+      日子: null,
+    }
+  }
+
+  if (nodeKey?.startsWith('e:')) {
+    const 号 = Number(nodeKey.slice(2))
+    const r = getDatabase()
+      .prepare(
+        `select kind, title, entry_date, content from Entry where id = ? and deleted_at is null`
+      )
+      .get(号) as
+      | { kind: EntryKind; title: string | null; entry_date: string; content: string }
+      | undefined
+    if (!r) return 空(问.key)
+    const 切 = 切片(String(r.content ?? ''), 锚点, 块)
+    return {
+      是: 'entry',
+      名字: r.title || formatDateZh(r.entry_date),
+      md: 切.md,
+      命中: 切.命中,
+      截了: 切.截了,
+      那种: r.kind === 'diary' ? 'diary' : 'article',
+      出链: outgoing(号),
+      日子: r.entry_date,
+    }
+  }
+
+  return 空(问.key)
 }
 
 /** `[[` 补全要的那一份候选（期-05b）。

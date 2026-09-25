@@ -82,8 +82,14 @@ export function RichEditor({
         // 悬空的那一条 resolveLink 回 null，键还是要自己算：卡片上那个"被写了几处"按的就是它
         return { nodeKey: hit?.nodeKey ?? null, key: hit?.key ?? linkKey(raw, entryDate), 显示 }
       },
+      // 期-05f 丙：`![[…]]` 那一截。**幻灯片那份 bridge 不给这根线**，于是那边连"取值 +
+      // 开第二棵"这条代码路径都不存在（§18.5 第 3 条，与上面 preview 同一招）
+      embed: (问) => window.kestrel.links.embed(问),
+      /** 链上的第一颗就是我自己：`![[自己]]` 因此当场判成环，而不是原地递归。
+       *  `e:` 这个前缀与 `outgoing` / `openNode` 用的是同一套键 */
+      嵌链: [`e:${entryId}`],
     }),
-    [entryDate]
+    [entryDate, entryId]
   )
 
   // SlashMenu 只在编辑实例里挂；阅读实例即使复用了同一棵 PM，插件也会因 view.editable=false 而沉默。

@@ -21,9 +21,10 @@ import { Callout } from '@/editor/callout'
 import { MathBlock, MathInline } from '@/editor/math'
 import { FootnoteDef, FootnoteRef } from '@/editor/footnote'
 import { MermaidBlock } from '@/editor/mermaidBlock'
+import { Embed } from '@/editor/embed'
 import { 停上, 移开 } from '@/editor/hoverPreview'
 import { normalizeLinkKey, resolveDateRef, splitLinkInner } from '../../../shared/links'
-import type { OutgoingLink, PreviewAsk } from '../../../shared/types'
+import type { EmbedAsk, EmbedCard, OutgoingLink, PreviewAsk } from '../../../shared/types'
 
 /** `[[x#小节]]` / `[[x^块id]]` 里那半截落点（期-05f 乙）。
  *  `同页` 为真时指的是**当前这一篇**，那一头没有 nodeKey 可开。 */
@@ -52,6 +53,13 @@ export interface LinkBridge {
    *  `mouseenter`，所以没给它的编辑器实例（幻灯片那一棵）连"弹卡"这条代码路径都不存在——
    *  不靠运行时开关，也不靠"记得在里面写个 if" */
   preview?(targetRaw: string, 显示: string): PreviewAsk | null
+  /** 期-05f 丙：`![[…]]` 要的那一截正文。**与 `preview` 同一条结构保证**：节点视图只在拿到
+   *  这根线的时候才去取值、才开第二棵，所以没给它的编辑器（幻灯片那一棵）压根不存在
+   *  "展开嵌入"这条代码路径——不靠运行时开关，也不靠"记得在里面写个 if"（§18.5 第 3 条） */
+  embed?(问: EmbedAsk): Promise<EmbedCard>
+  /** 从最外层那一篇到我这一头的嵌入链（`e:12` / `t:3`）。环检测与深度上限都读它，
+   *  所以**每一层新建编辑器时要把自己的落点放进去**，否则嵌套那一层看不见上面是谁 */
+  嵌链?: string[]
 }
 
 /** §9.1 的四种形态：实线日记 / 双线文章 / 药丸底主题 / 虚线悬空。
@@ -363,6 +371,10 @@ export function buildExtensions(bridge: LinkBridge | null = null): AnyExtension[
     FootnoteDef,
     MermaidBlock,
     WikiLink.configure({ bridge }),
+    // 期-05f 丙：`装配件` / `解链` 递的是本文件这两样——embed.ts 只在类型上依赖这里，
+    // 反向再 import 一次就成环了（§18.4 第 1 条：这一支**必须**装进这一份 schema，
+    // 只挂在编辑器上而漏在这里 = 闸门那一棵没有这个节点类型 = 它吃字）
+    Embed.configure({ 桥: bridge, 装配件: buildExtensions, 解链: resolveLink }),
     TagRefs.configure({ openTag: bridge ? (name) => bridge.openTag(name) : null }),
     Markdown.configure({ indentation: { style: 'space', size: 2 } }),
   ]
@@ -460,6 +472,7 @@ const TYPE_NAMES: Record<string, string> = {
   horizontalRule: '分隔线',
   hardBreak: '强制换行',
   wikiLink: '双链',
+  embed: '嵌入',
   code: '行内代码',
   text: '文字',
 }

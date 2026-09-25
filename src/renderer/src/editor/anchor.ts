@@ -30,15 +30,26 @@ export function 滚到锚点(根: Element | null, 锚点: string | null, 块: st
   if (!根) return false
   if (块) {
     const 尾 = `^${块}`
-    const 中 = [...根.querySelectorAll(块候选)].find((el) => (el.textContent ?? '').trimEnd().endsWith(尾))
+    const 中 = 筛掉嵌入([...根.querySelectorAll(块候选)]).find((el) =>
+      (el.textContent ?? '').trimEnd().endsWith(尾)
+    )
     if (中) 中.scrollIntoView({ block: 'start' })
     return !!中
   }
   if (!锚点) return false
   const 键 = normalizeLinkKey(锚点)
-  const 中 = [...根.querySelectorAll(标题们)].find((el) => normalizeLinkKey(标题文字(el)) === 键)
+  const 中 = 筛掉嵌入([...根.querySelectorAll(标题们)]).find(
+    (el) => normalizeLinkKey(标题文字(el)) === 键
+  )
   if (中) 中.scrollIntoView({ block: 'start' })
   return !!中
+}
+
+/** 落点只许落在**这一篇自己**的字上：嵌进来的那一截（期-05f 丙）是别人的正文，
+ *  它那一节也叫「装窑」时，`[[#装窑]]` 跳到别人家里去就是撒谎——而且这一篇自己的
+ *  那一节还在下面等着，先到先得把它盖住了。 */
+function 筛掉嵌入(们: Element[]): Element[] {
+  return 们.filter((el) => !el.closest('.kb-embed'))
 }
 
 /** 源码档：在原文里算出那一行，交给 CM 自己滚。
