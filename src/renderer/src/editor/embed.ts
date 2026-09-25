@@ -16,7 +16,11 @@
  *  顺带白拿 5d 的悬停卡与乙的落点跳转。代价就是 §15.5 那笔账（固定 ≤5 ms、每段 ≈0.43 ms）。 */
 
 import { Editor, Node, mergeAttributes, type AnyExtension, type JSONContent } from '@tiptap/core'
-import type { Node as PMNode } from '@tiptap/pm/model'
+import type { EditorState, Transaction } from '@tiptap/pm/state'
+import { TextSelection } from '@tiptap/pm/state'
+import type { Node as PMNode, ResolvedPos } from '@tiptap/pm/model'
+import { Fragment } from '@tiptap/pm/model'
+import type { EditorView } from '@tiptap/pm/view'
 import { normalizeLinkKey, splitLinkInner } from '../../../shared/links'
 import type { EmbedAsk, EmbedCard, OutgoingLink } from '../../../shared/types'
 import type { LinkBridge } from '@/editor/markdown'
@@ -49,6 +53,76 @@ export function embedAttrs(raw: string): EmbedAttrs | null {
   const 拆 = splitLinkInner(m[1])
   if (!拆?.target) return null
   return { raw, target: 拆.target, anchor: 拆.anchor, block: 拆.block }
+}
+
+/** 那一整行换完之后该长的字：与上面 `一行嵌` 同一把尺（≤3 空格算行首、行尾只许空白），
+ *  只是把"往后看到换行"换成"整串到底" */
+const 一整行嵌 = /^ {0,3}!\[\[[^[\]\n]*\]\][ \t]*$/
+
+/** 边打边认：光标所在那一整行刚好是 `![[…]]`，就把它换成一棵嵌入（期-05f 丙记下的 #167）。
+ *
+ *  为什么不再自己注册一条输入规则，而是由 `wikiLink` 那条先问一句：`[[x]]` 与 `![[x]]`
+ *  的尾部是**同一段字**，两条规则会抢同一发 `]]`，而 Tiptap 里先注册的先赢
+ *  （`rules.forEach` 开头就一句 `if (matched) return`），`WikiLink` 又排在 `Embed` 前面
+ *  （`markdown.ts:373` 与 `:377`）——抢输的那一条永远轮不到。判"是不是嵌入"只放一处，
+ *  顺序就不承载语义了。
+ *
+ *  不成嵌入一律回 false，让调用方照原样落链接。宁可不换，也不能换出
+ *  "界面上是嵌入、下一次解析又不是嵌入"的两副样子。 */
+export function 换整行嵌入(state: EditorState, 范: { from: number; to: number }, 中: string): boolean {
+  const $从 = state.selection.$from
+  if ($从.depth < 1) return false
+  /** 那一整行的字要**拼**出来，不能直接读文档：规则看到的是 `textBefore + text`，
+   *  而**刚打下的那一发 `]` 还在 `text` 里、没进文档**。所以匹配那一段用 `中`（含那一发），
+   *  两头从文档里补。少了这一步，`![[x]]` 永远只被看成 `![[x]`，一条规则都不会命中
+   *  （第一版就栽在这儿：屏幕上留下 `!` 加一条链接，库里那一行却已经是嵌入写法） */
+  const 写 =
+    state.doc.textBetween($从.start($从.depth), 范.from, '￼', ' ') +
+    中 +
+    state.doc.textBetween(范.to, $从.end($从.depth), '￼', ' ')
+  return 落成嵌入(state.tr, $从, 写)
+}
+
+/** 补全那一条路的到货：`![[qu` 只打了一半就从菜单里选了一项。
+ *  `起` 是那个 `!` 的位置，`写` 是**换完之后那一整行该长的字**（含缩进与行尾空白——
+ *  `embedAttrs` 存 raw 存的就是传进去那一串原样，多一个空格都是改了用户的字节）。
+ *  整块换掉，所以那一截 `![[qu` 天然被一起吃掉。自己派发，返回"换没换成"。 */
+export function 换嵌入补全(view: EditorView, 起: number, 写: string): boolean {
+  const $从 = view.state.doc.resolve(起)
+  if ($从.depth < 1) return false
+  /** `state.tr` 是个 getter，**取一次一个新事务**（PM 的 `EditorState.tr` 就这么写的）。
+   *  所以这里抓住那一发递出去，别让调用方再去 `view.state.tr` 摸一遍——它摸到的是空的那个，
+   *  于是"换成功了但屏幕上什么都没发生"（第一版的 5.2 就是这么红的） */
+  const tr = view.state.tr
+  if (!落成嵌入(tr, $从, 写)) return false
+  view.dispatch(tr.scrollIntoView())
+  return true
+}
+
+/** 核心：把 `$从` 所在那一整块换成一棵嵌入，后面留一个空段给光标落脚
+ *  （不留的话，整篇可能再没有可写的块，人就被自己刚打的那两下锁住了）。
+ *  不成嵌入一律回 false 且**一个字节都不动**——调用方照原样落链接。
+ *  事务由调用方给：两头的派发路径不一样（规则那头发给 Tiptap，补全那头自己发） */
+function 落成嵌入(tr: Transaction, $从: ResolvedPos, 写: string): boolean {
+  // `tr` 上没有 `schema`（PM 只把它挂在 `state` 与 `nodeType` 上），从文档反推一份
+  const 型 = tr.doc.type.schema.nodes.embed
+  const 段 = tr.doc.type.schema.nodes.paragraph
+  const a = 一整行嵌.test(写) ? embedAttrs(写) : null
+  if (!型 || !a) return false
+  const 父 = $从.node($从.depth - 1)
+  const 前 = $从.before($从.depth)
+  const 后 = $从.after($从.depth)
+  const 节 = 型.create(a)
+  const 尾 = 段?.create() ?? null
+  const 换 = 尾 ? [节, 尾] : [节]
+  /** 问的是「这一串孩子摆在这个父节点下合不合法」，而不是「嵌入这一个能不能当头一个孩子」：
+   *  换下去的是 `[嵌入, 空段]` **这一串**，而 `contentMatch.matchType(型)` 只看头一个，
+   *  第二块合不合法它答不了。（今天这两把尺在列表项那一档答案一样——都否；
+   *  但只有 `validContent` 问的是那个真的问题） */
+  if (!父.type.validContent(Fragment.fromArray(换))) return false
+  tr.replaceWith(前, 后, 换)
+  if (尾) tr.setSelection(TextSelection.near(tr.doc.resolve(前 + 节.nodeSize + 1)))
+  return true
 }
 
 /** 屏幕上那一行小字：`↗ 玻璃工艺 · 装窑`。落点没有就不加那半个后缀 */

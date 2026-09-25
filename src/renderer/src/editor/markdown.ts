@@ -21,7 +21,7 @@ import { Callout } from '@/editor/callout'
 import { MathBlock, MathInline } from '@/editor/math'
 import { FootnoteDef, FootnoteRef } from '@/editor/footnote'
 import { MermaidBlock } from '@/editor/mermaidBlock'
-import { Embed } from '@/editor/embed'
+import { Embed, 换整行嵌入 } from '@/editor/embed'
 import { 停上, 移开 } from '@/editor/hoverPreview'
 import { normalizeLinkKey, resolveDateRef, splitLinkInner } from '../../../shared/links'
 import type { EmbedAsk, EmbedCard, OutgoingLink, PreviewAsk } from '../../../shared/types'
@@ -277,12 +277,18 @@ const WikiLink = Node.create<{ bridge: LinkBridge | null }>({
 
   /** 边打边认：光标前刚好凑出 `[[…]]` 就换成链接节点。
    *  不做这一步的话，所见即所得里手打的 `[[x]]` 要等到下一次从 Markdown
-   *  解析（切模式或重开这篇）才会变成链接，同一篇文档看起来前后不一致。 */
+   *  解析（切模式或重开这篇）才会变成链接，同一篇文档看起来前后不一致。
+   *
+   *  先问一句 `换整行嵌入`：那一整行是 `![[x]]` 的话这一发该落成嵌入而不是链接。
+   *  问句放这里而不是给嵌入再注册一条规则，理由写在 `embed.ts` 那段头顶上（两条规则抢同一发 `]]`）。
+   *  **换成了就不能回 `null`**：Tiptap 那头的判据是 `handler(...) === null || !tr.steps.length`
+   *  就整发丢弃（`@tiptap/core` `run$1`），回 null 等于"我这什么都没做"，事务会被原样扔掉 */
   addInputRules() {
     return [
       new InputRule({
         find: /\[\[([^[\]\n]*)\]\]$/,
         handler: ({ state, range, match }) => {
+          if (换整行嵌入(state, range, match[0])) return
           const attrs = wikiAttrs(match[0])
           if (!attrs) return null
           state.tr.replaceWith(range.from, range.to, this.type.create(attrs))

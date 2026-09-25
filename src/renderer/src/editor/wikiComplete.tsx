@@ -27,6 +27,7 @@ import { useStore } from '@/store'
 import { resolveDateRef } from '../../../shared/links'
 import { todayKey } from '../../../shared/date'
 import { wikiAttrs } from './markdown'
+import { 换嵌入补全 } from './embed'
 import type { Candidate } from '../../../shared/types'
 
 interface 项 {
@@ -163,11 +164,31 @@ function readState(state: EditorState): MenuState {
 }
 
 function 插入(view: EditorView, s: MenuState, 项: 项): void {
+  // 先给嵌入一次机会：`![[qu` 打了一半就选了项，落的就该是嵌入（#167）。
+  // 不给这一句的话，屏幕上留下的是「一个 `!` 加一条链接」——它的 Markdown 写法确实是 `![[x]]`，
+  // 于是重载之后变成一张卡、重载之前不是：**同一篇文档前后两副样子**，正是这一档要避免的那种
+  if (换嵌入(view, s, 项)) return
   const attrs = wikiAttrs(`[[${项.name}]]`)
   const 结 = attrs ? view.state.schema.nodes.wikiLink?.create(attrs) : null
   if (!结) return
   // 只换掉 `[[query` 那一截，光标后面已有的字一个字都不碰；补全自己不写正文
   view.dispatch(view.state.tr.replaceWith(s.from, s.to, 结).scrollIntoView())
+}
+
+/** `![[` 起头且那一整行除它之外没有别的字 ⇒ 整行换成一棵嵌入。
+ *  判"整行"这把尺与 `embed.ts` 的 `一行嵌` 是同一条：行首只许 ≤3 个空格、行尾只许空白。
+ *  行里还有别的字（`先看 ![[玻` 打到一半）那一种在 Markdown 里本来就不是嵌入，不换 */
+function 换嵌入(view: EditorView, s: MenuState, 项: 项): boolean {
+  const st = view.state
+  const 叹 = s.from - 1
+  if (叹 < 0 || !st.schema.nodes.embed) return false
+  if (st.doc.textBetween(叹, s.from, '\uFFFC', ' ') !== '!') return false
+  const $从 = st.doc.resolve(s.from)
+  if ($从.depth < 1) return false
+  const 头 = st.doc.textBetween($从.start($从.depth), 叹, '\uFFFC', ' ')
+  const 尾 = st.doc.textBetween(s.to, $从.end($从.depth), '\uFFFC', ' ')
+  if (!/^ {0,3}$/.test(头) || !/^[ \t]*$/.test(尾)) return false
+  return 换嵌入补全(view, 叹, `${头}![[${项.name}]]${尾}`)
 }
 
 export const WikiComplete = Extension.create({
