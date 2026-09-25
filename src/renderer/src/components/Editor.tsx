@@ -377,7 +377,7 @@ export function Editor(): JSX.Element {
         </div>
         <div className="editor-scroll">
           <div className="doc">
-            <div className="empty-hint" style={{ padding: '40px 0', fontSize: 13 }}>
+            <div className="empty-hint" style={{ padding: '40px 0', fontSize: '0.8125rem' }}>
               {activeTopicId === null
                 ? '还没有主题。点侧栏「主题」右边的 + 建一个，文章就归到主题下。'
                 : '这个主题下还没有打开的文章。点侧栏「文章」右边的 + 新建一篇。'}

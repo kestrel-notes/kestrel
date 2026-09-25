@@ -141,6 +141,26 @@ export interface Settings {
    *  这一档是"重复动作"——同一篇改一版再发一次很常见，每次都从系统对话框重挑太烦；
    *  而「还放那个夹」那颗按钮也是实机验收唯一能不走系统对话框的那条路 */
   shareLastDir: string | null
+  /** 界面与正文共用的那一档字号（#139）。存的不是 px 数而是「根字号」：
+   *  全站 214 处 `font-size` 都写成了 rem =（原来的 px）/16，所以动这一格就是动整条阶梯。
+   *  一个旋钮同时管正文与界面是**故意的**（非目标与理由见 `docs/期-09b-设计稿.md` §十）。 */
+  fontRoot: number
+}
+
+/** `fontRoot` 的上下限。两头都不是拍的：
+ *  - 下限 14：阶梯里最小的那一档是 `0.4375rem`（图谱环上的字），根 14 时算出来 6.1px，
+ *    已经贴着能勉强认出字的边；再往下就是「看得见她排了什么但读不出写了什么」。
+ *  - 上限 20：`scratch/p139-range.out` 从根 12 量到 24，**一格都没被剪**（`剪` 那一列
+ *    恒为 1，且那是任务列表里那颗给读屏用的隐藏 span，默认档也一样）；但 21 起
+ *    图标按钮的字开始画到自己那格外面（`溢` 从 4 变 5、6）。20 是"还只在框里"的最高一档。 */
+export const FONT_ROOT_MIN = 14
+export const FONT_ROOT_MAX = 20
+
+/** 与 `keepClamp` 同一条路：读回来的值一律当不可信（库可能被手改过、被旧版本写过）。
+ *  非法值不报错、不置空，贴边——字号这一格坏掉的话整个界面会塌，而不是只有一行字不对。 */
+export function fontRootClamp(v: unknown): number {
+  if (typeof v !== 'number' || !Number.isFinite(v)) return DEFAULT_SETTINGS.fontRoot
+  return Math.min(FONT_ROOT_MAX, Math.max(FONT_ROOT_MIN, Math.round(v)))
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -158,6 +178,7 @@ export const DEFAULT_SETTINGS: Settings = {
   editorModeDefault: 'rich',
   syncDir: null,
   shareLastDir: null,
+  fontRoot: 16,
 }
 
 /** 同步那一格的全部读数（期-10 §三）。全是读，一次 IPC 拿齐——

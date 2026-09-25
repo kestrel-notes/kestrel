@@ -214,6 +214,10 @@ export async function 导出去(目录: string): Promise<分享的账> {
     主题: s.settings.theme,
     配色: 现.配色,
     内联张数: 换完附件.内联,
+    // rem 那把尺的零点。抽走的样式表里全是 rem，不带这一句的话「我调到 18 那一档」
+    // 分享出去就成了「别人看到 16 那一档」——现读根元素，而不是抄 settings 里那个数：
+    // 片段（09b）里真有人写 `html{font-size:…}`，那一条也得跟着进产物
+    根字号: getComputedStyle(document.documentElement).fontSize,
   })
   const r = await window.kestrel.share.write(目录, 标题, html)
   return {

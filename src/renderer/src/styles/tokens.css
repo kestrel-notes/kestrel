@@ -23,7 +23,7 @@
   --font-mono: 'Maple Mono', 'Maple Mono CN', 'Maple Mono NF CN', 'Noto Sans SC',
     'JetBrains Mono', 'Cascadia Code', Consolas, monospace;
   --font-body: var(--font-ui);
-  --fs-body: 15px;
+  --fs-body: 0.9375rem;
   --lh-body: 1.85;
 
   /* 品牌色：**固定值，不跟主题的 --accent 走**。理由不是审美——应用图标是打包进
@@ -180,6 +180,15 @@ html,
 body,
 #root {
   height: 100%;
+}
+
+/* rem 这把尺的零点。全站 214 处字号都写成 rem =（换算前那个 px）/16，
+   所以根上一动、整条字号阶梯一起跟着动；默认那一档 16px 算回来与换算前逐位相同
+   （判据与实测见 `docs/期-09b-设计稿.md` §十，滑块写的是 `--fs-root`）。
+   留 16px 兜底而不是直接写 `font-size: 16px`：设置里那一格是内联在 documentElement 上的
+   自定义属性，压得住这一条，换主题/重载都不用重排规则顺序。 */
+html {
+  font-size: var(--fs-root, 16px);
 }
 
 body {

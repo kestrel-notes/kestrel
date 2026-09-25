@@ -36,7 +36,7 @@
   align-items: center;
   gap: 9px;
   font-weight: 600;
-  font-size: 14px;
+  font-size: 0.875rem;
   letter-spacing: -0.01em;
   flex-shrink: 0;
 }
@@ -60,7 +60,7 @@
 .mode-switch button {
   padding: 5px 15px;
   border-radius: var(--radius-sm);
-  font-size: 12.5px;
+  font-size: 0.78125rem;
   font-weight: 500;
   color: var(--text-2);
   transition: all 0.18s;
@@ -73,7 +73,7 @@
 /* 「标签」「属性」这两格是**回头看**，比「今天 / 主题」那两格轻一档（期-02-设计 §3.1 末段）。
    按位置收而不是加类：以后第四格进来就是第五条规则，不用为它再造一个名字 */
 .mode-switch button:nth-child(n + 3) {
-  font-size: 10.5px;
+  font-size: 0.65625rem;
   font-weight: 600;
   letter-spacing: 0.1em;
   padding: 5px 11px;
@@ -91,7 +91,7 @@
   background: var(--hover);
   border: 1px solid var(--border);
   color: var(--text-3);
-  font-size: 12.5px;
+  font-size: 0.78125rem;
   cursor: text;
   transition: border-color 0.2s;
 }
@@ -104,7 +104,7 @@
 
 kbd {
   font-family: var(--font-mono);
-  font-size: 10.5px;
+  font-size: 0.65625rem;
   padding: 2px 6px;
   border-radius: var(--radius-xs);
   background: var(--bg-glass-strong);
@@ -126,7 +126,7 @@ kbd {
   height: 30px;
   padding: 0 11px;
   border-radius: var(--radius-sm);
-  font-size: 12.5px;
+  font-size: 0.78125rem;
   color: var(--text-2);
   transition: background 0.15s, color 0.15s;
 }
@@ -177,7 +177,7 @@ kbd {
   flex-shrink: 0;
 }
 .sec-label {
-  font-size: 10.5px;
+  font-size: 0.65625rem;
   font-weight: 600;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -190,7 +190,7 @@ kbd {
 }
 .sec-label button {
   color: var(--text-3);
-  font-size: 15px;
+  font-size: 0.9375rem;
   line-height: 1;
   padding: 0 5px;
   border-radius: var(--radius-xs);
@@ -200,7 +200,7 @@ kbd {
   color: var(--accent);
 }
 .badge {
-  font-size: 10px;
+  font-size: 0.625rem;
   padding: 1px 6px;
   border-radius: 999px;
   font-family: var(--font-mono);
@@ -280,7 +280,7 @@ kbd {
   align-items: center;
   gap: 4px;
   margin-top: 8px;
-  font-size: 10.5px;
+  font-size: 0.65625rem;
   color: var(--text-3);
 }
 .heat-legend i {
@@ -311,7 +311,7 @@ kbd {
   border-left-color: var(--accent);
 }
 .entry-item .t {
-  font-size: 12.5px;
+  font-size: 0.78125rem;
   color: var(--text-1);
   font-weight: 500;
   white-space: nowrap;
@@ -319,7 +319,7 @@ kbd {
   text-overflow: ellipsis;
 }
 .entry-item .d {
-  font-size: 11px;
+  font-size: 0.6875rem;
   color: var(--text-3);
   margin-top: 2px;
   display: flex;
@@ -329,7 +329,7 @@ kbd {
 .entry-item .d em {
   font-style: normal;
   font-family: var(--font-mono);
-  font-size: 10.5px;
+  font-size: 0.65625rem;
 }
 
 .topics {
@@ -344,7 +344,7 @@ kbd {
   padding: 8px 9px;
   border-radius: var(--radius-sm);
   cursor: pointer;
-  font-size: 13px;
+  font-size: 0.8125rem;
   color: var(--text-2);
   transition: background 0.15s;
   width: 100%;
@@ -367,7 +367,7 @@ kbd {
 /* 主题自己填的图标（一个 emoji 或几个字符），与色点占同一个位置 */
 .topic .icn {
   flex-shrink: 0;
-  font-size: 12px;
+  font-size: 0.75rem;
   line-height: 1;
 }
 .topic .topic-name {
@@ -379,12 +379,12 @@ kbd {
 /* 归档于别的主题：缩进一格。侧栏这一列没有虚线可画，只靠缩进表达层级 */
 .topic.child {
   padding-left: 25px;
-  font-size: 12.5px;
+  font-size: 0.78125rem;
 }
 .topic .cnt {
   margin-left: auto;
   font-family: var(--font-mono);
-  font-size: 10.5px;
+  font-size: 0.65625rem;
   color: var(--text-3);
 }
 /* 一个 sec-label 里挤两枚动作（管理 + 新建）：按钮各自包一层，别把 justify-content 拆开 */
@@ -417,7 +417,7 @@ kbd {
   background: var(--accent-soft);
 }
 .article-card h4 {
-  font-size: 12.5px;
+  font-size: 0.78125rem;
   font-weight: 600;
   margin-bottom: 4px;
   display: flex;
@@ -426,7 +426,7 @@ kbd {
   line-height: 1.4;
 }
 .article-card p {
-  font-size: 11.5px;
+  font-size: 0.71875rem;
   color: var(--text-3);
   line-height: 1.55;
   display: -webkit-box;
@@ -435,7 +435,7 @@ kbd {
   overflow: hidden;
 }
 .empty-hint {
-  font-size: 11.5px;
+  font-size: 0.71875rem;
   color: var(--text-3);
   padding: 4px 9px;
   line-height: 1.6;
@@ -466,7 +466,7 @@ kbd {
   width: 14px;
   height: 14px;
   flex-shrink: 0;
-  font-size: 9px;
+  font-size: 0.5625rem;
   line-height: 14px;
   color: var(--text-3);
   border-radius: var(--radius-xs);
@@ -482,7 +482,7 @@ button.tag-fold:hover {
 .tag-row .cnt {
   margin-left: auto;
   font-family: var(--font-mono);
-  font-size: 10.5px;
+  font-size: 0.65625rem;
   color: var(--text-3);
   flex-shrink: 0;
 }
@@ -560,7 +560,7 @@ button.tag-fold:hover {
   background: transparent;
   color: var(--text-3);
   font: inherit;
-  font-size: 12px;
+  font-size: 0.75rem;
   cursor: pointer;
   position: relative;
 }
@@ -588,7 +588,7 @@ button.tag-fold:hover {
 }
 .tab .pin {
   flex: 0 0 auto;
-  font-size: 10px;
+  font-size: 0.625rem;
   opacity: 0.75;
 }
 .tab .close {
@@ -602,7 +602,7 @@ button.tag-fold:hover {
   border-radius: var(--radius-xs);
   background: transparent;
   color: var(--text-3);
-  font-size: 13px;
+  font-size: 0.8125rem;
   line-height: 1;
   cursor: pointer;
   visibility: hidden;
@@ -635,7 +635,7 @@ button.tag-fold:hover {
   flex-shrink: 0;
 }
 .crumb {
-  font-size: 12.5px;
+  font-size: 0.78125rem;
   color: var(--text-3);
   display: flex;
   align-items: center;
@@ -658,7 +658,7 @@ button.tag-fold:hover {
   height: 28px;
   padding: 0 11px;
   border-radius: var(--radius-sm);
-  font-size: 12.5px;
+  font-size: 0.78125rem;
   color: var(--text-2);
   border: 1px solid var(--border);
   transition: all 0.15s;
@@ -715,7 +715,7 @@ button.tag-fold:hover {
   display: flex;
   align-items: center;
   gap: 10px;
-  font-size: 12px;
+  font-size: 0.75rem;
   color: var(--text-3);
   margin-bottom: 20px;
   flex-wrap: wrap;
@@ -731,7 +731,7 @@ button.tag-fold:hover {
 }
 
 h1.doc-title {
-  font-size: 31px;
+  font-size: 1.9375rem;
   font-weight: 650;
   letter-spacing: -0.02em;
   line-height: 1.3;
@@ -743,7 +743,7 @@ input.doc-title {
   background: none;
   border: none;
   outline: none;
-  font-size: 31px;
+  font-size: 1.9375rem;
   font-weight: 650;
   letter-spacing: -0.02em;
   line-height: 1.3;
@@ -805,11 +805,11 @@ input.doc-title::placeholder {
   color: var(--text-1);
 }
 .md-prose h1 {
-  font-size: 26px;
+  font-size: 1.625rem;
   margin: 30px 0 14px;
 }
 .md-prose h2 {
-  font-size: 19px;
+  font-size: 1.1875rem;
   margin: 34px 0 12px;
   display: flex;
   align-items: center;
@@ -824,13 +824,13 @@ input.doc-title::placeholder {
   flex-shrink: 0;
 }
 .md-prose h3 {
-  font-size: 16px;
+  font-size: 1rem;
   margin: 26px 0 10px;
 }
 .md-prose h4,
 .md-prose h5,
 .md-prose h6 {
-  font-size: 14.5px;
+  font-size: 0.90625rem;
   margin: 22px 0 8px;
 }
 /* 列表：圆点是强调色的小豆子，不是系统 marker。有序表留着数字，读起来更清楚 */
@@ -954,7 +954,7 @@ input.doc-title::placeholder {
   border-left: 3px solid var(--accent);
   background: var(--accent-soft);
   border-radius: 0 10px 10px 0;
-  font-size: 14.5px;
+  font-size: 0.90625rem;
   line-height: 1.8;
 }
 .md-prose blockquote > *:last-child {
@@ -974,7 +974,7 @@ input.doc-title::placeholder {
   font-weight: 600;
   color: var(--tone, var(--accent));
   margin-bottom: 6px;
-  font-size: 13.5px;
+  font-size: 0.84375rem;
   letter-spacing: 0.02em;
 }
 .md-prose blockquote.md-callout .callout-body {
@@ -1017,7 +1017,7 @@ input.doc-title::placeholder {
   padding: 0;
   border: none;
   background: none;
-  font-size: 12.5px;
+  font-size: 0.78125rem;
   line-height: 1.75;
   color: var(--text-2);
 }
@@ -1051,7 +1051,7 @@ input.doc-title::placeholder {
   width: 100%;
   border-collapse: collapse;
   margin: 0;
-  font-size: 13.5px;
+  font-size: 0.84375rem;
 }
 .md-prose th,
 .md-prose td {
@@ -1069,7 +1069,7 @@ input.doc-title::placeholder {
   background: var(--hover);
   color: var(--text-1);
   font-weight: 600;
-  font-size: 12.5px;
+  font-size: 0.78125rem;
 }
 .md-prose img {
   max-width: 100%;
@@ -1099,7 +1099,7 @@ input.doc-title::placeholder {
 .md-prose .mermaid-empty {
   display: inline-block;
   color: var(--text-3);
-  font-size: 12.5px;
+  font-size: 0.78125rem;
   padding: 2px 10px;
   border: 1px dashed var(--border-strong);
   border-radius: var(--radius-sm);
@@ -1110,7 +1110,7 @@ input.doc-title::placeholder {
   width: 100%;
   min-width: 220px;
   font-family: var(--font-mono);
-  font-size: 13px;
+  font-size: 0.8125rem;
   line-height: 1.6;
   color: var(--text-1);
   background: var(--bg-panel);
@@ -1146,7 +1146,7 @@ input.doc-title::placeholder {
 }
 .md-prose .mermaid-source {
   text-align: left;
-  font-size: 12.5px;
+  font-size: 0.78125rem;
   border-left: 2px solid var(--tag-5);
 }
 .md-prose .mermaid-error {
@@ -1170,7 +1170,7 @@ input.doc-title::placeholder {
    要退一档：小字、灰一点、挂一条左沿，读的时候自然归到「注」那一类。
    序号是 `::before` 而不是真元素——它在 DOM 里不存在，光标进不去、ProseMirror 也看不见 */
 .md-prose .fn-def {
-  font-size: 13px;
+  font-size: 0.8125rem;
   color: var(--text-2);
   border-left: 2px solid var(--border-strong);
   padding-left: 10px;
@@ -1286,7 +1286,7 @@ input.doc-title::placeholder {
   display: flex;
   align-items: baseline;
   gap: 8px;
-  font-size: 12px;
+  font-size: 0.75rem;
   line-height: 1.5;
   color: var(--text-3);
 }
@@ -1301,7 +1301,7 @@ input.doc-title::placeholder {
 .kb-note {
   flex: auto;
   min-width: 0;
-  font-size: 11px;
+  font-size: 0.6875rem;
 }
 .kb-body {
   margin-top: 4px;
@@ -1310,15 +1310,15 @@ input.doc-title::placeholder {
    h1 一般大，读起来就像这一篇忽然换了题目。字号沿用 `.md-prose` 那条阶梯的下一档，
    不另立一套数（整条阶梯换成 rem 是 #139 那笔账） */
 .kb-body h1 {
-  font-size: 19px;
+  font-size: 1.1875rem;
   margin: 22px 0 10px;
 }
 .kb-body h2 {
-  font-size: 16px;
+  font-size: 1rem;
   margin: 24px 0 10px;
 }
 .kb-body h3 {
-  font-size: 14.5px;
+  font-size: 0.90625rem;
   margin: 20px 0 8px;
 }
 /* 里面那一棵是 editable:false 的只读实例：不抢焦点环，首尾也不该自带间距 */
@@ -1371,7 +1371,7 @@ input.doc-title::placeholder {
   align-items: baseline;
   justify-content: space-between;
   gap: 10px;
-  font-size: 13px;
+  font-size: 0.8125rem;
   color: var(--text-1);
 }
 .hp-label {
@@ -1382,7 +1382,7 @@ input.doc-title::placeholder {
 /* 那枚种类徽章沿用 .wl-* 的分型语言：日记/文章是 accent，主题是药丸底，悬空是灰 */
 .hp-kind {
   flex: none;
-  font-size: 11px;
+  font-size: 0.6875rem;
   color: var(--text-3);
 }
 .hp-diary .hp-kind,
@@ -1396,7 +1396,7 @@ input.doc-title::placeholder {
   border-radius: 999px;
 }
 .hp-snip {
-  font-size: 12px;
+  font-size: 0.75rem;
   line-height: 1.5;
   color: var(--text-2);
   /* 三行为止：再多就不是"预览"而是"在卡里读另一篇" */
@@ -1410,7 +1410,7 @@ input.doc-title::placeholder {
   color: var(--text-3);
 }
 .hp-meta {
-  font-size: 11px;
+  font-size: 0.6875rem;
   color: var(--text-3);
 }
 
@@ -1451,7 +1451,7 @@ input.doc-title::placeholder {
   -webkit-backdrop-filter: blur(var(--blur));
   border: 1px solid var(--border);
   box-shadow: var(--shadow-glass);
-  font-size: 11.5px;
+  font-size: 0.71875rem;
   color: var(--text-3);
   white-space: nowrap;
   /* 胶囊超出编辑列会被 .editor-wrap 的 overflow:hidden 切掉两头，窄窗口（1100px 时
@@ -1511,7 +1511,7 @@ input.doc-title::placeholder {
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 10.5px;
+  font-size: 0.65625rem;
   font-weight: 600;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -1527,7 +1527,7 @@ input.doc-title::placeholder {
 .rail-btn {
   font: inherit;
   /* 中文标题是大写小字号，按钮上的符号得回到正文字号才看得清 */
-  font-size: 13px;
+  font-size: 0.8125rem;
   line-height: 1;
   letter-spacing: 0;
   text-transform: none;
@@ -1663,7 +1663,7 @@ svg.graph {
 
 .g-label {
   font-family: var(--font-ui);
-  font-size: 7px;
+  font-size: 0.4375rem;
   fill: var(--text-3);
   pointer-events: none;
   /* 描边垫在字形底下（paint-order），相当于给标签刷一层底色：
@@ -1680,7 +1680,7 @@ svg.graph {
   flex-wrap: wrap;
   gap: 4px 9px;
   margin-top: 8px;
-  font-size: 10px;
+  font-size: 0.625rem;
   color: var(--text-3);
 }
 .graph-legend span {
@@ -1766,13 +1766,13 @@ body.no-glass .go-members {
   display: flex;
   align-items: baseline;
   gap: 10px;
-  font-size: 14px;
+  font-size: 0.875rem;
   font-weight: 600;
   letter-spacing: -0.01em;
 }
 .go-count {
   font-style: normal;
-  font-size: 11px;
+  font-size: 0.6875rem;
   font-weight: 500;
   color: var(--text-3);
 }
@@ -1782,7 +1782,7 @@ body.no-glass .go-members {
   gap: 8px;
 }
 .go-progress {
-  font-size: 11px;
+  font-size: 0.6875rem;
   color: var(--text-3);
   font-variant-numeric: tabular-nums;
 }
@@ -1861,14 +1861,14 @@ body.no-glass .go-members {
 }
 .go-agg-count {
   font-family: var(--font-ui);
-  font-size: 9px;
+  font-size: 0.5625rem;
   fill: var(--text-2);
   text-anchor: middle;
   pointer-events: none;
 }
 .go-label {
   font-family: var(--font-ui);
-  font-size: 9px;
+  font-size: 0.5625rem;
   fill: var(--text-2);
   text-anchor: middle;
   pointer-events: none;
@@ -1885,7 +1885,7 @@ body.no-glass .go-members {
   justify-content: space-between;
   gap: 12px;
   padding: 7px 18px 9px;
-  font-size: 10.5px;
+  font-size: 0.65625rem;
   color: var(--text-3);
   border-top: 1px solid var(--border);
 }
@@ -1896,13 +1896,13 @@ body.no-glass .go-members {
   max-width: 420px;
   padding: 0 24px;
   text-align: center;
-  font-size: 13px;
+  font-size: 0.8125rem;
   line-height: 1.75;
   color: var(--text-3);
 }
 .go-empty code {
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: 0.75rem;
   padding: 1px 5px;
   border-radius: var(--radius-xs);
   background: var(--hover);
@@ -1923,7 +1923,7 @@ body.no-glass .go-members {
 .go-modes .tb-btn {
   border: none;
   background: transparent;
-  font-size: 11px;
+  font-size: 0.6875rem;
   padding: 3px 9px;
 }
 .go-modes .tb-btn.active {
@@ -1939,12 +1939,12 @@ body.no-glass .go-members {
   display: inline-flex;
   align-items: baseline;
   gap: 4px;
-  font-size: 10.5px;
+  font-size: 0.65625rem;
   color: var(--text-3);
 }
 .go-bin select {
   font: inherit;
-  font-size: 11px;
+  font-size: 0.6875rem;
   color: var(--text-1);
   background: transparent;
   border: 1px solid var(--border);
@@ -1966,7 +1966,7 @@ body.no-glass .go-members {
 .go-chip {
   flex: 0 0 auto;
   font: inherit;
-  font-size: 10.5px;
+  font-size: 0.65625rem;
   line-height: 1;
   color: var(--text-3);
   background: transparent;
@@ -1991,7 +1991,7 @@ body.no-glass .go-members {
   background: var(--hover);
 }
 .go-clear {
-  font-size: 10.5px;
+  font-size: 0.65625rem;
   color: var(--accent);
 }
 .go-filtering {
@@ -2036,7 +2036,7 @@ body.no-glass .go-members {
   position: absolute;
   inset: 0;
   pointer-events: none;
-  font-size: 10.5px;
+  font-size: 0.65625rem;
   color: var(--text-3);
 }
 .go-cols {
@@ -2082,7 +2082,7 @@ body.no-glass .go-members {
   gap: 5px;
   padding: 1px 7px;
   font: inherit;
-  font-size: 10.5px;
+  font-size: 0.65625rem;
   color: var(--text-2);
   background: none;
   border: none;
@@ -2125,7 +2125,7 @@ body.no-glass .go-members {
   align-items: center;
   justify-content: space-between;
   gap: 6px;
-  font-size: 11.5px;
+  font-size: 0.71875rem;
   color: var(--text-2);
   padding: 0 2px 6px;
   border-bottom: 1px solid var(--border);
@@ -2137,7 +2137,7 @@ body.no-glass .go-members {
   gap: 6px;
   align-items: baseline;
   font: inherit;
-  font-size: 11.5px;
+  font-size: 0.71875rem;
   text-align: left;
   color: var(--text-1);
   background: none;
@@ -2160,7 +2160,7 @@ body.no-glass .go-members {
   white-space: nowrap;
 }
 .go-more {
-  font-size: 10.5px;
+  font-size: 0.65625rem;
   color: var(--text-3);
   padding: 4px 5px;
 }
@@ -2225,7 +2225,7 @@ body.no-glass .go-members {
   color: var(--text-3);
 }
 .bl-h {
-  font-size: 12px;
+  font-size: 0.75rem;
   color: var(--text-2);
   flex: 1;
   min-width: 0;
@@ -2234,7 +2234,7 @@ body.no-glass .go-members {
   white-space: nowrap;
 }
 .bl-m {
-  font-size: 9.5px;
+  font-size: 0.59375rem;
   padding: 1px 6px;
   border-radius: var(--radius-xs);
   flex-shrink: 0;
@@ -2249,7 +2249,7 @@ body.no-glass .go-members {
 }
 /* 上下文行：写链接时的原话比标题更能说明「为什么连过来」 */
 .bl-ctx {
-  font-size: 11px;
+  font-size: 0.6875rem;
   color: var(--text-3);
   padding-left: 13px;
   overflow: hidden;
@@ -2257,7 +2257,7 @@ body.no-glass .go-members {
   white-space: nowrap;
 }
 .bl-empty {
-  font-size: 11.5px;
+  font-size: 0.71875rem;
   color: var(--text-3);
   padding: 2px 8px;
 }
@@ -2267,13 +2267,13 @@ body.no-glass .go-members {
 }
 .bl-hint code {
   font-family: var(--font-mono);
-  font-size: 10.5px;
+  font-size: 0.65625rem;
   padding: 0 3px;
   border-radius: var(--radius-xs);
   background: var(--hover);
 }
 .bl-sub {
-  font-size: 10px;
+  font-size: 0.625rem;
   color: var(--text-3);
   letter-spacing: 0.06em;
   margin: 10px 0 4px;
@@ -2298,7 +2298,7 @@ body.no-glass .go-members {
   margin-top: 2px;
 }
 .mt-cost {
-  font-size: 9.5px;
+  font-size: 0.59375rem;
   color: var(--text-3);
   letter-spacing: 0.02em;
   opacity: 0.85;
@@ -2327,7 +2327,7 @@ body.no-glass .go-members {
   padding-top: 0;
 }
 .mt-via {
-  font-size: 9.5px;
+  font-size: 0.59375rem;
   padding: 1px 5px;
   border-radius: var(--radius-xs);
   border: 1px dashed var(--border-strong);
@@ -2343,7 +2343,7 @@ body.no-glass .go-members {
   flex-shrink: 0;
   height: 20px;
   padding: 0 8px;
-  font-size: 10.5px;
+  font-size: 0.65625rem;
 }
 .outline {
   display: flex;
@@ -2354,7 +2354,7 @@ body.no-glass .go-members {
 .ol-item {
   width: 100%;
   text-align: left;
-  font-size: 12.5px;
+  font-size: 0.78125rem;
   font-family: inherit;
   color: var(--text-2);
   background: none;
@@ -2380,7 +2380,7 @@ body.no-glass .go-members {
 }
 .ol-item.lv2 {
   padding-left: 20px;
-  font-size: 12px;
+  font-size: 0.75rem;
   color: var(--text-3);
 }
 .ol-item.lv2.on {
@@ -2395,7 +2395,7 @@ body.no-glass .go-members {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  font-size: 12.5px;
+  font-size: 0.78125rem;
   gap: 8px;
 }
 .kv-row span {
@@ -2412,7 +2412,7 @@ body.no-glass .go-members {
 }
 .kv-row b.mono {
   font-family: var(--font-mono);
-  font-size: 11.5px;
+  font-size: 0.71875rem;
 }
 .tag-list {
   display: flex;
@@ -2422,7 +2422,7 @@ body.no-glass .go-members {
 /* 标签 chip。颜色由使用方注入 `--tc`（八个预调 token 之一，见 tokens.css 的说明），
    没注入时退回中性色——`--tc` 缺省这条 fallback 让旧的 `.tag` 用法不用一起改。 */
 .tag {
-  font-size: 11.5px;
+  font-size: 0.71875rem;
   padding: 3px 9px;
   border-radius: var(--radius-sm);
   background: var(--hover);
@@ -2474,11 +2474,11 @@ body.focus-mode .rail {
   margin-bottom: 18px;
 }
 .sheet-head h3 {
-  font-size: 16px;
+  font-size: 1rem;
   font-weight: 650;
 }
 .sheet-head p {
-  font-size: 12px;
+  font-size: 0.75rem;
   color: var(--text-3);
   margin-top: 3px;
 }
@@ -2490,7 +2490,7 @@ body.focus-mode .rail {
   align-items: center;
   justify-content: center;
   color: var(--text-3);
-  font-size: 18px;
+  font-size: 1.125rem;
 }
 .close-x:hover {
   background: var(--hover);
@@ -2531,14 +2531,14 @@ body.focus-mode .rail {
   display: block;
 }
 .theme-card .nm {
-  font-size: 12.5px;
+  font-size: 0.78125rem;
   font-weight: 600;
   display: flex;
   align-items: center;
   gap: 5px;
 }
 .theme-card .ds {
-  font-size: 10.5px;
+  font-size: 0.65625rem;
   color: var(--text-3);
   margin-top: 2px;
 }
@@ -2568,7 +2568,7 @@ body.focus-mode .rail {
   margin-bottom: 14px;
 }
 .slider-row label {
-  font-size: 12.5px;
+  font-size: 0.78125rem;
   color: var(--text-2);
   width: 96px;
   flex-shrink: 0;
@@ -2580,7 +2580,7 @@ input[type='range'] {
 }
 .slider-row b {
   font-family: var(--font-mono);
-  font-size: 11.5px;
+  font-size: 0.71875rem;
   color: var(--text-3);
   width: 52px;
   text-align: right;
@@ -2591,12 +2591,12 @@ input[type='range'] {
   justify-content: space-between;
   padding: 12px 0;
   border-top: 1px solid var(--border);
-  font-size: 13px;
+  font-size: 0.8125rem;
   gap: 12px;
 }
 .row-toggle em {
   font-style: normal;
-  font-size: 11.5px;
+  font-size: 0.71875rem;
   color: var(--text-3);
   display: block;
   margin-top: 2px;
@@ -2646,7 +2646,7 @@ input[type='range'] {
   -webkit-backdrop-filter: blur(var(--blur));
   color: var(--text-1);
   border: 1px solid var(--border);
-  font-size: 12.5px;
+  font-size: 0.78125rem;
   z-index: 200;
   opacity: 0;
   pointer-events: none;
@@ -2665,7 +2665,7 @@ input[type='range'] {
   justify-content: center;
   gap: 10px;
   color: var(--text-3);
-  font-size: 13px;
+  font-size: 0.8125rem;
 }
 .boot-error {
   flex-direction: column;
@@ -2674,13 +2674,13 @@ input[type='range'] {
   padding: 0 40px;
 }
 .boot-error h3 {
-  font-size: 16px;
+  font-size: 1rem;
   color: var(--text-1);
   margin-bottom: 4px;
 }
 .boot-error .hint {
   color: var(--text-3);
-  font-size: 12px;
+  font-size: 0.75rem;
 }
 
 /* 骨架阶段：窗口窄时的降级（桌面应用主场是 ≥1280px） */
@@ -2717,7 +2717,7 @@ input[type='range'] {
   outline: none;
   background: none;
   font-family: inherit;
-  font-size: 15px;
+  font-size: 0.9375rem;
   color: var(--text-1);
   padding: 15px 18px;
   border-bottom: 1px solid var(--border);
@@ -2744,7 +2744,7 @@ input[type='range'] {
   height: 34px;
   padding: 0 10px;
   border-radius: var(--radius-sm);
-  font-size: 13px;
+  font-size: 0.8125rem;
   font-family: inherit;
   color: var(--text-2);
   text-align: left;
@@ -2761,7 +2761,7 @@ input[type='range'] {
 }
 .pal-hint {
   flex-shrink: 0;
-  font-size: 11.5px;
+  font-size: 0.71875rem;
   font-family: var(--font-mono);
   color: var(--text-3);
 }
@@ -2796,7 +2796,7 @@ input[type='range'] {
   border: none;
   background: none;
   border-radius: var(--radius-sm);
-  font-size: 13px;
+  font-size: 0.8125rem;
   font-family: inherit;
   color: var(--text-2);
   text-align: left;
@@ -2813,7 +2813,7 @@ input[type='range'] {
 }
 .slash-hint {
   flex-shrink: 0;
-  font-size: 11.5px;
+  font-size: 0.71875rem;
   font-family: var(--font-mono);
   color: var(--text-3);
 }
@@ -2836,7 +2836,7 @@ input[type='range'] {
   flex-direction: column;
   gap: 3px;
   padding: 9px 18px;
-  font-size: 11.5px;
+  font-size: 0.71875rem;
   line-height: 1.5;
   color: var(--text-3);
   border-bottom: 1px solid var(--border);
@@ -2849,7 +2849,7 @@ input[type='range'] {
   /* 在途时内容为空：不给 min-height 的话每一拍都会上下跳一次 */
   min-height: 27px;
   padding: 7px 18px;
-  font-size: 11.5px;
+  font-size: 0.71875rem;
   font-family: var(--font-mono);
   color: var(--text-3);
   border-bottom: 1px solid var(--border);
@@ -2862,7 +2862,7 @@ input[type='range'] {
 }
 .sr-title {
   display: block;
-  font-size: 13px;
+  font-size: 0.8125rem;
   color: var(--text-1);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -2871,7 +2871,7 @@ input[type='range'] {
 .sr-excerpt {
   display: block;
   margin-top: 2px;
-  font-size: 12px;
+  font-size: 0.75rem;
   line-height: 1.55;
   color: var(--text-2);
   overflow: hidden;
@@ -2891,13 +2891,13 @@ input[type='range'] {
 .sr-meta {
   display: block;
   margin-top: 2px;
-  font-size: 11px;
+  font-size: 0.6875rem;
   font-family: var(--font-mono);
   color: var(--text-3);
 }
 .search-foot {
   padding: 8px 18px;
-  font-size: 11px;
+  font-size: 0.6875rem;
   font-family: var(--font-mono);
   color: var(--text-3);
   border-top: 1px solid var(--border);
@@ -2910,7 +2910,7 @@ input[type='range'] {
 }
 .field > span {
   display: block;
-  font-size: 11.5px;
+  font-size: 0.71875rem;
   color: var(--text-3);
   margin-bottom: 6px;
 }
@@ -2918,7 +2918,7 @@ input[type='range'] {
 .field select {
   width: 100%;
   font-family: inherit;
-  font-size: 13.5px;
+  font-size: 0.84375rem;
   color: var(--text-1);
   background: var(--hover);
   border: 1px solid var(--border-strong);
@@ -2990,12 +2990,12 @@ input[type='range'] {
   animation: card-in 0.18s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 .confirm-card h3 {
-  font-size: 15px;
+  font-size: 0.9375rem;
   font-weight: 650;
 }
 .confirm-card p {
   margin-top: 6px;
-  font-size: 13px;
+  font-size: 0.8125rem;
   line-height: 1.65;
   color: var(--text-2);
 }
@@ -3031,7 +3031,7 @@ input[type='range'] {
   border-radius: var(--radius-md);
   background: var(--hover);
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: 0.75rem;
   line-height: 1.7;
   padding: 6px 0;
 }
@@ -3083,7 +3083,7 @@ input[type='range'] {
   gap: 2px;
 }
 .bin-main b {
-  font-size: 13px;
+  font-size: 0.8125rem;
   font-weight: 550;
   color: var(--text-1);
   overflow: hidden;
@@ -3091,12 +3091,12 @@ input[type='range'] {
   white-space: nowrap;
 }
 .bin-sub {
-  font-size: 11px;
+  font-size: 0.6875rem;
   color: var(--text-3);
 }
 .bin-date {
   flex-shrink: 0;
-  font-size: 11.5px;
+  font-size: 0.71875rem;
   color: var(--text-3);
 }
 
@@ -3140,7 +3140,7 @@ input[type='range'] {
 }
 .bk-go b {
   max-width: 100%;
-  font-size: 13px;
+  font-size: 0.8125rem;
   font-weight: 550;
   color: var(--text-1);
   overflow: hidden;
@@ -3151,7 +3151,7 @@ input[type='range'] {
   color: var(--accent);
 }
 .bk-sub {
-  font-size: 11px;
+  font-size: 0.6875rem;
   color: var(--text-3);
 }
 
@@ -3196,7 +3196,7 @@ input[type='range'] {
 }
 .tm-move button {
   color: var(--text-3);
-  font-size: 11px;
+  font-size: 0.6875rem;
   line-height: 1;
   padding: 3px 4px;
   border-radius: var(--radius-xs);
@@ -3216,7 +3216,7 @@ input[type='range'] {
 }
 .tm-name {
   font-family: inherit;
-  font-size: 13px;
+  font-size: 0.8125rem;
   font-weight: 550;
   color: var(--text-1);
   background: none;
@@ -3233,7 +3233,7 @@ input[type='range'] {
 }
 .tm-cnt {
   font-family: var(--font-mono);
-  font-size: 10.5px;
+  font-size: 0.65625rem;
   color: var(--text-3);
   flex-shrink: 0;
 }
@@ -3266,7 +3266,7 @@ input[type='range'] {
   display: flex;
   align-items: center;
   gap: 7px;
-  font-size: 11px;
+  font-size: 0.6875rem;
   color: var(--text-3);
 }
 .tm-icon {
@@ -3276,7 +3276,7 @@ input[type='range'] {
   border-radius: var(--radius-sm);
   background: var(--hover);
   font-family: inherit;
-  font-size: 12px;
+  font-size: 0.75rem;
   color: var(--text-1);
   outline: none;
 }
@@ -3310,7 +3310,7 @@ input[type='range'] {
   border-radius: var(--radius-sm);
   background: var(--hover);
   font-family: inherit;
-  font-size: 12px;
+  font-size: 0.75rem;
   color: var(--text-1);
   max-width: 190px;
   outline: none;
@@ -3330,7 +3330,7 @@ input[type='range'] {
   padding: 9px 11px;
   border-radius: var(--radius-md);
   background: var(--accent-soft);
-  font-size: 12px;
+  font-size: 0.75rem;
   color: var(--text-2);
 }
 .tm-confirm .card-actions {
@@ -3343,7 +3343,7 @@ input[type='range'] {
   align-items: center;
   gap: 8px;
   margin-top: 4px;
-  font-size: 12.5px;
+  font-size: 0.78125rem;
   color: var(--text-2);
   cursor: pointer;
 }
@@ -3367,7 +3367,7 @@ input[type='range'] {
   padding: 6px 8px;
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
-  font-size: 12.5px;
+  font-size: 0.78125rem;
   cursor: pointer;
 }
 .rn-mode.on {
@@ -3424,7 +3424,7 @@ input[type='range'] {
 .al-target {
   width: 100%;
   font-family: inherit;
-  font-size: 13px;
+  font-size: 0.8125rem;
   color: var(--text-1);
   background: var(--hover);
   border: 1px solid var(--border-strong);
@@ -3477,7 +3477,7 @@ input[type='range'] {
   white-space: nowrap;
 }
 .al-main b {
-  font-size: 13px;
+  font-size: 0.8125rem;
   font-weight: 550;
   color: var(--text-1);
 }
@@ -3488,7 +3488,7 @@ input[type='range'] {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
-  font-size: 12.5px;
+  font-size: 0.78125rem;
   color: var(--text-2);
 }
 .al-row .chip {
@@ -3506,12 +3506,12 @@ input[type='range'] {
   margin-bottom: 12px;
   border-radius: var(--radius-md);
   background: var(--accent-soft);
-  font-size: 12.5px;
+  font-size: 0.78125rem;
   color: var(--text-2);
 }
 .banner-go {
   font-family: inherit;
-  font-size: 12.5px;
+  font-size: 0.78125rem;
   color: var(--accent);
   background: none;
   border: 1px solid var(--accent-soft);
@@ -3531,7 +3531,7 @@ input[type='range'] {
 /* ── 状态栏里可点的两项 ── */
 .sb-btn {
   font-family: inherit;
-  font-size: 11.5px;
+  font-size: 0.71875rem;
   color: var(--text-3);
   background: none;
   border: none;
@@ -3551,7 +3551,7 @@ input[type='range'] {
   border-radius: var(--radius-xs);
   background: var(--accent);
   color: #fff;
-  font-size: 10.5px;
+  font-size: 0.65625rem;
 }
 
 /* ── 右栏：历史版本 ── */
@@ -3582,7 +3582,7 @@ input[type='range'] {
   justify-content: space-between;
   gap: 8px;
   font-family: inherit;
-  font-size: 12px;
+  font-size: 0.75rem;
   color: var(--text-2);
   background: none;
   border: none;
@@ -3597,7 +3597,7 @@ input[type='range'] {
 }
 .ver-reason {
   flex-shrink: 0;
-  font-size: 11px;
+  font-size: 0.6875rem;
   color: var(--text-3);
 }
 
@@ -3610,7 +3610,7 @@ input[type='range'] {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  font-size: 12.5px;
+  font-size: 0.78125rem;
 }
 /* list 那一行例外：chip 会换行，横着排在窄栏里挤成一团，所以名字在上、值在下 */
 .prop-row.stack {
@@ -3640,7 +3640,7 @@ input[type='range'] {
   min-width: 0;
   flex: 1;
   font-family: inherit;
-  font-size: 12.5px;
+  font-size: 0.78125rem;
   color: var(--text-1);
   background: var(--hover);
   border: 1px solid var(--border-strong);
@@ -3661,7 +3661,7 @@ input[type='range'] {
 .prop-flag {
   flex-basis: 100%;
   text-align: right;
-  font-size: 11px;
+  font-size: 0.6875rem;
   line-height: 1.2;
   color: var(--accent);
 }
@@ -3681,7 +3681,7 @@ input[type='range'] {
   color: var(--text-3);
   opacity: 0;
   pointer-events: none;
-  font-size: 13px;
+  font-size: 0.8125rem;
   line-height: 1;
   padding: 2px 5px;
   border-radius: var(--radius-xs);
@@ -3710,7 +3710,7 @@ input[type='range'] {
 .prop-add {
   align-self: flex-start;
   font-family: inherit;
-  font-size: 12px;
+  font-size: 0.75rem;
   color: var(--text-3);
   border: 1px dashed var(--border-strong);
   border-radius: var(--radius-sm);
@@ -3734,7 +3734,7 @@ input[type='range'] {
   align-items: center;
   flex-wrap: wrap;
   gap: 2px;
-  font-size: 11.5px;
+  font-size: 0.71875rem;
   padding: 0 8px 8px;
 }
 /* 长值（日期时间、一段长文本属性）截断，而不是把整行挤到下一行去 */
@@ -3779,12 +3779,12 @@ input[type='range'] {
   flex-direction: column;
   gap: 2px;
   margin-bottom: 6px;
-  font-size: 11.5px;
+  font-size: 0.71875rem;
   color: var(--text-3);
 }
 .ch-sub .net-cur {
   margin-left: 0;
-  font-size: 12px;
+  font-size: 0.75rem;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -3809,7 +3809,7 @@ input[type='range'] {
   background: none;
   color: var(--text-2);
   font-family: inherit;
-  font-size: 12px;
+  font-size: 0.75rem;
   text-align: left;
 }
 .ch-line:hover {
@@ -3824,7 +3824,7 @@ input[type='range'] {
 }
 .ch-when {
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 0.6875rem;
   color: var(--text-3);
   flex-shrink: 0;
 }
@@ -3844,7 +3844,7 @@ input[type='range'] {
 }
 .ch-tag {
   font-style: normal;
-  font-size: 10.5px;
+  font-size: 0.65625rem;
   flex-shrink: 0;
   padding: 0 4px;
   border-radius: var(--radius-xs);
@@ -3864,7 +3864,7 @@ input[type='range'] {
   background: none;
   color: var(--text-3);
   font-family: inherit;
-  font-size: 11px;
+  font-size: 0.6875rem;
   text-align: left;
 }
 .ch-more:hover {
@@ -3882,7 +3882,7 @@ input[type='range'] {
   background: none;
   color: var(--text-3);
   font-family: inherit;
-  font-size: 11px;
+  font-size: 0.6875rem;
   cursor: pointer;
 }
 .rp-switch:hover {
@@ -3902,14 +3902,14 @@ input[type='range'] {
   gap: 1px;
 }
 .rp-target {
-  font-size: 12.5px;
+  font-size: 0.78125rem;
   color: var(--text-1);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 .rp-meta {
-  font-size: 11px;
+  font-size: 0.6875rem;
   color: var(--text-3);
 }
 .rp-list {
@@ -3931,7 +3931,7 @@ input[type='range'] {
   background: none;
   color: var(--text-2);
   font-family: inherit;
-  font-size: 11.5px;
+  font-size: 0.71875rem;
   text-align: left;
   cursor: pointer;
 }
@@ -3951,7 +3951,7 @@ input[type='range'] {
   white-space: nowrap;
 }
 .rp-more {
-  font-size: 11px;
+  font-size: 0.6875rem;
   color: var(--text-3);
 }
 .rp-do {
@@ -3963,7 +3963,7 @@ input[type='range'] {
   background: var(--bg-panel);
   color: var(--text-2);
   font-family: inherit;
-  font-size: 11.5px;
+  font-size: 0.71875rem;
   cursor: pointer;
 }
 .rp-do:hover {
@@ -4001,7 +4001,7 @@ input[type='range'] {
   border: none;
   background: none;
   font-family: inherit;
-  font-size: 12px;
+  font-size: 0.75rem;
   text-align: left;
   color: var(--text-2);
 }
@@ -4018,7 +4018,7 @@ input[type='range'] {
 .cy-what em {
   font-style: normal;
   flex-shrink: 0;
-  font-size: 11px;
+  font-size: 0.6875rem;
   color: var(--accent);
 }
 .cy-do,
@@ -4028,7 +4028,7 @@ input[type='range'] {
   background: none;
   color: var(--text-3);
   font-family: inherit;
-  font-size: 11px;
+  font-size: 0.6875rem;
   cursor: pointer;
 }
 .cy-do {
@@ -4042,7 +4042,7 @@ input[type='range'] {
 }
 .cy-x {
   padding: 2px 5px;
-  font-size: 13px;
+  font-size: 0.8125rem;
   line-height: 1;
 }
 .cy-x:hover {
@@ -4072,7 +4072,7 @@ input[type='range'] {
   background: none;
   color: var(--text-3);
   font-family: inherit;
-  font-size: 11px;
+  font-size: 0.6875rem;
   cursor: pointer;
 }
 .sr-order:hover {
@@ -4104,7 +4104,7 @@ input[type='range'] {
   background: var(--hover);
   color: var(--text-2);
   font-family: var(--font-ui);
-  font-size: 12.5px;
+  font-size: 0.78125rem;
   line-height: 1.6;
 }
 .md-prose .qres[data-state='ready'],
@@ -4148,7 +4148,7 @@ input[type='range'] {
 .md-prose .qres-meta {
   flex: 1;
   color: var(--text-3);
-  font-size: 11.5px;
+  font-size: 0.71875rem;
   font-variant-numeric: tabular-nums;
 }
 .md-prose .qres-hint,
@@ -4156,7 +4156,7 @@ input[type='range'] {
 .md-prose .qres-note,
 .md-prose .qres-more {
   color: var(--text-3);
-  font-size: 11.5px;
+  font-size: 0.71875rem;
 }
 .md-prose .qres-note {
   /* 「全文索引还在建，这次按字面查」这类让步：要说出来，但不该像错误那样红 */
@@ -4176,7 +4176,7 @@ input[type='range'] {
 .md-prose .qres-caret {
   margin: 0;
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: 0.75rem;
   white-space: pre;
   overflow-x: auto;
   color: var(--text-2);
@@ -4195,7 +4195,7 @@ input[type='range'] {
   background: var(--bg-glass);
   color: var(--text-3);
   font-family: inherit;
-  font-size: 11px;
+  font-size: 0.6875rem;
   cursor: pointer;
 }
 .md-prose .qres-save:hover {
@@ -4215,7 +4215,7 @@ input[type='range'] {
   background: var(--bg-panel);
   color: var(--text-1);
   font-family: inherit;
-  font-size: 11.5px;
+  font-size: 0.71875rem;
 }
 .md-prose .qres-savebox button {
   padding: 1px 7px;
@@ -4224,12 +4224,12 @@ input[type='range'] {
   background: none;
   color: var(--text-2);
   font-family: inherit;
-  font-size: 11px;
+  font-size: 0.6875rem;
   cursor: pointer;
 }
 .md-prose .qres-savebox em {
   color: var(--text-3);
-  font-size: 11px;
+  font-size: 0.6875rem;
   font-style: normal;
 }
 
@@ -4253,7 +4253,7 @@ input[type='range'] {
 .md-prose .qres-table {
   border-collapse: collapse;
   width: 100%;
-  font-size: 12px;
+  font-size: 0.75rem;
 }
 .md-prose .qres-table th,
 .md-prose .qres-table td {
@@ -4265,7 +4265,7 @@ input[type='range'] {
 .md-prose .qres-table th {
   color: var(--text-3);
   font-weight: 500;
-  font-size: 11px;
+  font-size: 0.6875rem;
 }
 .md-prose .qres-table tr:last-child td {
   border-bottom: none;
@@ -4287,12 +4287,12 @@ input[type='range'] {
 .md-prose .qres-card em {
   margin-left: auto;
   color: var(--text-3);
-  font-size: 11px;
+  font-size: 0.6875rem;
   font-style: normal;
   white-space: nowrap;
 }
 .md-prose .qres-list.tight {
-  font-size: 12px;
+  font-size: 0.75rem;
 }
 .md-prose .qres-dow {
   color: var(--text-3);
@@ -4327,7 +4327,7 @@ input[type='range'] {
 .md-prose .qres-mon h6 {
   margin: 0 0 3px;
   color: var(--text-3);
-  font-size: 11px;
+  font-size: 0.6875rem;
   font-weight: 600;
   letter-spacing: 0.02em;
 }
@@ -4343,7 +4343,7 @@ input[type='range'] {
 .md-prose .qres-day b {
   display: block;
   color: var(--text-3);
-  font-size: 11px;
+  font-size: 0.6875rem;
   font-weight: 500;
   font-variant-numeric: tabular-nums;
 }
@@ -4351,7 +4351,7 @@ input[type='range'] {
   display: block;
   max-width: 100%;
   overflow: hidden;
-  font-size: 11.5px;
+  font-size: 0.71875rem;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -4382,7 +4382,7 @@ input[type='range'] {
 .lib-scroll h4 {
   margin: 0 0 6px;
   color: var(--text-2);
-  font-size: 12px;
+  font-size: 0.75rem;
   font-weight: 600;
   letter-spacing: 0.03em;
 }
@@ -4407,7 +4407,7 @@ input[type='range'] {
 .lib-main b {
   display: block;
   color: var(--text-1);
-  font-size: 13px;
+  font-size: 0.8125rem;
   font-weight: 600;
 }
 .lib-body {
@@ -4419,7 +4419,7 @@ input[type='range'] {
   line-clamp: 3;
   overflow: hidden;
   color: var(--text-3);
-  font-size: 11.5px;
+  font-size: 0.71875rem;
   line-height: 1.5;
   white-space: pre-wrap;
   word-break: break-word;
@@ -4428,11 +4428,11 @@ input[type='range'] {
   display: block;
   margin-top: 2px;
   color: var(--text-3);
-  font-size: 11px;
+  font-size: 0.6875rem;
 }
 .lib-tag {
   color: var(--text-3);
-  font-size: 11px;
+  font-size: 0.6875rem;
   white-space: nowrap;
 }
 .lib-new {
@@ -4458,7 +4458,7 @@ input[type='range'] {
   background: var(--bg-panel);
   color: var(--text-1);
   font-family: inherit;
-  font-size: 12.5px;
+  font-size: 0.78125rem;
 }
 .lib-new select {
   padding: 3px 6px;
@@ -4467,7 +4467,7 @@ input[type='range'] {
   background: var(--bg-panel);
   color: var(--text-2);
   font-family: inherit;
-  font-size: 12px;
+  font-size: 0.75rem;
 }
 .lib-edit {
   width: 100%;
@@ -4478,7 +4478,7 @@ input[type='range'] {
   background: var(--bg-panel);
   color: var(--text-1);
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: 0.75rem;
   line-height: 1.6;
   resize: vertical;
 }
@@ -4514,14 +4514,14 @@ input[type='range'] {
   overflow: hidden;
   color: var(--text-2);
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: 0.75rem;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 .tr-hint {
   margin: 0;
   color: var(--text-3);
-  font-size: 12px;
+  font-size: 0.75rem;
   line-height: 1.6;
 }
 .tr-grid {
@@ -4540,7 +4540,7 @@ input[type='range'] {
   gap: 8px;
   padding: 6px 9px;
   background: var(--bg-glass-strong);
-  font-size: 12px;
+  font-size: 0.75rem;
 }
 .tr-grid span {
   color: var(--text-3);
@@ -4563,7 +4563,7 @@ input[type='range'] {
 .tr-list li {
   color: var(--text-2);
   font-family: var(--font-mono);
-  font-size: 11.5px;
+  font-size: 0.71875rem;
   line-height: 1.75;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -4601,7 +4601,7 @@ input[type='range'] {
 .bk-row .chip {
   flex: 0 0 auto;
   padding: 2px 8px;
-  font-size: 11px;
+  font-size: 0.6875rem;
 }
 .bk-switch {
   display: inline-flex;
@@ -4609,7 +4609,7 @@ input[type='range'] {
   gap: 6px;
   margin-right: auto;
   color: var(--text-2);
-  font-size: 12px;
+  font-size: 0.75rem;
 }
 .tr-progress {
   height: 4px;
@@ -4639,7 +4639,7 @@ input[type='range'] {
   border-radius: var(--radius-sm);
   background: var(--accent-soft);
   color: var(--danger, var(--accent));
-  font-size: 12px;
+  font-size: 0.75rem;
   line-height: 1.6;
   white-space: pre-wrap;
   word-break: break-word;
@@ -4659,7 +4659,7 @@ input[type='range'] {
   background: none;
   color: var(--text-2);
   font: inherit;
-  font-size: 12.5px;
+  font-size: 0.78125rem;
   white-space: nowrap;
   transition: all 0.15s;
 }
@@ -4692,7 +4692,7 @@ input[type='range'] {
 }
 .tr-body code {
   font-family: var(--font-mono);
-  font-size: 11.5px;
+  font-size: 0.71875rem;
   color: var(--text-2);
 }
 
@@ -4718,7 +4718,7 @@ input[type='range'] {
   text-align: left;
   padding: 7px 9px;
   border-radius: var(--radius-sm);
-  font-size: 13px;
+  font-size: 0.8125rem;
   color: var(--text-2);
 }
 .settings-tab:hover {
@@ -4754,31 +4754,31 @@ input[type='range'] {
 }
 .set-row .k {
   min-width: 108px;
-  font-size: 13px;
+  font-size: 0.8125rem;
   color: var(--text-1);
 }
 .set-row .v {
   flex: 1;
-  font-size: 12px;
+  font-size: 0.75rem;
   color: var(--text-3);
 }
 .set-row .v.mono {
   font-family: var(--font-mono);
-  font-size: 11.5px;
+  font-size: 0.71875rem;
   word-break: break-all;
 }
 .set-row .v.keys kbd {
   margin-right: 4px;
 }
 .set-note {
-  font-size: 12px;
+  font-size: 0.75rem;
   line-height: 1.6;
   color: var(--text-3);
   margin: 10px 0 0;
 }
 .set-note code {
   font-family: var(--font-mono);
-  font-size: 11.5px;
+  font-size: 0.71875rem;
   color: var(--text-2);
 }
 .set-path {
@@ -4791,7 +4791,7 @@ input[type='range'] {
   flex: 1;
   min-width: 0;
   font-family: var(--font-mono);
-  font-size: 11.5px;
+  font-size: 0.71875rem;
   color: var(--text-2);
   word-break: break-all;
   padding: 6px 8px;
@@ -4806,7 +4806,7 @@ input[type='range'] {
 .set-search {
   width: 100%;
   padding: 7px 10px;
-  font-size: 13px;
+  font-size: 0.8125rem;
   color: var(--text-1);
   background: var(--bg-glass);
   border: 1px solid var(--border);
@@ -4815,7 +4815,7 @@ input[type='range'] {
 }
 .snippet .v {
   font-family: var(--font-mono);
-  font-size: 11.5px;
+  font-size: 0.71875rem;
 }
 
 /* ── 幻灯片演示层（期-09c §四）──────────────────────────────────────
@@ -4853,11 +4853,11 @@ body.no-glass .slides-overlay {
   gap: 14px;
   padding: 0 18px;
   border-bottom: 1px solid var(--border);
-  font-size: 12.5px;
+  font-size: 0.78125rem;
   color: var(--text-3);
 }
 .sl-title {
-  font-size: 13.5px;
+  font-size: 0.84375rem;
   font-weight: 650;
   color: var(--text-1);
   overflow: hidden;
@@ -4867,7 +4867,7 @@ body.no-glass .slides-overlay {
 .sl-close {
   flex: 0 0 auto;
   padding: 5px 11px;
-  font-size: 12px;
+  font-size: 0.75rem;
   color: var(--text-2);
   background: var(--hover);
   border: 1px solid var(--border);
@@ -4904,13 +4904,13 @@ body.no-glass .slides-overlay {
   gap: 16px;
   padding: 0 18px;
   border-top: 1px solid var(--border);
-  font-size: 12px;
+  font-size: 0.75rem;
   color: var(--text-3);
 }
 .sl-count {
   flex: 0 0 auto;
   font-family: var(--font-mono);
-  font-size: 12.5px;
+  font-size: 0.78125rem;
   color: var(--text-2);
 }
 .sl-hint {
@@ -4937,7 +4937,7 @@ body.no-glass .slides-overlay {
   gap: 2px 12px;
   padding: 8px 0;
   border-bottom: 1px solid var(--border);
-  font-size: 12.5px;
+  font-size: 0.78125rem;
 }
 .sync-face .k {
   color: var(--text-3);
@@ -4949,7 +4949,7 @@ body.no-glass .slides-overlay {
 .sync-face .n {
   grid-column: 2;
   color: var(--text-3);
-  font-size: 11.5px;
+  font-size: 0.71875rem;
 }
 .sync-state {
   margin: 12px 0 4px;
@@ -4957,7 +4957,7 @@ body.no-glass .slides-overlay {
   border-radius: var(--radius-sm);
   border: 1px solid var(--border);
   background: var(--hover);
-  font-size: 13px;
+  font-size: 0.8125rem;
   color: var(--text-1);
 }
 .sync-state[data-verdict='conflict'],

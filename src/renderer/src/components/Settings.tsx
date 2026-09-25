@@ -4,6 +4,7 @@ import { useStore, type SheetTab } from '@/store'
 import { THEMES } from '@/themes'
 import { COMMANDS, keyLabel, type CommandGroup } from '@/commands'
 import { keepClamp } from '../../../shared/backupFormat'
+import { FONT_ROOT_MAX, FONT_ROOT_MIN, fontRootClamp } from '../../../shared/types'
 import type { AppInfo } from '../../../shared/types'
 
 const TABS: { id: SheetTab; label: string; hint: string }[] = [
@@ -134,6 +135,27 @@ function Look(): JSX.Element {
             onClick={() => void patch({ accent: i === 0 ? null : color })}
           />
         ))}
+      </div>
+
+      <div className="sec-label" style={{ padding: 0, marginBottom: 9 }}>
+        字号
+      </div>
+      <div className="slider-row">
+        <label htmlFor="fontRoot">整条阶梯</label>
+        <input
+          id="fontRoot"
+          type="range"
+          min={FONT_ROOT_MIN}
+          max={FONT_ROOT_MAX}
+          step={1}
+          value={fontRootClamp(settings.fontRoot)}
+          onChange={(e) => void patch({ fontRoot: Number(e.target.value) })}
+        />
+        <b>{fontRootClamp(settings.fontRoot)}px</b>
+      </div>
+      <div className="set-note" style={{ marginTop: 2 }}>
+        正文与界面共用这一颗：<code>16px</code> 是默认，往两头整条字号阶梯等比缩放。
+        上下限是实测出来的，不是拍的——再往大，图标按钮里的字会画到自己那格外面去。
       </div>
 
       <div className="sec-label" style={{ padding: 0, marginBottom: 9 }}>

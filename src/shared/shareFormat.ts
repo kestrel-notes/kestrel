@@ -628,6 +628,10 @@ export interface 骨架入 {
   /** `color-scheme`：原生控件（那颗静态勾选框）与滚动条跟着它走 */
   配色: 'light' | 'dark'
   内联张数: number
+  /** 导出那一台机器上**根元素的计算字号**（#139）。产物里的样式表全是 rem（= 换算前那个 px/16），
+   *  而 rem 量的就是根字号——不带这一句，用户把字号调到 18 那档分享出去，别人看到的却是 16 那一档：
+   *  「我看到的就是别人看到的」这句话就断了。 */
+  根字号?: string
 }
 
 /** 一个 token 值能不能进产物：带 `url()` 或本机路径的一律不带。
@@ -645,6 +649,10 @@ export function 骨架(o: 骨架入): string {
     .filter(([, v]) => !变量不许(v))
     .map(([k, v]) => `${k}:${v}`)
     .join(';')
+  // 根字号只认「一个数 + px/rem/%」这一种形状：它是从 `getComputedStyle` 读来的，
+  // 正常就是 `18px`，但产物是要在别人机器上打开的单文件——形状不对就退回默认那一档 16px，
+  // 而不是把半截 CSS 拼进 `<style>`（拼坏了是整个文件没有样子）
+  const 根 = o.根字号 && /^\d+(\.\d+)?(px|rem|%)$/.test(o.根字号) ? o.根字号 : '16px'
   return `<!doctype html>
 <html lang="zh-CN" data-theme="${转义(o.主题)}">
 <head>
@@ -652,7 +660,7 @@ export function 骨架(o: 骨架入): string {
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src data:; style-src 'unsafe-inline'">
 <title>${转义(o.标题)}</title>
-<style>:root{color-scheme:${o.配色};${变量表}}${o.css}${分享样式}</style>
+<style>:root{color-scheme:${o.配色};${变量表}}html{font-size:${根}}${o.css}${分享样式}</style>
 </head>
 <body>
 <main class="share">

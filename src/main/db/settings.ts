@@ -1,5 +1,10 @@
 import { keepClamp } from '../../shared/backupFormat'
-import { DEFAULT_SETTINGS, type Settings, type ThemeName } from '../../shared/types'
+import {
+  DEFAULT_SETTINGS,
+  fontRootClamp,
+  type Settings,
+  type ThemeName,
+} from '../../shared/types'
 import { getDatabase } from './index'
 
 /** 设置存成 key/value，value 是 JSON。
@@ -59,6 +64,9 @@ function coerce(raw: Partial<Settings>): Settings {
     syncDir: typeof raw.syncDir === 'string' ? raw.syncDir : null,
     // 同上：那一个夹可能在 U 盘上、今天没插。存的是"上次放哪儿了"这句话，不是承诺它还在
     shareLastDir: typeof raw.shareLastDir === 'string' ? raw.shareLastDir : null,
+    // 字号那一档贴边而不是报错：库里存着 8 或 40 的时候，界面上要的仍是「一个能看的界面」，
+    // 而不是一整片没有定义的 CSS 变量
+    fontRoot: fontRootClamp(raw.fontRoot),
   }
 }
 

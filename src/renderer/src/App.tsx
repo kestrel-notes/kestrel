@@ -3,6 +3,7 @@ import { useEffect } from 'react'
 import { useStore } from '@/store'
 import { findByKey, keyOf } from '@/commands'
 import { resolveTheme } from '@/themes'
+import { fontRootClamp } from '../../shared/types'
 import { TitleBar } from '@/components/TitleBar'
 import { Sidebar } from '@/components/Sidebar'
 import { Editor } from '@/components/Editor'
@@ -62,6 +63,14 @@ export default function App(): JSX.Element {
   useEffect(() => {
     document.body.classList.toggle('no-glass', !settings.glass)
   }, [settings.glass])
+
+  // 字号那一格落在 `documentElement` 而不是 `body`：rem 量的就是根元素的字号，
+  // 写在 body 上只会让 body 自己变，`html{font-size:var(--fs-root,16px)}` 永远读不到它
+  // （`tokens.css` 那一条零点）。写自定义属性而不是直接写 `font-size`：主题那条链里没有这一项，
+  // 重载与换主题都不用重排规则顺序。
+  useEffect(() => {
+    document.documentElement.style.setProperty('--fs-root', `${fontRootClamp(settings.fontRoot)}px`)
+  }, [settings.fontRoot])
 
   useEffect(() => {
     document.body.classList.toggle('focus-mode', focus)

@@ -129,7 +129,7 @@ const wikiPlugin = ViewPlugin.fromClass(
 )
 
 const theme = EditorView.theme({
-  '&': { height: 'auto', fontSize: '13px', backgroundColor: 'transparent', color: 'var(--text-2)' },
+  '&': { height: 'auto', fontSize: '0.8125rem', backgroundColor: 'transparent', color: 'var(--text-2)' },
   '&.cm-focused': { outline: 'none' },
   '.cm-scroller': { fontFamily: 'var(--font-mono)', lineHeight: '1.95', overflow: 'visible' },
   '.cm-content': { padding: '0', caretColor: 'var(--accent)' },

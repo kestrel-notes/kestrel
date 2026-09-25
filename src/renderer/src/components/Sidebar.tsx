@@ -141,7 +141,7 @@ function TopicSide(): JSX.Element {
               borderRadius: 9,
               border: '1px solid var(--border-strong)',
               background: 'var(--hover)',
-              fontSize: 13,
+              fontSize: '0.8125rem',
               outline: 'none',
             }}
           />
