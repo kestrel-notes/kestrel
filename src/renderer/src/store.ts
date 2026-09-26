@@ -544,7 +544,22 @@ export const useStore = create<AppState>()((set, get) => {
     const gate = 要闸门 ? roundTrip(entry.content) : null
     const blocked = gate !== null && !gate.lossless
 
+    // 一篇一格：装成「当前这一篇」就得占住当前那一格。`Editor.tsx:502` 只给 live ∩ tabs
+    // 那几篇画 pane，两处少一处就是「标签亮着、中间什么都没有」——开机那一路早就补过
+    // （init 里「空着的后果」那条注释），但 openDate / newArticle / 升格 / 删掉日记之后回今天
+    // 这四条直接 applyEntry 的路径没补，点侧栏「今天」就是一片空白。
+    const 占着格 = get().tabs.some((t) => t.entryId === entry.id)
+
     set((s) => ({
+      ...(占着格
+        ? {}
+        : {
+            tabs: s.tabs.length
+              ? s.tabs.map((t, i) => (i === s.activeTab ? makeTab(entry.id) : t))
+              : [makeTab(entry.id)],
+            activeTab: s.tabs.length ? s.activeTab : 0,
+            live: 挂上(entry.id),
+          }),
       currentId: entry.id,
       entry,
       title: entry.title ?? '',
@@ -561,6 +576,12 @@ export const useStore = create<AppState>()((set, get) => {
       // 比在每个动作里各记一次少一处会漏的地方
       tabLabels: { ...s.tabLabels, [entry.id]: 标签文案(entry) },
     }))
+    if (!占着格) {
+      // 刚占上的那一格之外还有几格只是「开在那儿」，名字一并取；工作区也跟着换，
+      // 否则重启回到的是换之前那排标签，跟用户点掉的那一篇对不上
+      补标签(get().tabs.map((t) => t.entryId))
+      写工作区()
+    }
     // 换文档 = 网络整体换掉，快照作废（否则回看一篇内容相同的旧文档会拿上一次的结果糊弄）
     networkKey = ''
     void refreshNetwork()
@@ -1145,7 +1166,9 @@ export const useStore = create<AppState>()((set, get) => {
     },
 
     async setMode(mode) {
-      if (mode === get().mode) return
+      // 「今天」那一格点第二次也要真的回今天：已经在日记视图时早退过一次，
+      // 就成了停在 9 月 21 日那篇上按了没反应
+      if (mode === get().mode && mode !== 'diary') return
       await get().flush()
       set({ mode })
       if (mode === 'diary') {
