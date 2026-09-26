@@ -98,13 +98,25 @@
   <section class="features" id="features">
     <article class="feat">
       <div class="feat-copy" data-reveal>
+        <p class="kicker">今天</p>
+        <h2>一打开就是今天这一页</h2>
+        <p>左边是这一年的热度，中间是今天写的，右边替你把这一篇的来路摆好：大纲、局部图谱、出链、别人怎么指过来。写下 <code>[[某篇]]</code>，那一篇的正文就直接嵌在这一页里读。</p>
+        <a class="feat-link" href="guide.html#screens">从「今天」开始用</a>
+      </div>
+      <figure class="feat-fig" data-reveal style="--i:1">
+        <img class="feat-shot" src="assets/screenshots/g-today.webp" class="feat-shot"  alt="今天这一页：左栏是全年热度与最近记录，中间是当天日记并嵌着另外两篇的正文，右栏是局部图谱与出链" loading="lazy" srcset="assets/screenshots/g-today.webp 1440w, assets/screenshots/g-today@720w.webp 720w" sizes="(max-width: 760px) 92vw, 660px" width="1440" height="900">
+      </figure>
+    </article>
+
+    <article class="feat">
+      <div class="feat-copy" data-reveal>
         <p class="kicker">图谱</p>
         <h2>写够几十条，笔记会长出自己的形状</h2>
         <p>按 <kbd>Ctrl+G</kbd> 全屏打开。哪个主题圈了最多篇、哪两堆之间只有一条线连着，一眼看得出来。</p>
         <a class="feat-link" href="guide.html#organize">怎么用图谱</a>
       </div>
       <figure class="feat-fig" data-reveal style="--i:1">
-        <img class="feat-shot" src="assets/screenshots/graph.png" alt="Kestrel 右栏的局部图谱与反向链接，节点按日记 / 文章 / 主题分色" loading="lazy">
+        <img class="feat-shot" src="assets/screenshots/g-global.webp" class="feat-shot"  alt="全屏知识图谱：102 条记录 155 条连线，方块按主题着色，圆圈是还没写出来的目标" loading="lazy" srcset="assets/screenshots/g-global.webp 1440w, assets/screenshots/g-global@720w.webp 720w" sizes="(max-width: 760px) 92vw, 660px" width="1440" height="900">
       </figure>
     </article>
 
@@ -116,7 +128,7 @@
         <a class="feat-link" href="guide.html#markdown">支持的语法清单</a>
       </div>
       <figure class="feat-fig" data-reveal style="--i:1">
-        <div class="shot-pending"><span>这一格放：一张正文截图，同屏含代码围栏、表格、公式与 Mermaid 图</span><span>取景 <code>g-md.png</code> · 待实机拍</span></div>
+        <img class="feat-shot" src="assets/screenshots/g-md.webp" class="feat-shot"  alt="同一屏里的对照表、写放大公式、Mermaid 分层图、SQL 代码块与 Callout" loading="lazy" srcset="assets/screenshots/g-md.webp 1440w, assets/screenshots/g-md@720w.webp 720w" sizes="(max-width: 760px) 92vw, 660px" width="1440" height="900">
       </figure>
     </article>
 
@@ -128,7 +140,7 @@
         <a class="feat-link" href="guide.html#links">链接、别名与嵌入</a>
       </div>
       <figure class="feat-fig" data-reveal style="--i:1">
-        <div class="shot-pending"><span>这一格放：一张正文里嵌着另一篇的截图，含块引用与悬停预览卡片</span><span>取景 <code>g-embed.png</code> · 待实机拍</span></div>
+        <img class="feat-shot" src="assets/screenshots/g-embed.webp" class="feat-shot"  alt="日记里用 ![[…]] 嵌进另外两篇的正文，带来源那一行的标题与可点的链接" loading="lazy" srcset="assets/screenshots/g-embed.webp 1440w, assets/screenshots/g-embed@720w.webp 720w" sizes="(max-width: 760px) 92vw, 660px" width="1440" height="900">
       </figure>
     </article>
 
@@ -140,7 +152,7 @@
         <a class="feat-link" href="guide.html#query">写第一个查询块</a>
       </div>
       <figure class="feat-fig" data-reveal style="--i:1">
-        <div class="shot-pending"><span>这一格放：一张查询块跑出表格视图的截图</span><span>取景 <code>g-query.png</code> · 待实机拍</span></div>
+        <img class="feat-shot" src="assets/screenshots/g-query.webp" class="feat-shot"  alt="正文里一个查询块跑出来的卡片结果，上面写着问句本身，右上角是「存为」" loading="lazy" srcset="assets/screenshots/g-query.webp 1440w, assets/screenshots/g-query@720w.webp 720w" sizes="(max-width: 760px) 92vw, 660px" width="1440" height="900">
       </figure>
     </article>
 
@@ -152,7 +164,7 @@
         <a class="feat-link" href="guide.html#safety">找回一篇删掉的</a>
       </div>
       <figure class="feat-fig" data-reveal style="--i:1">
-        <img class="feat-shot" src="assets/screenshots/bin.png" alt="回收站浮层，下面是一篇记录的历史版本列表" loading="lazy">
+        <img class="feat-shot" src="assets/screenshots/g-safety.webp" class="feat-shot"  alt="回收站浮层：删掉的那一篇带着删除时间，右边可以恢复或彻底删除" loading="lazy" srcset="assets/screenshots/g-safety.webp 1440w, assets/screenshots/g-safety@720w.webp 720w" sizes="(max-width: 760px) 92vw, 660px" width="1440" height="900">
       </figure>
     </article>
 
@@ -164,7 +176,7 @@
         <a class="feat-link" href="guide.html#keys">全部快捷键</a>
       </div>
       <figure class="feat-fig" data-reveal style="--i:1">
-        <img class="feat-shot" src="assets/screenshots/palette.png" alt="命令面板浮层，按分组列出可执行的命令" loading="lazy">
+        <img class="feat-shot" src="assets/screenshots/g-palette.webp" class="feat-shot"  alt="命令面板浮在正文上：按分组列出命令，右边标着各自的快捷键" loading="lazy" srcset="assets/screenshots/g-palette.webp 1440w, assets/screenshots/g-palette@720w.webp 720w" sizes="(max-width: 760px) 92vw, 660px" width="1440" height="900">
       </figure>
     </article>
 
@@ -176,7 +188,7 @@
         <a class="feat-link" href="guide.html#looks">换主题与加片段</a>
       </div>
       <figure class="feat-fig" data-reveal style="--i:1">
-        <div class="shot-pending"><span>这一格放：外观面板，四套主题缩略图并排（名字已是新的）</span><span>取景 <code>g-themes.png</code> · 待实机拍</span></div>
+        <img class="feat-shot" src="assets/screenshots/g-themes.webp" class="feat-shot"  alt="外观面板：白桦、麦秸、松林、薄荷四张缩略图并排，选中那套描着边" loading="lazy" srcset="assets/screenshots/g-themes.webp 1440w, assets/screenshots/g-themes@720w.webp 720w" sizes="(max-width: 760px) 92vw, 660px" width="1440" height="900">
       </figure>
     </article>
   </section>
