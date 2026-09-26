@@ -195,7 +195,7 @@ function Look(): JSX.Element {
       <Toggle
         on={settings.followSystem}
         title="跟随系统深浅色"
-        desc="系统切暗色时自动换到极夜黑，亮色时回到亮色主题"
+        desc="系统切暗色时自动换到松林，亮色时回到亮色主题"
         onClick={() => void patch({ followSystem: !settings.followSystem })}
       />
       <p className="set-note">

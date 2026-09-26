@@ -15,26 +15,26 @@ export interface ThemeMeta {
 export const THEMES: ThemeMeta[] = [
   {
     name: 'cloud',
-    label: '云雾白',
-    desc: '亮色默认',
+    label: '白桦',
+    desc: '亮色 · 默认',
     accents: ['#4f6ef7', '#7c5cf0', '#0ea5a5', '#e0526e'],
   },
   {
     name: 'paper',
-    label: '纸感暖',
+    label: '麦秸',
     desc: '亮色 · 长阅读',
     accents: ['#c2703f', '#8a6a3b', '#5c7a45', '#a34c3c'],
   },
   {
     name: 'midnight',
-    label: '极夜黑',
-    desc: '暗色默认',
+    label: '松林',
+    desc: '暗色 · 默认',
     accents: ['#7c9cff', '#a78bfa', '#38bdf8', '#34d399'],
   },
   {
     name: 'terminal',
-    label: '终端青',
-    desc: '暗色 · 极客',
+    label: '薄荷',
+    desc: '暗色 · 高对比',
     accents: ['#2ee6a8', '#7dd3fc', '#facc15', '#fb7185'],
   },
 ]

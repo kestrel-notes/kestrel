@@ -89,7 +89,7 @@ function createWindow(): BrowserWindow {
     frame: !frameless,
     title: 'Kestrel',
     icon: iconPath(),
-    // 底色跟云雾白主题的 --bg-base 一致：加载期间看到的不是白闪，而是应用底色
+    // 底色跟白桦主题的 --bg-base 一致：加载期间看到的不是白闪，而是应用底色
     backgroundColor: '#eef1f6',
     webPreferences: {
       preload: join(import.meta.dirname, '../preload/index.mjs'),
