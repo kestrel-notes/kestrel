@@ -2,7 +2,7 @@
 <html lang="zh-CN" data-theme="cloud">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>没有找到这个页面 · Kestrel</title>
 <meta name="robots" content="noindex">
 <script>(function(){var t='cloud';try{var v=localStorage.getItem('kestrel.theme');if(v==='cloud'||v==='paper'||v==='midnight'||v==='terminal')t=v}catch(e){};document.documentElement.setAttribute('data-theme',t)})();</script>
@@ -13,6 +13,8 @@
 <script src="assets/site.js" defer></script>
 </head>
 <body>
+<a class="skip" href="#main">跳到正文</a>
+
 <header class="topbar glass">
   <a class="brand" href="index.html">
     <svg width="26" height="26" viewBox="0 0 64 64" role="img" aria-label="Kestrel 标记">
@@ -22,18 +24,28 @@
     </svg>
     Kestrel
   </a>
-  <ul class="topbar-links">
-    <li><a href="index.html">主页</a></li>
+  <ul class="topbar-links" id="topbar-links">
+    <li><a href="index.html#features">亮点</a></li>
+    <li><a href="guide.html">使用说明</a></li>
     <li><a href="about.html">关于</a></li>
     <li><a href="donate.html">捐赠</a></li>
   </ul>
+  <div class="topbar-right">
+    <a class="icon-btn" href="https://github.com/fangjj1008/kestrel" aria-label="在 GitHub 上看源码">
+      <svg viewBox="0 0 16 16" aria-hidden="true" fill="currentColor"><path d="M8 0a8 8 0 0 0-2.53 15.59c.4.07.55-.17.55-.38l-.01-.66-1.2.26c-.62.13-.9-.3-.96-.58l-.26-.66c-.43-.18-.55-.44-.55-.44-.45-.29.03-.29.03-.29.5.04.76.51.76.51.76.51 1.17.77 1.46.42.04-.33.17-.55.31-.68-1.11-.13-2.28-.55-2.28-2.48 0-.55.2-1 .51-1.35-.05-.13-.22-.64.05-1.33 0 0 .41-.13 1.35.51a4.7 4.7 0 0 1 2.46 0c.94-.64 1.35-.51 1.35-.51.27.69.1 1.2.05 1.33.32.35.51.8.51 1.35 0 1.94-1.17 2.35-2.29 2.48.18.15.34.46.34.93l-.01 1.38c0 .21.15.46.55.38A8 8 0 0 0 8 0Z"></path></svg>
+    </a>
+    <button class="icon-btn nav-toggle" id="nav-toggle" type="button" aria-expanded="false" aria-controls="topbar-links" aria-label="打开菜单">
+      <svg viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M2 4.5h12M2 8h12M2 11.5h12"></path></svg>
+    </button>
+  </div>
 </header>
 
 <main id="main" class="narrow">
   <h1>404 · 这个地址下面没有内容</h1>
-  <p class="lede">本站只有三个页面，地址都在下面。也可能是你从旧版 README 里的某个锚点过来的。</p>
+  <p class="lede">本站只有四个页面，地址都在下面。也可能是你从旧版说明里的某个锚点过来的——旧锚点现在都在使用说明那一页。</p>
   <ul>
-    <li><a href="index.html">主页</a> — 功能、界面、快捷键、数据与隐私</li>
+    <li><a href="index.html">主页</a> — 七个亮点，看完再决定要不要装</li>
+    <li><a href="guide.html">使用说明</a> — 怎么记、怎么连、怎么捞回来，一节一件事</li>
     <li><a href="about.html">关于</a> — 缘起、技术栈、架构、许可、路线图</li>
     <li><a href="donate.html">捐赠</a> — 二维码与金额建议</li>
   </ul>
@@ -48,6 +60,7 @@
     <p>Copyright © 2026 fangjj1008 · AGPL-3.0-only</p>
     <nav aria-label="页脚链接">
       <a href="index.html">主页</a>
+      <a href="guide.html">使用说明</a>
       <a href="about.html">关于</a>
       <a href="donate.html">捐赠</a>
     </nav>

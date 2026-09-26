@@ -2,7 +2,7 @@
 <html lang="zh-CN" data-theme="cloud">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>关于 Kestrel</title>
 <meta name="description" content="Kestrel 的项目定位、技术栈、架构分层、版本与许可、路线图。本地优先笔记应用，Electron + React + node:sqlite，零原生模块。">
 <script>(function(){var t='cloud';try{var v=localStorage.getItem('kestrel.theme');if(v==='cloud'||v==='paper'||v==='midnight'||v==='terminal')t=v}catch(e){};document.documentElement.setAttribute('data-theme',t)})();</script>
@@ -24,18 +24,26 @@
     </svg>
     Kestrel
   </a>
-  <div class="theme-switch" id="theme-switch" role="group" aria-label="界面主题">
-    <button type="button" data-theme-value="cloud" style="--dot:#4f6ef7"><i aria-hidden="true"></i><span>云雾白</span></button>
-    <button type="button" data-theme-value="paper" style="--dot:#c2703f"><i aria-hidden="true"></i><span>纸感暖</span></button>
-    <button type="button" data-theme-value="midnight" style="--dot:#7c9cff"><i aria-hidden="true"></i><span>极夜黑</span></button>
-    <button type="button" data-theme-value="terminal" style="--dot:#2ee6a8"><i aria-hidden="true"></i><span>终端青</span></button>
-  </div>
-  <ul class="topbar-links">
-    <li><a href="index.html">主页</a></li>
+  <ul class="topbar-links" id="topbar-links">
+    <li><a href="index.html#features">亮点</a></li>
+    <li><a href="guide.html">使用说明</a></li>
     <li><a href="about.html" aria-current="page">关于</a></li>
     <li><a href="donate.html">捐赠</a></li>
-    <li><a href="https://github.com/fangjj1008/kestrel">源码在 GitHub</a></li>
   </ul>
+  <div class="topbar-right">
+    <div class="theme-switch" id="theme-switch" role="group" aria-label="网页主题">
+      <button type="button" data-theme-value="cloud" style="--dot:#4f6ef7" aria-pressed="true"><span>白桦</span></button>
+      <button type="button" data-theme-value="paper" style="--dot:#c2703f" aria-pressed="false"><span>麦秸</span></button>
+      <button type="button" data-theme-value="midnight" style="--dot:#7c9cff" aria-pressed="false"><span>松林</span></button>
+      <button type="button" data-theme-value="terminal" style="--dot:#2ee6a8" aria-pressed="false"><span>薄荷</span></button>
+    </div>
+    <a class="icon-btn" href="https://github.com/fangjj1008/kestrel" aria-label="在 GitHub 上看源码">
+      <svg viewBox="0 0 16 16" aria-hidden="true" fill="currentColor"><path d="M8 0a8 8 0 0 0-2.53 15.59c.4.07.55-.17.55-.38l-.01-.66-1.2.26c-.62.13-.9-.3-.96-.58l-.26-.66c-.43-.18-.55-.44-.55-.44-.45-.29.03-.29.03-.29.5.04.76.51.76.51.76.51 1.17.77 1.46.42.04-.33.17-.55.31-.68-1.11-.13-2.28-.55-2.28-2.48 0-.55.2-1 .51-1.35-.05-.13-.22-.64.05-1.33 0 0 .41-.13 1.35.51a4.7 4.7 0 0 1 2.46 0c.94-.64 1.35-.51 1.35-.51.27.69.1 1.2.05 1.33.32.35.51.8.51 1.35 0 1.94-1.17 2.35-2.29 2.48.18.15.34.46.34.93l-.01 1.38c0 .21.15.46.55.38A8 8 0 0 0 8 0Z"></path></svg>
+    </a>
+    <button class="icon-btn nav-toggle" id="nav-toggle" type="button" aria-expanded="false" aria-controls="topbar-links" aria-label="打开菜单">
+      <svg viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M2 4.5h12M2 8h12M2 11.5h12"></path></svg>
+    </button>
+  </div>
 </header>
 
 <div class="shell">
@@ -50,8 +58,8 @@
     </ul>
     <p class="nav-group" id="g-more">去别处</p>
     <ul aria-labelledby="g-more">
-      <li><a href="index.html#keys">快捷键表</a></li>
-      <li><a href="index.html#privacy">数据与隐私</a></li>
+      <li><a href="guide.html#keys">快捷键表</a></li>
+      <li><a href="guide.html#privacy">数据与隐私</a></li>
       <li><a href="donate.html">捐赠</a></li>
     </ul>
   </nav>
@@ -113,11 +121,11 @@
     <section id="roadmap">
       <h2>路线图</h2>
       <ul>
-        <li><strong>v0.1.0（当前）</strong>：版本号还停在这儿（没发过 Release），但里面已经装着十一期的活（第 11 期两半都做完了）——日记 + 文章 + 升格、双链 / 反链 / 局部与全局图谱、<strong>反复提到（思想重复度）</strong>、嵌套标签、属性、收藏、<kbd>Ctrl+F</kbd> 站内搜索、附件 / 表格 / Callout / 折叠 / 公式 / 脚注 / Mermaid、查询块与存查询 / 模板、图谱时间轴与主题编年史、标签页与工作区、CSS 片段与设置页重构、幻灯片与随机笔记，以及回收站 / 历史版本 / 每日快照这套安全网、<code>.md</code> 导出导回、<strong>文件夹同步（多端）</strong>、<strong>单篇只读分享（一个 <code>.html</code>，零 JS 零请求）</strong>。</li>
+        <li><strong>v0.1.0（当前）</strong>：已作为第一个 Release 发出去（安装包在未签名的情况下可装可跑）。版本号还停在 0，但里面已经装着十一期的活（第 11 期两半都做完了）——日记 + 文章 + 升格、双链 / 反链 / 局部与全局图谱、<strong>反复提到（思想重复度）</strong>、嵌套标签、属性、收藏、<kbd>Ctrl+F</kbd> 站内搜索、附件 / 表格 / Callout / 折叠 / 公式 / 脚注 / Mermaid、查询块与存查询 / 模板、图谱时间轴与主题编年史、标签页与工作区、CSS 片段与设置页重构、幻灯片与随机笔记，以及回收站 / 历史版本 / 每日快照这套安全网、<code>.md</code> 导出导回、<strong>文件夹同步（多端）</strong>、<strong>单篇只读分享（一个 <code>.html</code>，零 JS 零请求）</strong>。每一项怎么写怎么用，见<a href="guide.html">使用说明</a>。</li>
         <li><strong>还没做、也不打算偷偷做</strong>：一屏两栏的真分屏（<code>richView</code> 那颗编辑器单例得先换成注册表；两棵并存的代价量过了——多摆一棵可见的树，每一键耗时逐位不变，贵的是「哪一栏在编辑」在状态里没有位置，而自动保存正对着你的真日记）；端到端加密（要连带一期"口令忘了怎么办"的设计）；WebDAV / S3（改的是「零网络请求」那句承诺，那一句至今一个字没改）。</li>
-        <li><strong>第 11 期剩下的</strong>：主题包、语义检索 / AI、插件那套权限清单与显式授权。思想重复度那一半已经在「组织」那一节里了；<strong>文本相似度那一路按实测决定不做</strong>——三元组重叠那台仪器校过、代价可忽略，但今天没有任何一份语料能定出阈值（合成库天然无重复，真库只有 6 篇跨 1 个月），定低了它就是一面"你写的东西都差不多"的噪音墙。</li>
+        <li><strong>第 11 期剩下的</strong>：主题包、语义检索 / AI、插件那套权限清单与显式授权。思想重复度那一半已经做完了（在使用说明里叫<a href="guide.html#graph">反复提到</a>）；<strong>文本相似度那一路按实测决定不做</strong>——三元组重叠那台仪器校过、代价可忽略，但今天没有任何一份语料能定出阈值（合成库天然无重复，真库只有 6 篇跨 1 个月），定低了它就是一面"你写的东西都差不多"的噪音墙。</li>
       </ul>
-      <p>不做的事同样写清楚了：云同步（多端那一半是「你自己挑一个文件夹」，应用自己不联网）、协作与多人编辑、插件系统、移动端，见<a href="index.html#nongoals">非目标</a>。</p>
+      <p>不做的事同样写清楚了：云同步（多端那一半是「你自己挑一个文件夹」，应用自己不联网）、协作与多人编辑、插件系统、移动端，见<a href="guide.html#nongoals">非目标</a>。</p>
     </section>
   </main>
 </div>
@@ -128,6 +136,7 @@
     <nav aria-label="页脚链接">
       <a href="https://github.com/fangjj1008/kestrel/blob/main/LICENSE">AGPL-3.0-only</a>
       <a href="index.html">主页</a>
+      <a href="guide.html">使用说明</a>
       <a href="donate.html">捐赠</a>
     </nav>
   </div>

@@ -22,10 +22,31 @@
   --fs-body: 16px;
   --lh-body: 1.85;
   --max-text: 46rem;
+
+  /* 展示层用的标尺：轨道高、间距阶、字号阶、动效曲线。数值取自设计稿 §七。 */
+  --bar-h: 40px;
+  /* 顶栏高度单独一条：下拉菜单的 top、侧栏的 sticky 落点、锚点跳转的让位量都读它。
+     这几处以前各写各的 56px / 84px / 88px，手机档一改顶栏就会全部错位。 */
+  --topbar-h: 56px;
+  --sp-1: 8px;
+  --sp-2: 16px;
+  --sp-3: 24px;
+  --sp-4: 32px;
+  --sp-6: 64px;
+  --sp-8: 96px;
+  --sp-12: 144px;
+  --fs-hero: clamp(2.6rem, 7vw, 5.2rem);
+  --fs-h2: clamp(1.9rem, 3.6vw, 2.9rem);
+  --fs-h3: clamp(1.15rem, 1.8vw, 1.45rem);
+  --fs-kicker: 13px;
+  --ease-out: cubic-bezier(0.22, 0.61, 0.36, 1);
+  --dur-reveal: 600ms;
+  --dur-quick: 220ms;
+  --shadow-lift: 0 18px 48px -18px rgba(0, 0, 0, 0.28), 0 2px 8px rgba(0, 0, 0, 0.06);
 }
 
 /* --muted / --link / --brand-ink 是站层新增的三个取值：tokens 的 --text-3 与 --accent 在正文
-   小字号下达不到 WCAG AA（云雾白上约 4.0:1 与 3.8:1），暗色主题下的品牌红也一样，所以长文案
+   小字号下达不到 WCAG AA（白桦上约 4.0:1 与 3.8:1），暗色主题下的品牌红也一样，所以长文案
    与彩色小字都不直接用它们。 */
 
 [data-theme='cloud'] {
@@ -71,7 +92,9 @@
   --muted: #574e42;
   --link: #8a4a12;
   --brand-ink: #8f3a1c;
-  --font-body: var(--font-serif);
+  /* 与应用内同步：四套主题都走 --font-ui（docs/视觉设计系统.md §3.3 记的那次改动，
+     站点之前漏了，麦秸这一套一直在偷偷换字体）。 */
+  --font-body: var(--font-ui);
 }
 
 [data-theme='midnight'] {
@@ -128,7 +151,10 @@
 
 html {
   scroll-behavior: smooth;
-  scroll-padding-top: 88px;
+  scroll-padding-top: calc(var(--topbar-h) + 32px);
+  /* 手机浏览器会按自己判断的字号放大正文——这一站的字号阶是算过的，不让它改 */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 
 body {
@@ -142,6 +168,7 @@ body {
   background-attachment: fixed;
   color: var(--text-1);
   -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: var(--accent-soft);
   transition: background-color 0.3s ease, color 0.3s ease;
 }
 
@@ -194,15 +221,27 @@ a:hover {
 
 .topbar {
   position: sticky;
-  z-index: 10;
+  z-index: 20;
   top: 0;
-  display: flex;
-  flex-wrap: wrap;
+  /* 三轨而不是 flex + margin-left:auto：后者只把 links 推到了右边，主题切换还黏在
+     品牌旁边，于是"左边挤一团、中间空一大块"（1440 下 theme-switch right=979、
+     links left=1105）。三轨保证同一基线、任何宽度都不换行错位。 */
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
-  gap: 12px 18px;
-  padding: 10px clamp(16px, 3vw, 32px);
+  gap: var(--sp-2);
+  height: var(--topbar-h);
+  padding: 0 clamp(16px, 3vw, 32px);
   border-width: 0 0 1px;
   border-radius: 0;
+}
+
+.topbar-right {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-1);
+  justify-self: end;
+  height: var(--bar-h);
 }
 
 .brand {
@@ -225,10 +264,11 @@ a:hover {
 .topbar-links {
   display: flex;
   align-items: center;
+  justify-self: center;
   gap: 4px;
-  margin-left: auto;
   list-style: none;
   font-size: 14px;
+  min-width: 0;
 }
 
 .topbar-links a {
@@ -259,7 +299,8 @@ a:hover {
 .theme-switch {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 2px;
+  height: var(--bar-h);
   padding: 3px;
   border: 1px solid var(--border);
   border-radius: 999px;
@@ -269,7 +310,8 @@ a:hover {
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 5px 10px;
+  height: 100%;
+  padding: 0 10px;
   font: inherit;
   font-size: 13px;
   color: var(--text-2);
@@ -277,14 +319,19 @@ a:hover {
   border: 0;
   border-radius: 999px;
   cursor: pointer;
+  transition: background var(--dur-quick) var(--ease-out), color var(--dur-quick) var(--ease-out);
 }
 
-.theme-switch button i {
+/* 圆点画在 ::before 上：原来那个 <i> 带 1px 边框，让两坨的高度差了 2px（42 vs 44），
+   右上角就永远对不齐。 */
+.theme-switch button::before {
+  content: '';
   width: 10px;
   height: 10px;
+  flex: none;
   border-radius: 50%;
   background: var(--dot, var(--accent));
-  border: 1px solid var(--border-strong);
+  box-shadow: 0 0 0 1px var(--border-strong);
 }
 
 .theme-switch button:hover {
@@ -298,9 +345,83 @@ a:hover {
   box-shadow: var(--shadow-panel);
 }
 
-@media (max-width: 620px) {
+/* ---------- 顶栏上的图标按钮与窄屏菜单 ---------- */
+
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--bar-h);
+  height: var(--bar-h);
+  flex: none;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  color: var(--text-2);
+  background: transparent;
+  cursor: pointer;
+  transition: color var(--dur-quick) var(--ease-out), background var(--dur-quick) var(--ease-out),
+    border-color var(--dur-quick) var(--ease-out);
+}
+
+.icon-btn:hover {
+  color: var(--text-1);
+  background: var(--hover);
+  border-color: var(--border-strong);
+}
+
+.icon-btn svg {
+  width: 17px;
+  height: 17px;
+  display: block;
+}
+
+.nav-toggle {
+  display: none;
+}
+
+@media (max-width: 860px) {
+  .topbar {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .topbar-links {
+    position: fixed;
+    z-index: 19;
+    top: var(--topbar-h);
+    left: 0;
+    right: 0;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 2px;
+    padding: var(--sp-2) clamp(16px, 3vw, 32px) var(--sp-3);
+    background: var(--bg-glass-strong);
+    backdrop-filter: blur(var(--blur)) saturate(var(--sat));
+    -webkit-backdrop-filter: blur(var(--blur)) saturate(var(--sat));
+    border-block-start: 1px solid var(--border);
+    box-shadow: var(--shadow-glass);
+    font-size: 15px;
+  }
+
+  /* 菜单收着时不能只是"看不见"——它必须也拿不到焦点，否则 Tab 会走进空气里 */
+  .topbar-links:not(.is-open) {
+    display: none;
+  }
+
+  .topbar-links a {
+    display: block;
+    padding: 10px 12px;
+  }
+
+  .nav-toggle {
+    display: inline-flex;
+  }
+
   .theme-switch button span {
     display: none;
+  }
+
+  .theme-switch button {
+    padding: 0 8px;
   }
 }
 
@@ -318,7 +439,7 @@ a:hover {
 
 .sidenav {
   position: sticky;
-  top: 84px;
+  top: calc(var(--topbar-h) + 28px);
   max-height: calc(100vh - 104px);
   overflow: auto;
   padding: 14px;
@@ -763,42 +884,66 @@ footer {
   color: var(--muted);
 }
 
-/* ---------- 响应式：左栏收成顶部横向菜单 ---------- */
+/* ---------- 响应式：左栏收成顶部胶囊（**不再横向滚**） ---------- */
 
+/* 原来这里是 `.sidenav { overflow-x: auto }`：一条能左右推的目录条，而且 `position: static`
+   跟着页面一起滚走——用户说的"整个窗口左右滑动，还不固定"对上的就是它（1024 下里面的 ul
+   伸到 right=1529）。改成换行的胶囊之后，页面任何方向都不需要横滚。 */
 @media (max-width: 1099px) {
   .shell {
     grid-template-columns: minmax(0, 1fr);
   }
 
   .sidenav {
-    position: static;
+    position: sticky;
+    top: var(--topbar-h);
     max-height: none;
     display: flex;
-    gap: 20px;
-    overflow-x: auto;
+    flex-flow: row wrap;
+    align-items: center;
+    gap: 6px 18px;
+    overflow: visible;
     padding: 10px 12px;
     border-radius: var(--radius-md);
+    z-index: 9;
   }
 
   .sidenav ul {
     display: flex;
+    flex-wrap: wrap;
     gap: 6px;
     margin: 0;
-    flex: none;
   }
 
   .nav-group {
-    margin-bottom: 4px;
+    margin-bottom: 0;
+    font-size: 12px;
   }
 
   .sidenav a {
     border-left: 0;
-    border-radius: var(--radius-sm);
+    border-radius: 999px;
     white-space: nowrap;
+    padding: 5px 11px;
+    background: var(--hover);
   }
 
   .sidenav a.is-current {
     border-left: 0;
+    background: var(--accent-soft);
+    color: var(--link);
+  }
+}
+
+/* 窄屏连胶囊都放不下时，整条目录收进一颗按钮（site.js 负责展开/收起）。 */
+@media (max-width: 760px) {
+  .sidenav .toc-toggle {
+    display: inline-flex;
+  }
+
+  .sidenav:not(.is-open) .nav-group,
+  .sidenav:not(.is-open) ul {
+    display: none;
   }
 }
 
@@ -812,5 +957,663 @@ footer {
   *::after {
     animation-duration: 0.01ms !important;
     transition-duration: 0.01ms !important;
+  }
+}
+
+/* ---------- 展示层（index.html）：hero、亮点区、收尾 CTA、页脚 ---------- */
+
+.sidenav .toc-toggle {
+  display: none;
+}
+
+/* 卡片里那两处元素内溢出（7px / 25px）是长路径与反引号里的 Windows 路径造成的，
+   不可断串要允许断开。不用 overflow-x:clip 去盖——那是藏起来而不是改掉。 */
+code,
+kbd,
+pre,
+.tile p,
+.lede,
+.shot figcaption {
+  overflow-wrap: anywhere;
+}
+
+.hero {
+  display: grid;
+  gap: var(--sp-3);
+  justify-items: center;
+  text-align: center;
+  min-height: calc(100svh - var(--topbar-h));
+  align-content: center;
+  padding: var(--sp-8) clamp(16px, 4vw, 40px) var(--sp-6);
+  padding-inline: max(clamp(16px, 4vw, 40px), env(safe-area-inset-left), env(safe-area-inset-right));
+  position: relative;
+  overflow: hidden;
+}
+
+.kicker {
+  font-size: var(--fs-kicker);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--brand-ink);
+  font-weight: 600;
+}
+
+.hero h1 {
+  font-size: var(--fs-hero);
+  line-height: 1.04;
+  letter-spacing: -0.03em;
+  font-weight: 700;
+  max-width: 22ch;
+  text-wrap: balance;
+}
+
+.hero h1 em {
+  font-style: normal;
+  background: linear-gradient(105deg, var(--brand-deep), var(--brand-light));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.hero .lede {
+  font-size: clamp(1.05rem, 1.7vw, 1.35rem);
+  color: var(--text-2);
+  max-width: 40ch;
+  line-height: 1.6;
+}
+
+.hero-scroll {
+  margin-top: var(--sp-3);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.hero-scroll::after {
+  content: '';
+  width: 1px;
+  height: 34px;
+  background: linear-gradient(var(--border-strong), transparent);
+  animation: drift 2.4s var(--ease-out) infinite;
+}
+
+@keyframes drift {
+  0%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.4;
+  }
+  50% {
+    transform: translateY(7px);
+    opacity: 1;
+  }
+}
+
+/* hero 里那个应用窗口是 CSS 画的示意图，不是截图——html 上标 aria-hidden，也不配图注 */
+.mock {
+  width: min(920px, 100%);
+  margin-top: var(--sp-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--bg-glass-strong);
+  backdrop-filter: blur(var(--blur)) saturate(var(--sat));
+  -webkit-backdrop-filter: blur(var(--blur)) saturate(var(--sat));
+  box-shadow: var(--shadow-lift);
+  overflow: hidden;
+  will-change: transform;
+}
+
+.mock-bar {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  height: 34px;
+  padding: 0 12px;
+  border-block-end: 1px solid var(--border);
+  background: var(--bg-glass);
+}
+
+.mock-bar i {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--border-strong);
+}
+
+.mock-bar b {
+  margin-left: auto;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--muted);
+}
+
+.mock-body {
+  display: grid;
+  grid-template-columns: 168px minmax(0, 1fr) 190px;
+  gap: 0;
+  min-height: 320px;
+  text-align: start;
+}
+
+.mock-col {
+  padding: 14px;
+  display: grid;
+  gap: 9px;
+  align-content: start;
+}
+
+.mock-col + .mock-col {
+  border-inline-start: 1px solid var(--border);
+}
+
+.mock-line {
+  height: 9px;
+  border-radius: 3px;
+  background: var(--hover);
+}
+
+.mock-line.w60 {
+  width: 60%;
+}
+.mock-line.w40 {
+  width: 40%;
+}
+.mock-line.w85 {
+  width: 85%;
+}
+.mock-line.accent {
+  background: var(--accent-soft);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 40%, transparent);
+}
+.mock-line.head {
+  height: 15px;
+  width: 45%;
+  background: color-mix(in srgb, var(--text-1) 22%, transparent);
+}
+
+/* 亮点区：文字与图左右交替，图占约 6 成 */
+.features {
+  display: grid;
+  gap: var(--sp-12);
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: var(--sp-8) clamp(16px, 4vw, 40px);
+}
+
+.feat {
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+  gap: clamp(24px, 4vw, 56px);
+  align-items: center;
+}
+
+.feat:nth-child(even) .feat-copy {
+  order: 2;
+}
+
+.feat h2 {
+  font-size: var(--fs-h2);
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  text-wrap: balance;
+}
+
+.feat p {
+  margin-top: var(--sp-2);
+  color: var(--text-2);
+  font-size: var(--fs-body);
+  max-width: 44ch;
+}
+
+.feat-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: var(--sp-2);
+  font-size: 15px;
+  color: var(--link);
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.feat-link::after {
+  content: '→';
+  transition: transform var(--dur-quick) var(--ease-out);
+}
+
+.feat-link:hover::after {
+  transform: translateX(4px);
+}
+
+.feat-shot {
+  display: block;
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-panel);
+  background: var(--bg-panel);
+  transition: transform var(--dur-reveal) var(--ease-out), box-shadow var(--dur-reveal) var(--ease-out);
+}
+
+.feat-shot:hover {
+  transform: translateY(-3px) scale(1.006);
+  box-shadow: var(--shadow-lift);
+}
+
+/* 图没拍之前不留灰块：figure 上打 data-shot="pending" 就画一张写着取景要求的纸 */
+.shot-pending {
+  display: grid;
+  place-items: center;
+  gap: 6px;
+  aspect-ratio: 16 / 10;
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-lg);
+  background: var(--bg-glass);
+  color: var(--muted);
+  font-size: 13px;
+  text-align: center;
+  padding: var(--sp-2);
+}
+
+.cta {
+  display: grid;
+  gap: var(--sp-3);
+  justify-items: center;
+  text-align: center;
+  padding: var(--sp-8) clamp(16px, 4vw, 40px) var(--sp-6);
+  border-block-start: 1px solid var(--border);
+  background: var(--bg-glass);
+}
+
+.cta h2 {
+  font-size: var(--fs-h2);
+  letter-spacing: -0.02em;
+}
+
+.cta .facts {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px 20px;
+  font-size: 13px;
+  color: var(--muted);
+  max-width: 60ch;
+}
+
+/* 「只有 Windows 桌面版」那一句：正文字号、但不上强调色——它不是卖点，是边界 */
+.cta-os {
+  max-width: 44ch;
+  margin: 0;
+  font-size: 14px;
+  color: var(--text-2);
+}
+
+.cta-os strong {
+  color: var(--text-1);
+}
+
+/* ---------- 滚动驱动的进场：只在 JS 打上 .js 之后才藏起来 ---------- */
+
+.js [data-reveal] {
+  opacity: 0;
+  transform: translateY(18px);
+  transition: opacity var(--dur-reveal) var(--ease-out), transform var(--dur-reveal) var(--ease-out);
+  transition-delay: calc(var(--i, 0) * 60ms);
+}
+
+.js [data-reveal].is-in {
+  opacity: 1;
+  transform: none;
+}
+
+.js .tile,
+.js .shot {
+  transition: transform var(--dur-quick) var(--ease-out), box-shadow var(--dur-quick) var(--ease-out);
+}
+
+.js .tile:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-lift);
+}
+
+@media (max-width: 900px) {
+  .feat {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--sp-3);
+  }
+
+  .feat:nth-child(even) .feat-copy {
+    order: 0;
+  }
+
+  .mock-body {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+  }
+
+  .mock-col.rail {
+    display: none;
+  }
+
+  .features {
+    gap: var(--sp-8);
+    padding-block: var(--sp-6);
+  }
+}
+
+/* 必须在文件最后：prefers-reduced-motion 下进场元素**直接可见**。
+   JS 侧命中 reduce 时根本不注册 IntersectionObserver（见 site.js），
+   所以 `.is-in` 永远不会被加上——这里不把初始的 opacity:0 撤掉，动效降级就变成了内容隐身。 */
+@media (prefers-reduced-motion: reduce) {
+  .js [data-reveal] {
+    opacity: 1;
+    transform: none;
+  }
+
+  .hero-scroll::after {
+    animation: none;
+    opacity: 0.7;
+  }
+
+  .js .tile:hover,
+  .feat-shot:hover {
+    transform: none;
+  }
+
+  .mock {
+    transform: none !important;
+  }
+}
+
+/* 页脚的多列（展示页新增；说明页仍是上面那条单行版式） */
+.foot-cols {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: var(--sp-3) var(--sp-4);
+  padding-block: var(--sp-4) var(--sp-3);
+  border-block-end: 1px solid var(--border);
+  margin-block-end: var(--sp-2);
+}
+
+.foot-cols nav {
+  display: grid;
+  gap: 6px;
+  justify-items: start;
+}
+
+.foot-cols a {
+  color: var(--text-2);
+  text-decoration: none;
+  font-size: 14px;
+}
+
+.foot-cols a:hover {
+  color: var(--text-1);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.foot-h {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  margin-block-end: 8px;
+}
+
+/* ---------- 点图看大图 ----------
+   那十张截图是 2878×1800 的桌面窗口。压进 360px 宽的格子里，字是看不成的——
+   这一档的存在意义就是"手机上也能看清那一屏"。覆盖层只在打开时进 DOM，
+   所以关掉之后不会有"看不见但 Tab 得到"的焦点陷阱。 */
+
+main img {
+  cursor: zoom-in;
+}
+
+.zoom {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: var(--sp-2);
+  padding: calc(var(--topbar-h) + 16px) 16px calc(16px + env(safe-area-inset-bottom));
+  background: rgba(6, 8, 12, 0.88);
+  backdrop-filter: blur(16px) saturate(1.4);
+  -webkit-backdrop-filter: blur(16px) saturate(1.4);
+  cursor: zoom-out;
+}
+
+html.is-zoomed {
+  overflow: hidden;
+}
+
+.zoom img {
+  max-width: 100%;
+  max-height: calc(100vh - var(--topbar-h) - 96px);
+  width: auto;
+  height: auto;
+  border-radius: var(--radius-md);
+  background: var(--bg-panel);
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.5);
+  cursor: zoom-out;
+}
+
+.zoom-close {
+  position: absolute;
+  top: 12px;
+  right: max(12px, env(safe-area-inset-right));
+  width: var(--bar-h);
+  height: var(--bar-h);
+  font-size: 22px;
+  line-height: 1;
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.32);
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.zoom-close:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.26);
+}
+
+.zoom-hint {
+  margin: 0;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.66);
+  text-align: center;
+}
+
+/* ---------- 手机档（#188） ----------
+   640 这条线是照着 iPhone 竖屏（390 / 430）与安卓小窗定的。这一档只改「尺度与手势」，
+   结构在 860 / 1099 那两档已经换过一次。
+   刻意全部按宽度写、不按 (pointer: coarse) 写：量测台只能改视口宽度，
+   量不到的规则等于没验收。真手指设备走的是同一条路。 */
+
+@media (max-width: 640px) {
+  :root {
+    --topbar-h: 60px;
+    /* 44px 是最小的舒适触控目标；顶栏跟着长一点，好把它装下 */
+    --bar-h: 44px;
+    --fs-hero: 2.1rem;
+    --fs-h2: 1.6rem;
+    --fs-h3: 1.15rem;
+    --sp-6: 48px;
+    --sp-8: 60px;
+    --sp-12: 84px;
+  }
+
+  .topbar {
+    padding-inline: max(12px, env(safe-area-inset-left)) max(12px, env(safe-area-inset-right));
+  }
+
+  /* 品牌那格只有 26px 高的图标加一行字，点下去只有 30px——顶栏抬到 60 之后它得跟着长 */
+  .brand {
+    min-height: var(--bar-h);
+  }
+
+  .topbar-links a {
+    display: flex;
+    align-items: center;
+    min-height: var(--bar-h);
+    padding-inline: 4px;
+  }
+
+  /* 四套主题在手机上改成四颗独立的圆钮：轨道那圈边框与内边距拿掉，
+     不然 44px 是落在盒子上而不是落在点的那一下上。 */
+  .theme-switch {
+    padding: 0;
+    border: 0;
+    background: none;
+    gap: 4px;
+  }
+
+  .theme-switch button {
+    width: var(--bar-h);
+    padding: 0;
+    justify-content: center;
+  }
+
+  .theme-switch button[aria-pressed='true'] {
+    background: var(--accent-soft);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 45%, transparent);
+  }
+
+  .hero h1 br {
+    display: none;
+  }
+
+  .hero h1 {
+    max-width: 15ch;
+    letter-spacing: -0.02em;
+  }
+
+  .hero .lede {
+    max-width: 26ch;
+  }
+
+  /* 示意图在手机上只留「有一扇三栏的窗」这一个信息，高度压掉一半 */
+  .mock-bar {
+    height: 28px;
+  }
+
+  .mock-body {
+    min-height: 156px;
+    grid-template-columns: 96px minmax(0, 1fr);
+  }
+
+  .mock-col {
+    padding: 10px;
+    gap: 7px;
+  }
+
+  .mock-line {
+    height: 7px;
+  }
+
+  .mock-line.head {
+    height: 12px;
+  }
+
+  .features {
+    gap: var(--sp-8);
+    padding-inline: 18px;
+  }
+
+  .feat {
+    gap: var(--sp-2);
+  }
+
+  .feat-link {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--bar-h);
+  }
+
+  /* 一颗一颗排：手机上没有「并排比较」这回事 */
+  .actions {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .btn {
+    display: block;
+    min-height: 50px;
+    padding: 10px 18px;
+    font-size: 16px;
+    text-align: center;
+  }
+
+  /* 快捷键那张表三列竖着读才不费劲：表头藏给读屏，每一行变成一张小卡 */
+  table {
+    display: block;
+    background: none;
+    border: 0;
+  }
+
+  /* 表头那一行在竖排版里没有位置可站：三列的列名各归各的下一格。
+     用 display:none 而不是 width:1px + clip 那套——后者会留一个 1px 的盒子装着
+     三列内容，量出来是"元素内溢出 112px"，等于给验收制造假案。 */
+  thead {
+    display: none;
+  }
+
+  tbody,
+  tr,
+  td {
+    display: block;
+  }
+
+  tbody tr {
+    margin-block-end: var(--sp-2);
+    padding: 12px 14px;
+    background: var(--bg-glass-strong);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+  }
+
+  td {
+    padding: 2px 0;
+    border-bottom: 0;
+  }
+
+  td:first-child {
+    font-weight: 600;
+  }
+
+  /* 窄格里 kbd 那串 nowrap 会把行撑爆 */
+  td kbd {
+    white-space: normal;
+  }
+
+  .foot-cols {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--sp-3) var(--sp-2);
+  }
+
+  .foot-cols a,
+  .foot-inner nav a {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--bar-h);
+  }
+
+  footer {
+    padding-block-end: calc(32px + env(safe-area-inset-bottom));
+  }
+
+  .sidenav a {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--bar-h);
+    padding-inline: 13px;
+  }
+
+  .tiers,
+  .shots {
+    grid-template-columns: minmax(0, 1fr);
   }
 }

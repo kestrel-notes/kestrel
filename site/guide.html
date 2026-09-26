@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="cloud">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Kestrel 使用说明 — 从第一条记到备份恢复</title>
+<meta name="description" content="Kestrel 使用说明：怎么记日记、怎么把一段想法变成文章、双链与嵌入怎么写、图谱怎么看、查询块怎么问、删掉的东西怎么捞回来、数据存在哪。">
+<script>
+(function () {
+  var t = 'cloud';
+  try { var v = localStorage.getItem('kestrel.theme'); if (v === 'cloud' || v === 'paper' || v === 'midnight' || v === 'terminal') t = v; } catch (e) {}
+  document.documentElement.setAttribute('data-theme', t);
+  document.documentElement.classList.add('js');
+})();
+</script>
+<link rel="icon" href="favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="favicon.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="stylesheet" href="assets/site.css">
+<script src="assets/site.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">跳到正文</a>
+
+<header class="topbar glass">
+  <a class="brand" href="index.html">
+    <svg width="26" height="26" viewBox="0 0 64 64" role="img" aria-label="Kestrel 标记">
+      <defs><linearGradient id="kg2" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#a63a1f"></stop><stop offset="1" stop-color="#d97a4c"></stop></linearGradient></defs>
+      <rect width="64" height="64" rx="18" fill="url(#kg2)"></rect>
+      <path fill="#fbefdf" d="M12 52 C18 40 24 26 30 14 C31 26 30 34 28 40 C34 36 44 32 54 32 C44 40 30 50 12 52 Z"></path>
+    </svg>
+    Kestrel
+  </a>
+  <ul class="topbar-links" id="topbar-links">
+    <li><a href="index.html#features">亮点</a></li>
+    <li><a href="guide.html" aria-current="page">使用说明</a></li>
+    <li><a href="about.html">关于</a></li>
+    <li><a href="donate.html">捐赠</a></li>
+  </ul>
+  <div class="topbar-right">
+    <div class="theme-switch" id="theme-switch" role="group" aria-label="网页主题">
+      <button type="button" data-theme-value="cloud" style="--dot:#4f6ef7" aria-pressed="true"><span>白桦</span></button>
+      <button type="button" data-theme-value="paper" style="--dot:#c2703f" aria-pressed="false"><span>麦秸</span></button>
+      <button type="button" data-theme-value="midnight" style="--dot:#7c9cff" aria-pressed="false"><span>松林</span></button>
+      <button type="button" data-theme-value="terminal" style="--dot:#2ee6a8" aria-pressed="false"><span>薄荷</span></button>
+    </div>
+    <a class="icon-btn" href="https://github.com/fangjj1008/kestrel" aria-label="在 GitHub 上看源码">
+      <svg viewBox="0 0 16 16" aria-hidden="true" fill="currentColor"><path d="M8 0a8 8 0 0 0-2.53 15.59c.4.07.55-.17.55-.38l-.01-.66-1.2.26c-.62.13-.9-.3-.96-.58l-.26-.66c-.43-.18-.55-.44-.55-.44-.45-.29.03-.29.03-.29.5.04.76.51.76.51.76.51 1.17.77 1.46.42.04-.33.17-.55.31-.68-1.11-.13-2.28-.55-2.28-2.48 0-.55.2-1 .51-1.35-.05-.13-.22-.64.05-1.33 0 0 .41-.13 1.35.51a4.7 4.7 0 0 1 2.46 0c.94-.64 1.35-.51 1.35-.51.27.69.1 1.2.05 1.33.32.35.51.8.51 1.35 0 1.94-1.17 2.35-2.29 2.48.18.15.34.46.34.93l-.01 1.38c0 .21.15.46.55.38A8 8 0 0 0 8 0Z"></path></svg>
+    </a>
+    <button class="icon-btn nav-toggle" id="nav-toggle" type="button" aria-expanded="false" aria-controls="topbar-links" aria-label="打开菜单">
+      <svg viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M2 4.5h12M2 8h12M2 11.5h12"></path></svg>
+    </button>
+  </div>
+</header>
+
+<div class="shell">
+  <nav class="sidenav glass" aria-label="说明目录">
+    <button class="icon-btn toc-toggle" type="button" aria-expanded="false">目录</button>
+    <p class="nav-group" id="g-start">开始</p>
+    <ul aria-labelledby="g-start">
+      <li><a href="#first-run">第一次打开</a></li>
+      <li><a href="#screens">界面长什么样</a></li>
+      <li><a href="#download">下载与校验</a></li>
+    </ul>
+    <p class="nav-group" id="g-write">记东西</p>
+    <ul aria-labelledby="g-write">
+      <li><a href="#write">写与存</a></li>
+      <li><a href="#promote">把一段变成一篇</a></li>
+      <li><a href="#markdown">Markdown 写法</a></li>
+      <li><a href="#links">双链与嵌入</a></li>
+      <li><a href="#organize">标签与属性</a></li>
+      <li><a href="#query">查询块</a></li>
+      <li><a href="#graph">图谱</a></li>
+    </ul>
+    <p class="nav-group" id="g-find">找东西</p>
+    <ul aria-labelledby="g-find">
+      <li><a href="#search">搜索</a></li>
+      <li><a href="#tabs">同时开几篇</a></li>
+      <li><a href="#keys">快捷键</a></li>
+    </ul>
+    <p class="nav-group" id="g-show">给人看</p>
+    <ul aria-labelledby="g-show">
+      <li><a href="#present">演示与随机</a></li>
+      <li><a href="#share">分享单篇</a></li>
+      <li><a href="#export">导出与导回</a></li>
+    </ul>
+    <p class="nav-group" id="g-safe">数据与安心</p>
+    <ul aria-labelledby="g-safe">
+      <li><a href="#safety">删掉了怎么找回</a></li>
+      <li><a href="#backup">备份与恢复</a></li>
+      <li><a href="#privacy">数据放在哪</a></li>
+      <li><a href="#looks">换外观</a></li>
+      <li><a href="#nongoals">它不做什么</a></li>
+    </ul>
+  </nav>
+
+  <main id="main">
+    <section id="first-run">
+      <h1>Kestrel 使用说明</h1>
+      <p class="lede">从第一条记到把删掉的东西捞回来。每一节都是先说要做什么，再给步子。</p>
+      <h2>第一次打开</h2>
+      <p>空库会先给你一篇文章都没有的界面，然后种下一个「Kestrel 使用指南」主题和 4 篇示例，外加今天这一篇日记。</p>
+      <ol>
+        <li>直接在中间开始打字。写日记不用新建——它已经打开了今天。</li>
+        <li>想按主题写文章，看左栏第二格「主题」，点「新建文章」。</li>
+        <li>示例看完就可以删。它们都挂在同一个主题下面，删掉不会碰到你自己的任何一篇。</li>
+      </ol>
+      <p>那 4 篇示例是故意留下的：双链、反链、图谱、标签树、属性分组、大纲这六样，都得先有点内容才看得见。</p>
+    </section>
+
+    <section id="screens">
+      <h2>界面长什么样</h2>
+      <p>三栏。左边选要看什么，中间写字，右边看这一篇的上下文。</p>
+      <ul>
+        <li><strong>左栏四格</strong>：今天 <kbd>Ctrl+1</kbd> / 主题 <kbd>Ctrl+2</kbd> / 标签 <kbd>Ctrl+3</kbd> / 属性 <kbd>Ctrl+4</kbd>。</li>
+        <li><strong>中间</strong>：正文。顶部一排小标签是你开着的几篇。</li>
+        <li><strong>右栏</strong>：大纲、反向链接、出链、局部图谱、属性、历史、编年史，都能滚。</li>
+        <li><strong>状态条</strong>：右下写着存没存、当前哪一档模式、是不是专注模式。</li>
+      </ul>
+      <div class="shots">
+        <figure class="shot">
+          <div class="frame">
+            <img src="assets/screenshots/today.png" alt="今天视图：左栏日期导航，中间是当天日记正文，右栏是大纲与反向链接" loading="lazy" onerror="this.closest('.shot').classList.add('is-broken')">
+            <div class="fallback"><span>today.png</span><span>截图待补</span></div>
+          </div>
+          <figcaption>今天 · 按日期落笔，停下来半秒就存盘。</figcaption>
+        </figure>
+        <figure class="shot">
+          <div class="frame">
+            <img src="assets/screenshots/topic.png" alt="主题视图：左栏主题列表，中间是该主题下的文章列表" loading="lazy" onerror="this.closest('.shot').classList.add('is-broken')">
+            <div class="fallback"><span>topic.png</span><span>截图待补</span></div>
+          </div>
+          <figcaption>主题 · 一个主题下面挂着一组文章。</figcaption>
+        </figure>
+        <figure class="shot">
+          <div class="frame">
+            <img src="assets/screenshots/tags.png" alt="标签视图：左栏是从正文里长出来的嵌套标签树" loading="lazy" onerror="this.closest('.shot').classList.add('is-broken')">
+            <div class="fallback"><span>tags.png</span><span>截图待补</span></div>
+          </div>
+          <figcaption>标签 · 点父标签，子孙的条目一起筛出来。</figcaption>
+        </figure>
+        <figure class="shot">
+          <div class="frame">
+            <img src="assets/screenshots/props.png" alt="属性视图：左栏按属性值分组的记录列表" loading="lazy" onerror="this.closest('.shot').classList.add('is-broken')">
+            <div class="fallback"><span>props.png</span><span>截图待补</span></div>
+          </div>
+          <figcaption>属性 · 按值分组，这是标签做不到的一件事。</figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <section id="download">
+      <h2>下载与校验</h2>
+      <p>安装包在 <a href="https://github.com/fangjj1008/kestrel/releases">Releases</a> 页，文件名 <code>Kestrel-&lt;版本&gt;-setup.exe</code>。Windows 10 / 11 x64，装进你自己的账户，不需要管理员权限，向导是中文的。</p>
+      <p><strong>只有 Windows 桌面版</strong>：没有手机版、没有网页版，Mac 和 Linux 也没有。手机上打不开这个 <code>.exe</code>——把这一页的地址发到电脑上再装。</p>
+      <ol>
+        <li>下载后先对一下指纹（PowerShell）：<code>Get-FileHash .\Kestrel-0.1.0-setup.exe -Algorithm SHA256</code>。</li>
+        <li>第一次运行会弹蓝色的 SmartScreen——安装包没有代码签名，这是没买证书的结果，不是恶意软件的特征。点「更多信息 → 仍要运行」。</li>
+        <li>装完打开，直接开始写。</li>
+      </ol>
+      <div class="note">
+        <p>v0.1.0 那一份：<strong>156,349,540 字节</strong>，SHA-256 <code>ad4abd19…</code> 之后的重建版为 <code>c05094725873d13369e38f62af172b184f1f5c8c2b46c1689ffa032e54c88ba9</code>（以 Releases 页写着的那一串为准）。</p>
+        <p>不想用别人的安装包，也可以拉源码自己打：<code>npm install</code> 之后 <code>npm run dist</code>。</p>
+      </div>
+    </section>
+
+    <section id="write">
+      <h2>写与存</h2>
+      <p><strong>要做的</strong>：把东西写下来，并且相信它不会丢。</p>
+      <ul>
+        <li>日记按日期走，一天一篇；文章挂在主题下面。两种笔记体，同一种写法。</li>
+        <li>不用按保存。停下来半秒它就存了，右下角写「已保存」。想立刻落盘按 <kbd>Ctrl+S</kbd>——顺手留一版历史。</li>
+        <li>三档模式，用 <kbd>Ctrl+Shift+M</kbd> 轮：阅读（只看）→ 所见即所得（写）→ 源码（看原始的 Markdown）。</li>
+        <li>切到源码档之前它会先比一遍：<strong>确认改完还能原样回来</strong>才切。真会动到你的字，它就把你留在源码档并说清是哪几处——宁可切不过去，也不悄悄吃掉你写的东西。</li>
+        <li>写长文想收起小节：点标题左边那颗折叠箭头；<kbd>Ctrl+K</kbd> 搜「全部折叠」一次全收。</li>
+        <li>选中一段字，右下角会告诉你这一段多少字。</li>
+      </ul>
+    </section>
+
+    <section id="promote">
+      <h2>把一段想法变成一篇文章</h2>
+      <ol>
+        <li>在日记里选中那句话（或者什么都不选，整篇升）。</li>
+        <li>按 <kbd>Ctrl+K</kbd>，搜「升格」，回车。</li>
+        <li>挑一个主题，确认。原文连同样式一起搬过去，日记这边留下一行指回去的链接。</li>
+      </ol>
+      <p>反过来也走通：文章里想指回某一天，打 <code>[[2026-09-26]]</code> 就行。</p>
+    </section>
+
+    <section id="markdown">
+      <h2>你已经会的那些 Markdown，全都算数</h2>
+      <p>不用学新语法。下面这些写下去就是排好的样子：</p>
+      <ul>
+        <li><strong>标题、列表、任务项</strong> <code>- [ ] 待办</code>、<strong>引用</strong>、<strong>分割线</strong>。</li>
+        <li><strong>表格</strong>：打 <code>|</code> 或用 <kbd>Ctrl+K</kbd> 搜「插入表格」，然后能用鼠标加行加列。</li>
+        <li><strong>代码块</strong>：三个反引号开头写语言名，高亮与行号都有；<code>mermaid</code> 是特例，见下条。</li>
+        <li><strong>Callout</strong>：一行 <code>&gt; [!注意]</code> 开头，就是一只带图标的小盒子。</li>
+        <li><strong>公式</strong>：行内 <code>$E=mc^2$</code>，独立一行 <code>$$…$$</code>。</li>
+        <li><strong>脚注</strong>：正文里写 <code>[^1]</code>，文末 <code>[^1]: 出处</code>。</li>
+        <li><strong>Mermaid 图</strong>：围栏写 <code>mermaid</code>，图当场画出来；写坏了也不吞你的字，退成代码块给你看原因。</li>
+        <li><strong>图片与附件</strong>：拖进来、或者 <kbd>Ctrl+V</kbd> 粘进来都行，文件收进库旁边的 <code>attachments/</code>。</li>
+      </ul>
+      <figure class="shot">
+        <div class="frame">
+          <div class="shot-pending"><span>这一格放：一张正文截图，同屏含代码围栏、表格、公式与 Mermaid 图</span><span>取景 <code>g-md.png</code> · 待实机拍</span></div>
+        </div>
+        <figcaption>同屏的六种 Markdown 写法。</figcaption>
+      </figure>
+    </section>
+
+    <section id="links">
+      <h2>双链与嵌入</h2>
+      <p><strong>要做的</strong>：让这一句话指到另一篇去。</p>
+      <ol>
+        <li>打两个左方括号 <code>[[</code>，候选窗会列出主题名、文章标题，还有「今天」「昨天」这类写法。</li>
+        <li><kbd>↑</kbd><kbd>↓</kbd> 挑，<kbd>Enter</kbd> 定。<kbd>Esc</kbd> 只关窗——你打到一半的那截字原样留着，那是你打的字，不是菜单的字。</li>
+        <li>想指得跟上下文对上号，加个竖线：<code>[[向量数据库|那几家向量库]]</code>。</li>
+        <li>整段搬过来：前面再加一个感叹号 <code>![[那一节#小节名]]</code>。只指不搬：<code>[[#小节名]]</code> 指本篇的某节。</li>
+        <li>想知道那一头是什么，按住 <kbd>Ctrl</kbd> 把鼠标停在链接上——弹一张小卡，写着那一头的第一段和被几处指向。没写出来的那一篇也弹，而且它最有用：「这个写法已经被写了 N 处」。</li>
+      </ol>
+      <p><strong>还没写的那一篇</strong>：链接会画成虚线，不红、不报错。等你哪天补上，它自己就连上了。</p>
+      <p><strong>一个写法想指到哪儿，你可以自己定</strong>：<kbd>Ctrl+K</kbd> 搜「别名」，开一扇窗，把 <code>[[玻璃]]</code> 这样的写法绑到某个主题或某一篇上，正文一个字都不用改。给主题改名时它还会问你要不要「旧名留作别名」；那条别名在窗口里看得见、删得掉，删掉之后那几处掉回虚线，不会静默消失。</p>
+      <p><strong>右栏那两块</strong>：「反向链接」是别人怎么指到这一篇的（带上下文那一行）；「出链」是这一篇指到哪儿去了，哪几条还是虚线。底下偶尔冒出一组「未链接提及」——别处平写着这一篇的名字但没打成链接，一行一处，点「连上」只动你点的那一处。</p>
+      <figure class="shot">
+        <div class="frame">
+          <div class="shot-pending"><span>这一格放：一张正文里嵌着另一篇的截图，含块引用与悬停预览卡片</span><span>取景 <code>g-embed.png</code> · 待实机拍</span></div>
+        </div>
+        <figcaption>嵌入与悬停预览。</figcaption>
+      </figure>
+    </section>
+
+    <section id="organize">
+      <h2>标签与属性</h2>
+      <p><strong>标签</strong>是散在正文里的词：写 <code>#JVM/调优</code>，左栏的标签树就长出这一支。中文不用打空格，<code>#云铝股份</code> 也算。父标签一起筛子孙。</p>
+      <p><strong>属性</strong>是这一篇自己带的结构化字段。右栏最上面那格填：</p>
+      <ul>
+        <li>类型有四种：文字、数字、清单、勾选。同一个属性名全库共用一种类型，写错了它会当场说哪里不对。</li>
+        <li>填好之后，左栏第四格「属性」按值分组：<code>状态 = 进行中</code> 的文章排在一堆，<code>读完</code> 的排在另一堆。</li>
+      </ul>
+      <p><strong>收藏</strong>：这一篇按 <kbd>Ctrl+D</kbd>，标题栏那颗星标里有全部清单。</p>
+      <p><strong>大纲</strong>在右栏，长正文不用一根滚轮滚到底——点一行跳一段。</p>
+    </section>
+
+    <section id="query">
+      <h2>在正文里问一句：查询块</h2>
+      <ol>
+        <li><kbd>Ctrl+K</kbd> 搜「插入查询块」，正文里落一块问句。</li>
+        <li>写清楚要什么：<code>状态=进行中 标签包含 机器学习</code> 这样的式子，也认 <code>今天</code>、<code>最近 7 天</code>。</li>
+        <li>结果当场长在块里，五种摆法：列表、表格、卡片、日历、统计条。</li>
+        <li>常问的那句存成模板，下次一键插入；模板管理也在那扇窗里。</li>
+      </ol>
+      <p>这块东西存进库的是<strong>问句本身</strong>，不是答案。所以它跟着导出、跟着备份，换台机器照样问得出来。</p>
+      <figure class="shot">
+        <div class="frame">
+          <div class="shot-pending"><span>这一格放：查询块跑出表格视图的截图</span><span>取景 <code>g-query.png</code> · 待实机拍</span></div>
+        </div>
+        <figcaption>一个查询块的表格视图。</figcaption>
+      </figure>
+    </section>
+
+    <section id="graph">
+      <h2>看看你的笔记长成什么形状</h2>
+      <ul>
+        <li>这一篇的邻居：右栏那块小图，两跳以内，颜色分日记 / 文章 / 主题，虚线是还没写出来的那一篇。</li>
+        <li>整个库：<kbd>Ctrl+G</kbd> 开全屏图谱，能拖动、能缩放到某一堆、能按主题收拢。</li>
+        <li>想按时间看：<kbd>Ctrl+Shift+G</kbd> 开时间轴那一档，密度格子 + 跨年同日的提示。</li>
+        <li>「反复提到」在右栏：某个链接被你在三个以上不同月份提过、而提到它的那些篇彼此一条链都没有，这一格就把那几篇摊出来，每行写「跨 7 个月 · 10 篇彼此没连」，你自己判要不要理。点「整理成一篇」只新建一篇空标题、把那几篇的双链摊进去——不合并、不代写、不删原篇。全库清单从 <kbd>Ctrl+K</kbd> 搜「思想重复度」。</li>
+      </ul>
+      <figure class="shot">
+        <div class="frame">
+          <img src="assets/screenshots/graph.png" alt="右栏的局部图谱与反向链接列表，虚线节点表示还没写出来的目标" loading="lazy" onerror="this.closest('.shot').classList.add('is-broken')">
+          <div class="fallback"><span>graph.png</span><span>截图待补</span></div>
+        </div>
+        <figcaption>右栏的局部图谱。全屏图谱待拍 <code>g-graph-full.png</code>。</figcaption>
+      </figure>
+    </section>
+
+    <section id="search">
+      <h2>搜索</h2>
+      <p>按 <kbd>Ctrl+F</kbd> 输入词，全站搜（正文也搜，不只标题）。三档排序：综合、相关度、最近。想按时间优先翻旧账，选「最近」。</p>
+      <p>只知道大概名字？<kbd>Ctrl+O</kbd> 快速切换比搜索更快——它只挑记录与主题。</p>
+    </section>
+
+    <section id="tabs">
+      <h2>同时开几篇</h2>
+      <ul>
+        <li><kbd>Ctrl+T</kbd> 新开一篇，<kbd>Ctrl+W</kbd> 关掉当前，<kbd>Ctrl+Tab</kbd> 轮着切，<kbd>Ctrl+Shift+←/→</kbd> 把这一格左右挪一位（也可以直接拖）。</li>
+        <li>侧栏的文章卡上 <kbd>Ctrl+单击</kbd> 或按鼠标中键，就是新开一格；中键点已经开着的那一篇是切过去，不会多出一格。</li>
+        <li>双击那一格是固定。固定的永远排最前，<kbd>Ctrl+W</kbd> 关不掉，得先取消固定。</li>
+        <li>每格带着自己的滚动位置、光标位置和模式。关掉应用再开，上次开着哪几篇、顺序、当前哪一格、各自滚到哪儿了，都原样回来。</li>
+      </ul>
+      <figure class="shot">
+        <div class="frame">
+          <div class="shot-pending"><span>这一格放：多标签 + 工作区的截图（三格以上才看得出层次）</span><span>取景 <code>g-tabs.png</code> · 待实机拍</span></div>
+        </div>
+        <figcaption>标签与工作区。</figcaption>
+      </figure>
+    </section>
+
+    <section id="present">
+      <h2>演示与随机</h2>
+      <p><strong>要给人看</strong>：<kbd>Ctrl+K</kbd> 搜「演示这一篇」。</p>
+      <ul>
+        <li>在两个段落之间<strong>独占一行</strong>写 <code>---</code> 就是分页（<code>***</code>、<code>___</code>、<code>- - -</code> 一样算）。全屏一屏一页，页脚写 <code>3 / 12</code>。</li>
+        <li>翻页：<kbd>→</kbd> <kbd>↓</kbd> <kbd>Space</kbd> <kbd>PageDown</kbd> 往前，<kbd>←</kbd> <kbd>↑</kbd> <kbd>Backspace</kbd> <kbd>PageUp</kbd> 往后，<kbd>Home</kbd> <kbd>End</kbd> 首尾，点屏幕左 / 右半边也能翻。<kbd>Esc</kbd> 退出。翻到头不循环、也不报错。</li>
+        <li>代码块里那条 <code>---</code> 不算分页，所以贴 diff 不会莫名多出页来。</li>
+        <li>只有一页时会给你一句提示，不会悄悄把整篇当一页、让你以为功能坏了。</li>
+        <li>字号在演示里比编辑时大一档——那只是显示放大，<strong>正文一个字都不改</strong>。演示开着时 <kbd>Ctrl+K</kbd> / <kbd>Ctrl+W</kbd> / <kbd>Ctrl+Tab</kbd> / <kbd>Ctrl+,</kbd> 一概不生效：底下不该有标签被关掉、文档被换掉。退出来那一格还在原处。</li>
+        <li>不做演讲者视图、备注与计时、自动播放。</li>
+      </ul>
+      <p><strong>想翻翻旧账</strong>：<kbd>Ctrl+K</kbd> 搜「随机」。它是<strong>新开一格</strong>而不是顶掉你正在写的那一篇，屏幕上会报开的是哪篇。连着按不重样，回收站里的不参与。它没有默认键位。</p>
+      <figure class="shot">
+        <div class="frame">
+          <div class="shot-pending"><span>这一格放：演示模式全屏一张幻灯片的截图</span><span>取景 <code>g-present.png</code> · 待实机拍</span></div>
+        </div>
+        <figcaption>演示模式。</figcaption>
+      </figure>
+    </section>
+
+    <section id="share">
+      <h2>把一篇发给别人看</h2>
+      <p><kbd>Ctrl+K</kbd> 搜「分享这一篇」。当前这篇写成<strong>一个 <code>.html</code></strong>：里面没有一行 JavaScript，也不联网。断网、换台机器、过十年都照样双击打开。</p>
+      <ul>
+        <li>图片直接封进那一个文件里，不用旁边再带一个 <code>assets/</code> 夹。</li>
+        <li>公式用 MathML（不带走那 1 MB 字体），Mermaid 只带渲好的那张 SVG。</li>
+        <li>落盘前它自己再跑一遍三条判据：没有脚本、没有外链、没有你机器上的路径。<strong>过不了就不写</strong>——宁可少一份文件，也不寄出去一份带着脚本或你家目录的。</li>
+      </ul>
+      <p>这一档不是发布、也不是托管：没有上传、没有链接、没有别人能访问的地址。发给谁，内容就归谁。</p>
+    </section>
+
+    <section id="export">
+      <h2>导出与导回</h2>
+      <p><kbd>Ctrl+K</kbd> 搜「导出为 Markdown」。整个库导成一棵目录树，每篇一个 <code>.md</code>，标题、主题、标签、属性铺在文件开头的 frontmatter 里——Obsidian 那类编辑器打开就是原生形状。</p>
+      <p>搜「从 Markdown 导回」可以把那棵树导回来。它<strong>认的是自家包头里的那串 <code>kestrel-id</code></strong>：同一篇导回去不会多出重复。</p>
+      <div class="note">
+        <p>这一对只保证<strong>自己家往返</strong>。别的软件导过来的目录，它一个字都不读——这不是没做完，是设计选择：通用导入的边界太长，做不好就是把你现有的库搞乱。</p>
+      </div>
+    </section>
+
+    <section id="safety">
+      <h2>删掉了怎么找回</h2>
+      <ol>
+        <li><strong>回收站</strong>：删除先软删进回收站（标题栏那颗垃圾桶）。找到那一行点「恢复」，指向它的链接一起接回来。满 30 天才会在开应用时清掉——而且只在当天那份快照已经在盘上的时候动手。等不及可以自己按「跑一次那一刀」，那句是你当场下的令。</li>
+        <li><strong>历史版本</strong>：右栏最下面那格「历史」。每改一次自动留一版（同一篇两次至少隔 5 分钟，否则列表会变成一串「3 秒前 / 6 秒前」），每篇最多 50 版。<kbd>Ctrl+S</kbd> 强制留一版，不受这个门槛限制。挑一版点「恢复」——恢复之前会先把<strong>当前</strong>这一版存下，所以连恢复本身都能撤销。</li>
+        <li><strong>改名之前先报数</strong>：给主题或标签改名，弹层先告诉你「全库有 N 处会被改」，动手之前那 N 篇各自先留一版历史。</li>
+        <li><strong>库文件本身</strong>：卸载应用不会删 <code>%APPDATA%\Kestrel</code>。</li>
+      </ol>
+      <figure class="shot">
+        <div class="frame">
+          <img src="assets/screenshots/bin.png" alt="回收站浮层与一篇记录的历史版本列表" loading="lazy" onerror="this.closest('.shot').classList.add('is-broken')">
+          <div class="fallback"><span>bin.png</span><span>截图待补</span></div>
+        </div>
+        <figcaption>回收站与历史版本。</figcaption>
+      </figure>
+    </section>
+
+    <section id="backup">
+      <h2>备份与恢复</h2>
+      <ul>
+        <li>开应用时如果当天还没落过一份，就往 <code>%APPDATA%\Kestrel\backups\</code> 写一份，默认留最近 7 份（可设 3–30）。设置里那颗勾能关。</li>
+        <li>清单里每一份写着日期、篇数和大小。挑一份点「换过去」，整个库就换回去了；换之前当前库先自动存成 <code>kestrel-before-restore-…</code>，两个方向都退得回去。</li>
+        <li><strong>别拿拷 <code>.db</code> 文件当备份</strong>：应用开着的时候最近那些改动还在 <code>-wal</code> 里没回写主文件，只拷主文件拿到的是一部缺了最新改动的库。</li>
+        <li>快照只在本机，不做云盘。附件在旁边的 <code>attachments/</code> 里、不跟着快照走，所以那份库拿到另一台机器上会指向缺文件的位置。</li>
+      </ul>
+      <p><strong>换台电脑</strong>：拷 <code>kestrel.db</code> 加 <code>attachments/</code> 两个就够了。旧名 keeNote 时期升上来的机器，首次启动会把老库<em>拷一份</em>到新位置，老库原样留着当退路。</p>
+    </section>
+
+    <section id="privacy">
+      <h2>数据放在哪</h2>
+      <ul>
+        <li><strong>一个文件</strong>：Windows 下 <code>%APPDATA%\Kestrel\kestrel.db</code>（SQLite）。</li>
+        <li><strong>零网络请求</strong>：没有统计、没有更新检查、没有云；字体在安装包里。正文里的 http 链接被点击时交给系统浏览器打开，应用内不开新窗口。</li>
+        <li><strong>多端 = 一个你挑的文件夹</strong>：<kbd>Ctrl+K</kbd> 搜「文件夹同步」。推 = 往那个夹里落一份完整的库加一份元数据；换回来走上面那条恢复的路。把那个夹放进 Dropbox / OneDrive / Syncthing 是你在同步，不是应用在发请求。<strong>那一份是明文的完整日记</strong>——它在谁的云盘账号里，你的日记就在谁那儿。</li>
+        <li><strong>冲突的时候它不猜</strong>：比的是「相对上次同步，哪一边动过」。两边都动过就停下，把两边的篇数和最后改动时间并排摆出来，两颗按钮你自己挑。</li>
+        <li>那个夹里除了它自己写的两份文件出现的别的 <code>.db</code>（比如同步盘的冲突副本），Kestrel 一概不读、不删。</li>
+      </ul>
+      <div class="note">
+        <p><strong>这一版会自己删东西的地方只有一处</strong>：回收站与历史版本满 30 天，会在开应用时被彻底删除，而且只在当天那份快照已经在盘上的时候动手。除此之外程序不会自己删掉你的任何内容。</p>
+        <p>还有一件它不替你做：同步<strong>没有定时器</strong>，推与拉两颗按钮都在人手上。</p>
+      </div>
+    </section>
+
+    <section id="looks">
+      <h2>换外观</h2>
+      <p>按 <kbd>Ctrl+,</kbd> 开设置。六格：外观 / 编辑器 / 片段 / 快捷键 / 数据 / 关于。每一项都落进库里，重启还在。</p>
+      <ul>
+        <li><strong>四套主题</strong>：白桦（亮色默认）、麦秸（亮色，长阅读）、松林（暗色默认）、薄荷（暗色，高对比）。勾「跟随系统」就在亮暗两档之间自己换。强调色各有几档预设。</li>
+        <li><strong>字号</strong>是一整条阶梯一起调，不是只放大正文。</li>
+        <li><strong>毛玻璃</strong>能关；关了之后界面变实色，读起来更安静。</li>
+      </ul>
+      <p><strong>想改得更深</strong>：把你的 <code>.css</code> 丢进 <code>%APPDATA%\Kestrel\snippets\</code>，立刻生效，删掉就撤回来。</p>
+      <ul>
+        <li>生效顺序按文件名升序，跟你什么时候存盘无关；两份撞同一条选择器，名字靠后那份赢。</li>
+        <li>设置那一格能看到每一份的大小与改过的时间，能单独关掉某一份（关着的状态重启还在）。超过 1 MB 的那份不生效，但会列出来并写着为什么——静默失灵是最难查的那种失灵。</li>
+        <li>写坏了、界面被你藏起来了？<kbd>Ctrl+K</kbd> 搜「暂停全部片段」，或者启动时加 <code>--no-snippets</code>。暂停只影响本次运行，不改任何勾。</li>
+        <li>一句实测经验：<strong>直接改类选择器最稳</strong>（<code>.md-prose { … }</code> 这种，不用 <code>!important</code> 就盖得住）。要换主题变量得写 <code>body[data-theme] { --text-1: … }</code>——写成 <code>body {}</code> 或 <code>:root {}</code> 压不住主题那一层。</li>
+        <li>片段是<strong>文件</strong>，不在库里：每日快照、导出、换库都不含它们。</li>
+        <li>片段里写 <code>@import url(http://…)</code> 或背景图外链都出不了网——CSP 当场拦下。这跟「零网络请求」那句承诺是同一件事。</li>
+      </ul>
+      <div class="shots">
+        <figure class="shot">
+          <div class="frame">
+            <img src="assets/screenshots/dark.png" alt="松林主题下的整个应用窗口" loading="lazy" onerror="this.closest('.shot').classList.add('is-broken')">
+            <div class="fallback"><span>dark.png</span><span>截图待补</span></div>
+          </div>
+          <figcaption>松林 · 暗色档的整窗观感。</figcaption>
+        </figure>
+        <figure class="shot">
+          <div class="frame">
+            <div class="shot-pending"><span>这一格放：外观面板，四套主题缩略图并排</span><span>取景 <code>g-themes.png</code> · 待实机拍（旧的 appearance.png 里还是旧名字，先不挂）</span></div>
+          </div>
+          <figcaption>外观面板。</figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <section id="keys">
+      <h2>快捷键</h2>
+      <p><kbd>Ctrl+K</kbd> 是命令面板，所有功能都能从那儿搜到——想不起键位就搜名字，不必背这张表。macOS 上 <kbd>Ctrl</kbd> 表示 <kbd>⌘</kbd>。</p>
+      <table>
+        <caption>键位与命令名取自应用内的命令注册表，与 README 一致。</caption>
+        <thead>
+          <tr><th scope="col">键位</th><th scope="col">命令</th><th scope="col">说明</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="keys"><kbd>Ctrl+K</kbd> / <kbd>Ctrl+P</kbd></td><td>命令面板</td><td>按分组列出所有命令</td></tr>
+          <tr><td class="keys"><kbd>Ctrl+O</kbd></td><td>快速切换</td><td>跳到某条记录或主题</td></tr>
+          <tr><td class="keys"><kbd>Ctrl+T</kbd></td><td>在新标签里打开…</td><td>同一个面板，落点是新开一格</td></tr>
+          <tr><td class="keys"><kbd>Ctrl+W</kbd></td><td>关掉当前标签</td><td>固定的那一格、以及最后一格都不关，也不关窗口</td></tr>
+          <tr><td class="keys"><kbd>Ctrl+Tab</kbd> <kbd>Ctrl+Shift+Tab</kbd></td><td>循环切标签</td><td></td></tr>
+          <tr><td class="keys"><kbd>Ctrl+Shift+←</kbd> <kbd>Ctrl+Shift+→</kbd></td><td>当前标签左右挪一位</td><td>不跨过固定那道界；也可以用拖的</td></tr>
+          <tr><td class="keys"><kbd>Ctrl+F</kbd></td><td>站内搜索</td><td>三档排序：综合 / 相关度 / 最近</td></tr>
+          <tr><td class="keys"><kbd>Ctrl+G</kbd></td><td>打开全局图谱</td><td></td></tr>
+          <tr><td class="keys"><kbd>Ctrl+Shift+G</kbd></td><td>全局图谱 · 时间轴</td><td>密度格子与跨年同日那一档</td></tr>
+          <tr><td class="keys"><kbd>Ctrl+1</kbd>…<kbd>Ctrl+4</kbd></td><td>切到 今天 / 主题 / 标签 / 属性</td><td>左栏四格</td></tr>
+          <tr><td class="keys"><kbd>Ctrl+N</kbd></td><td>新建</td><td>日记模式打开今天，主题模式下新建文章</td></tr>
+          <tr><td class="keys"><kbd>Ctrl+Shift+M</kbd></td><td>循环切换编辑器模式</td><td>阅读 → 所见即所得 → 源码</td></tr>
+          <tr><td class="keys"><kbd>Ctrl+S</kbd></td><td>手动保存</td><td>存盘并留一版历史</td></tr>
+          <tr><td class="keys"><kbd>Ctrl+D</kbd></td><td>收藏 / 取消收藏</td><td></td></tr>
+          <tr><td class="keys"><kbd>Ctrl+Shift+F</kbd></td><td>专注模式</td><td>把左右两栏收起来，只留正文</td></tr>
+          <tr><td class="keys"><kbd>Ctrl+Shift+T</kbd></td><td>焦点给标签树</td><td></td></tr>
+          <tr><td class="keys"><kbd>Ctrl+,</kbd></td><td>设置</td><td>外观 / 编辑器 / 片段 / 快捷键 / 数据 / 关于</td></tr>
+        </tbody>
+      </table>
+      <p>只从命令面板进、没有键位的：升格为文章、主题管理、回收站、删除当前记录、收藏列表、插入查询块、查询与模板、表格那一组、CSS 片段那一组、演示这一篇、随机打开一篇、导出与导回、备份与恢复、文件夹同步、分享这一篇、思想重复度全库清单。</p>
+      <p>两条别按习惯按：<kbd>Ctrl+F</kbd> 在这里是站内搜索、<kbd>Ctrl+Shift+F</kbd> 是专注模式，跟 Obsidian 不一样。同步那两颗按钮里有一颗会把当前库整个换掉，所以它不配一个"按一次回车就写盘"的默认键位。</p>
+    </section>
+
+    <section id="nongoals">
+      <h2>它不做什么</h2>
+      <p>下面这些不是「还没做」，是不打算做：</p>
+      <ul>
+        <li><strong>不做云同步</strong>（应用自己不联网）。多端那半边见上面「数据放在哪」里那个文件夹的办法。WebDAV / S3 那种"应用自己连出去"的形态没做，因为它改了开头那句「零网络请求」。</li>
+        <li><strong>不用 <code>.md</code> 目录当存储格式</strong>。双链、反链、属性、历史版本这些跨文件的索引，一旦以文件为存储就得每次打开重算，库一大就慢。这里存 SQLite，那棵 Markdown 是导出来的。代价说清楚：库文件损坏时没法像纯文本那样手工改。</li>
+        <li><strong>不做协作与多人编辑</strong>。这是个人工具。</li>
+        <li><strong>不做插件系统</strong>。要做的能力直接做进主程序，否则界面一致性保不住。想改外观有 CSS 片段那扇门。</li>
+        <li><strong>不做移动端</strong>。</li>
+        <li><strong>不追求和 Obsidian 功能对齐</strong>。它是最重要的参照对象，但参照的是交互习惯，不是清单。</li>
+      </ul>
+      <p>Issues 开在<a href="https://github.com/fangjj1008/kestrel">这个仓库</a>上。用不上 / 别扭 / 数据不放心，这三类反馈最值钱。</p>
+    </section>
+  </main>
+</div>
+
+<footer>
+  <div class="foot-inner">
+    <p>Copyright © 2026 fangjj1008 · 这一页不发起任何外部网络请求。</p>
+    <nav aria-label="页脚链接">
+      <a href="index.html">首页</a>
+      <a href="index.html#download">下载</a>
+      <a href="https://github.com/fangjj1008/kestrel/blob/main/LICENSE">AGPL-3.0-only</a>
+      <a href="about.html">关于</a>
+      <a href="donate.html">捐赠</a>
+    </nav>
+  </div>
+</footer>
+</body>
+</html>

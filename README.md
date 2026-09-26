@@ -40,8 +40,8 @@ Kestrel 把这两种形状做成了一等公民，用同一种笔记体（`[[双
 | ![props](site/assets/screenshots/props.png) | ![palette](site/assets/screenshots/palette.png) |
 | **按类型存的元信息，侧栏按值分组** | **`Ctrl+K` 一条入口，与快捷键同源** |
 
-四套外观主题（玻璃拟态 + Maple Mono），`Ctrl+,` 切换，也可以跟随系统。
-删东西之前先问一句、回收站里能恢复、极夜那套暗色，这几张在[官网](https://fangjj1008.github.io/kestrel/)上还有。
+四套外观主题（白桦 / 麦秸 / 松林 / 薄荷，玻璃拟态 + Maple Mono），`Ctrl+,` 切换，也可以跟随系统。
+删东西之前先问一句、回收站里能恢复、松林那套暗色，这几张在[官网](https://fangjj1008.github.io/kestrel/)上还有；想学怎么用，看[使用说明](https://fangjj1008.github.io/kestrel/guide.html)。
 
 ## 功能
 
