@@ -269,6 +269,13 @@ a:hover {
   list-style: none;
   font-size: 14px;
   min-width: 0;
+  /* 全局那条 `ul, ol { padding-left: 22px }` 与 `li + li { margin-top: 6px }` 是给正文列表用的，
+     顶栏这颗也是 <ul>，于是三项各被推下 6px（视觉上 3px）、整排还往右偏 11px。chrome 不是正文。 */
+  padding-left: 0;
+}
+
+.topbar-links li + li {
+  margin-top: 0;
 }
 
 /* `<a>` 写成 inline-block 时，它在这个行盒里的位置由基线决定：实测第一个「亮点」顶在 9px、
