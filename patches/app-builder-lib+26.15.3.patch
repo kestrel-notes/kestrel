@@ -1,0 +1,89 @@
+diff --git a/node_modules/app-builder-lib/out/electron/electronWin.js b/node_modules/app-builder-lib/out/electron/electronWin.js
+index 8af583d..14bc5cf 100644
+--- a/node_modules/app-builder-lib/out/electron/electronWin.js
++++ b/node_modules/app-builder-lib/out/electron/electronWin.js
+@@ -7,7 +7,7 @@ const path = require("path");
+ const resedit_1 = require("resedit");
+ /** @internal */
+ async function addWinAsarIntegrity(executablePath, asarIntegrity) {
+-    const buffer = await (0, promises_1.readFile)(executablePath);
++    const buffer = await retryWhileLocked("read " + executablePath, () => (0, promises_1.readFile)(executablePath));
+     const executable = resedit_1.NtExecutable.from(buffer);
+     const resource = resedit_1.NtExecutableResource.from(executable);
+     const versionInfo = resedit_1.Resource.VersionInfo.fromEntries(resource.entries);
+@@ -32,7 +32,29 @@ async function addWinAsarIntegrity(executablePath, asarIntegrity) {
+         codepage: languages[0].codepage,
+     });
+     resource.outputResource(executable);
+-    await (0, promises_1.writeFile)(executablePath, Buffer.from(executable.generate()));
++    await retryWhileLocked("write " + executablePath, () => (0, promises_1.writeFile)(executablePath, Buffer.from(executable.generate())));
+     builder_util_1.log.info({ executablePath: builder_util_1.log.filePath(executablePath) }, "updating asar integrity executable resource");
+ }
++// An on-access virus scan holds the freshly-extracted ~240 MB Electron executable for seconds at a
++// time (three engines are registered on this machine, so it is not attributed to one product);
++// reads and writes of that file throw EBUSY/EPERM meanwhile. Upstream already ships `retry` and uses
++// it in its signing paths against the same class of failure, so reuse it — and log each wait, because
++// "no contention this time" and "the retry never ran" are otherwise indistinguishable.
++// Same helper as util/resEdit.js, duplicated on purpose: keeping the patch local to each file means
++// a future app-builder-lib bump fails loudly at `patch-package` time instead of silently dropping the
++// retry in one of the two places.
++async function retryWhileLocked(what, task) {
++    let waits = 0;
++    return (0, builder_util_1.retry)(task, {
++        retries: 12,
++        interval: 500,
++        backoff: 250,
++        shouldRetry: (e) => {
++            if (e?.code !== "EBUSY" && e?.code !== "EPERM")
++                return false;
++            builder_util_1.log.warn({ what, waits: ++waits, code: e.code }, "executable is locked by the on-access virus scan, retrying");
++            return true;
++        },
++    });
++}
+ //# sourceMappingURL=electronWin.js.map
+\ No newline at end of file
+diff --git a/node_modules/app-builder-lib/out/util/resEdit.js b/node_modules/app-builder-lib/out/util/resEdit.js
+index 7a5cbc1..8f7d2d1 100644
+--- a/node_modules/app-builder-lib/out/util/resEdit.js
++++ b/node_modules/app-builder-lib/out/util/resEdit.js
+@@ -5,7 +5,7 @@ const builder_util_1 = require("builder-util");
+ const promises_1 = require("fs/promises");
+ const resedit_1 = require("resedit");
+ async function editWindowsResources(opts) {
+-    const buffer = await (0, promises_1.readFile)(opts.file);
++    const buffer = await retryWhileLocked("read " + opts.file, () => (0, promises_1.readFile)(opts.file));
+     const executable = resedit_1.NtExecutable.from(buffer);
+     const res = resedit_1.NtExecutableResource.from(executable);
+     const viList = resedit_1.Resource.VersionInfo.fromEntries(res.entries);
+@@ -29,7 +29,29 @@ async function editWindowsResources(opts) {
+         patchManifestExecutionLevel(res, opts.requestedExecutionLevel, opts.file);
+     }
+     res.outputResource(executable);
+-    await (0, promises_1.writeFile)(opts.file, Buffer.from(executable.generate()));
++    await retryWhileLocked("write " + opts.file, () => (0, promises_1.writeFile)(opts.file, Buffer.from(executable.generate())));
++}
++// An on-access virus scan holds the freshly-extracted ~240 MB Electron executable for seconds at a
++// time (three engines are registered on this machine, so it is not attributed to one product);
++// reads and writes of that file throw EBUSY/EPERM meanwhile. Upstream already ships `retry` and uses
++// it in its signing paths against the same class of failure, so reuse it — and log each wait, because
++// "no contention this time" and "the retry never ran" are otherwise indistinguishable.
++// Same helper as electron/electronWin.js, duplicated on purpose: keeping the patch local to each file
++// means a future app-builder-lib bump fails loudly at `patch-package` time instead of silently
++// dropping the retry in one of the two places.
++async function retryWhileLocked(what, task) {
++    let waits = 0;
++    return (0, builder_util_1.retry)(task, {
++        retries: 12,
++        interval: 500,
++        backoff: 250,
++        shouldRetry: (e) => {
++            if (e?.code !== "EBUSY" && e?.code !== "EPERM")
++                return false;
++            builder_util_1.log.warn({ what, waits: ++waits, code: e.code }, "executable is locked by the on-access virus scan, retrying");
++            return true;
++        },
++    });
+ }
+ function patchManifestExecutionLevel(res, level, file) {
+     const manifestEntry = res.entries.find(e => e.type === 24 && e.id === 1);

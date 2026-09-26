@@ -9,11 +9,11 @@
   "type": "module",
   "main": "./out/main/index.js",
   "scripts": {
-    "postinstall": "install-electron",
+    "postinstall": "patch-package && install-electron",
     "dev": "electron-vite dev",
     "build": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json && electron-vite build",
-    "pack": "npm run build && electron-builder --dir",
-    "dist": "npm run build && electron-builder --win",
+    "pack": "npm run build && node scripts/dist.mjs --dir",
+    "dist": "npm run build && node scripts/dist.mjs --win",
     "preview": "electron-vite preview",
     "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",
     "icon": "node scripts/make-icon.mjs",
@@ -27,6 +27,7 @@
     "electron": "^44.0.0",
     "electron-builder": "^26.15.3",
     "electron-vite": "^2.3.0",
+    "patch-package": "^8.0.1",
     "typescript": "^5.7.2",
     "vite": "^5.4.11"
   },

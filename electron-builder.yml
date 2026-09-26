@@ -31,6 +31,17 @@ extraResources:
 
 asar: true
 
+# 打包用的 Electron 直接取 node_modules/electron/dist，不再重新下载那 158 MB 的 zip。
+# 本机实测（2026-09-26）：electron-builder 自己的下载缓存里**没有** electron 的 zip
+# （Cache/downloads 只剩 nsis 与 7zip），于是每一趟构建都重下一遍，这台机器约 250 KB/s
+# ⇒ 一趟 11 分钟，而且 github 的直连时不时重置。
+# 两边那份 electron.exe SHA-256 一致（4e069955705384d0b711bedf5611b7c0bc91ff8c84fc199879d29fc4910f9bab，
+# 246,324,736 字节），所以这不是"换个包试试"，是同一份东西少绕一段网络。
+# 顺带一个好处：解包目录里那颗 exe 就是 `npm run dev` 与实机探针在跑的那一颗。
+# 注意别用 `npm install --ignore-scripts` 装依赖后直接打包——install-electron 没跑，
+# dist/ 可能停在旧版本，而 electronVersion 是从 node_modules/electron/package.json 读的。
+electronDist: node_modules/electron/dist
+
 win:
   target:
     - target: nsis
