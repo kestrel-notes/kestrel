@@ -224,9 +224,11 @@
   /* ---------- 老链接不失效 ----------
      这一页以前是「首页 = 说明页」，#record / #privacy 那批锚点在 README、
      Releases 正文与别人的笔记链接里都出现过；首页改成展示页之后把它们转发过去。
-     那两份表里的键就是旧首页全部的 section id，一个不漏。 */
+     那两份表里的键就是旧首页还留在说明页上的 section id。「它不做什么」那一节整个删了，
+     所以它不在这张表里——转发到一个不存在的锚点，比不转发更糟。
+     `download` 也不在：这一页自己就有 `#download` 那一块（下载 CTA），把它弹到说明页是弹错地方。 */
 
-  var LEGACY_SAME = ['download', 'screens', 'organize', 'looks', 'present', 'safety', 'keys', 'first-run', 'privacy', 'nongoals']
+  var LEGACY_SAME = ['screens', 'organize', 'looks', 'present', 'safety', 'keys', 'first-run', 'privacy']
   var LEGACY_MOVED = { overview: 'screens', record: 'write' }
   var page = (location.pathname.split('/').pop() || 'index.html').toLowerCase()
   var hash = (location.hash || '').replace(/^#/, '')

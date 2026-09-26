@@ -271,8 +271,15 @@ a:hover {
   min-width: 0;
 }
 
+/* `<a>` 写成 inline-block 时，它在这个行盒里的位置由基线决定：实测第一个「亮点」顶在 9px、
+   其余三个在 12px，差 3px——用户看到的"亮点永远高于其他三个"。改成 flex 让它不再参与基线对齐。 */
+.topbar-links li {
+  display: flex;
+}
+
 .topbar-links a {
-  display: inline-block;
+  display: flex;
+  align-items: center;
   padding: 6px 10px;
   border-radius: var(--radius-sm);
   color: var(--text-2);
@@ -780,23 +787,15 @@ footer {
   padding: clamp(20px, 3vw, 40px) clamp(16px, 3vw, 32px) 64px;
 }
 
-#confetti {
-  position: fixed;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
-  z-index: 5;
-}
-
+/* 收款码是竖的（1279×1769），原来那个 1:1 的方框是给它留的占位。
+   margin 用 auto 让它落在正文中线上，不再贴着左边。 */
 .qr {
   max-width: 300px;
-  margin: 20px 0;
+  margin: 24px auto;
 }
 
 .qr .box {
   position: relative;
-  aspect-ratio: 1 / 1;
   background: var(--bg-glass-strong);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
@@ -806,8 +805,7 @@ footer {
 .qr img {
   display: block;
   width: 100%;
-  height: 100%;
-  object-fit: contain;
+  height: auto;
   background: #fff;
 }
 
@@ -855,33 +853,6 @@ footer {
 .tier p {
   font-size: 14px;
   color: var(--text-2);
-}
-
-.motion {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 10px;
-  margin: 22px 0 4px;
-  padding: 12px 16px;
-  font-size: 14.5px;
-}
-
-.motion label {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  cursor: pointer;
-}
-
-.motion input {
-  width: 16px;
-  height: 16px;
-  accent-color: var(--brand);
-}
-
-.motion output {
-  color: var(--muted);
 }
 
 /* ---------- 响应式：左栏收成顶部胶囊（**不再横向滚**） ---------- */
@@ -975,6 +946,14 @@ pre,
 .lede,
 .shot figcaption {
   overflow-wrap: anywhere;
+}
+
+/* 全局那条 `section { max-width: var(--max-text) }`（46rem = 736px）是给说明页的正文列用的。
+   首页这三段也是 <section>，于是整块被卡成 736px 贴在左边、右边空一大片——用户报的
+   "标题和图都显示在左边"就是它。展示页自己管宽度，这里把那条撤掉。 */
+.hero,
+.cta {
+  max-width: none;
 }
 
 .hero {
@@ -1370,9 +1349,9 @@ pre,
    这一档的存在意义就是"手机上也能看清那一屏"。覆盖层只在打开时进 DOM，
    所以关掉之后不会有"看不见但 Tab 得到"的焦点陷阱。 */
 
-main img {
-  cursor: zoom-in;
-}
+/* 原来这里写的是 `main img { cursor: zoom-in }`。用户说那个放大镜光标没用——
+   桌面端图本来就看得清，不需要"点我放大"的暗示。点击摊开留着（手机上那几张 1440 宽的
+   截图不放大读不了字），但不再用光标去宣传它。 */
 
 .zoom {
   position: fixed;

@@ -11,11 +11,9 @@
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="stylesheet" href="assets/site.css">
 <script src="assets/site.js" defer></script>
-<script src="assets/confetti.js" defer></script>
 </head>
 <body>
 <a class="skip" href="#main">跳到正文</a>
-<canvas id="confetti" aria-hidden="true"></canvas>
 
 <header class="topbar glass">
   <a class="brand" href="index.html">
@@ -29,7 +27,6 @@
   <ul class="topbar-links" id="topbar-links">
     <li><a href="index.html#features">亮点</a></li>
     <li><a href="guide.html">使用说明</a></li>
-    <li><a href="about.html">关于</a></li>
     <li><a href="donate.html" aria-current="page">捐赠</a></li>
   </ul>
   <div class="topbar-right">
@@ -71,23 +68,10 @@
 
   <figure class="qr">
     <div class="box">
-      <img src="assets/donate-qr.png" alt="捐赠二维码" width="600" height="600" loading="lazy" onerror="this.closest('.qr').classList.add('is-broken')">
-      <div class="fallback"><span>二维码位 · 图片待放入</span><span>assets/donate-qr.png</span></div>
+      <img src="assets/donate-qr.jpg" alt="微信收款码，扫码即可捐赠" width="1279" height="1769" decoding="async" onerror="this.closest('.qr').classList.add('is-broken')">
+      <div class="fallback"><span>二维码没能显示出来</span><span>assets/donate-qr.jpg</span></div>
     </div>
-    <figcaption>扫码前请核对收款方名字与仓库署名一致（fangjj1008）。二维码以外的任何收款方式都不是本项目。</figcaption>
   </figure>
-
-  <p>不想花钱也有用：<a href="https://github.com/fangjj1008/kestrel">Issues</a> 里「用不上 / 别扭 / 数据不放心」这三类反馈最值钱。仓库里也能看到路线图，还没做的是真分屏、端到端加密与主题包（<a href="about.html#roadmap">路线图</a>那一节写清了不做的事）。</p>
-
-  <div class="motion glass">
-    <label for="motion-off">
-      <input type="checkbox" id="motion-off">
-      关闭动效
-    </label>
-    <output id="motion-hint" for="motion-off"></output>
-  </div>
-
-  <p class="note"><strong>关于这页的彩纸。</strong>只在进入页面时放一轮，不会循环；系统开了「减少动态效果」时压根不播。上面那个开关的选择记在这台浏览器的 localStorage 里。</p>
 </main>
 
 <footer>
@@ -97,7 +81,6 @@
       <a href="https://github.com/fangjj1008/kestrel/blob/main/LICENSE">AGPL-3.0-only</a>
       <a href="index.html">主页</a>
       <a href="guide.html">使用说明</a>
-      <a href="about.html">关于</a>
     </nav>
   </div>
 </footer>
