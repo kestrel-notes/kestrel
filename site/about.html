@@ -80,7 +80,7 @@
         <li><strong>外壳</strong>：Electron 44 + React 19 + TypeScript + Vite（electron-vite）。</li>
         <li><strong>状态</strong>：Zustand 5；快捷键与命令面板读同一张注册表（<code>src/renderer/src/commands.ts</code>），不会出现「面板里有、键位没接」这种对不上的情况。</li>
         <li><strong>数据库</strong>：Node 内置的 <code>node:sqlite</code>，所以<strong>零原生模块</strong>——不装 <code>node-gyp</code>，不会因为 Electron 换版本而重编译失败。</li>
-        <li><strong>编辑器</strong>：所见即所得是 Tiptap，源码模式是 CodeMirror 6，两边切换有无损判据。</li>
+        <li><strong>编辑器</strong>：所见即所得是 Tiptap，源码模式是 CodeMirror 6，两边来回切之前会先查一遍，确认你的字不会在切换里丢掉。</li>
         <li><strong>字体</strong>：Maple Mono（连同中文回退栈打包进安装包，运行期不下载任何东西）。</li>
         <li><strong>打包</strong>：electron-builder + NSIS，按当前用户安装，中文安装界面；安装包未做代码签名。</li>
       </ul>
@@ -123,7 +123,7 @@
       <ul>
         <li><strong>v0.1.0（当前）</strong>：已作为第一个 Release 发出去（安装包在未签名的情况下可装可跑）。版本号还停在 0，但里面已经装着十一期的活（第 11 期两半都做完了）——日记 + 文章 + 升格、双链 / 反链 / 局部与全局图谱、<strong>反复提到（思想重复度）</strong>、嵌套标签、属性、收藏、<kbd>Ctrl+F</kbd> 站内搜索、附件 / 表格 / Callout / 折叠 / 公式 / 脚注 / Mermaid、查询块与存查询 / 模板、图谱时间轴与主题编年史、标签页与工作区、CSS 片段与设置页重构、幻灯片与随机笔记，以及回收站 / 历史版本 / 每日快照这套安全网、<code>.md</code> 导出导回、<strong>文件夹同步（多端）</strong>、<strong>单篇只读分享（一个 <code>.html</code>，零 JS 零请求）</strong>。每一项怎么写怎么用，见<a href="guide.html">使用说明</a>。</li>
         <li><strong>还没做、也不打算偷偷做</strong>：一屏两栏的真分屏（<code>richView</code> 那颗编辑器单例得先换成注册表；两棵并存的代价量过了——多摆一棵可见的树，每一键耗时逐位不变，贵的是「哪一栏在编辑」在状态里没有位置，而自动保存正对着你的真日记）；端到端加密（要连带一期"口令忘了怎么办"的设计）；WebDAV / S3（改的是「零网络请求」那句承诺，那一句至今一个字没改）。</li>
-        <li><strong>第 11 期剩下的</strong>：主题包、语义检索 / AI、插件那套权限清单与显式授权。思想重复度那一半已经做完了（在使用说明里叫<a href="guide.html#graph">反复提到</a>）；<strong>文本相似度那一路按实测决定不做</strong>——三元组重叠那台仪器校过、代价可忽略，但今天没有任何一份语料能定出阈值（合成库天然无重复，真库只有 6 篇跨 1 个月），定低了它就是一面"你写的东西都差不多"的噪音墙。</li>
+        <li><strong>第 11 期剩下的</strong>：主题包、语义检索 / AI、插件那套权限清单与显式授权。思想重复度那一半已经做完了（在使用说明里叫<a href="guide.html#graph">反复提到</a>）；<strong>文本相似度那一路试过之后决定不做</strong>：要判断"两段话是不是在说同一件事"，得先有一条画得出来的线，而线两边的样本都给不出来——临时造的那些笔记天生不重复，我自己那 6 篇又只跨了 1 个月。画不出一条线，就只能拍一个数，那是我在猜。</li>
       </ul>
       <p>不做的事同样写清楚了：云同步（多端那一半是「你自己挑一个文件夹」，应用自己不联网）、协作与多人编辑、插件系统、移动端，见<a href="guide.html#nongoals">非目标</a>。</p>
     </section>

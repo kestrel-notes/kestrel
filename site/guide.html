@@ -97,7 +97,7 @@
   <main id="main">
     <section id="first-run">
       <h1>Kestrel 使用说明</h1>
-      <p class="lede">从第一条记到把删掉的东西捞回来。每一节都是先说要做什么，再给步子。</p>
+      <p class="lede">从记下第一条，到把删掉的东西找回来。</p>
       <h2>第一次打开</h2>
       <p>空库会先给你一篇文章都没有的界面，然后种下一个「Kestrel 使用指南」主题和 4 篇示例，外加今天这一篇日记。</p>
       <ol>
@@ -144,7 +144,7 @@
             <img src="assets/screenshots/g-props.webp" alt="属性那一格：属性名与各自的取值分组，右边是选中之值的记录列表" loading="lazy" onerror="this.closest('.shot').classList.add('is-broken')" srcset="assets/screenshots/g-props.webp 1440w, assets/screenshots/g-props@720w.webp 720w" sizes="(max-width: 760px) 92vw, 660px" width="1440" height="900">
             <div class="fallback"><span>.webp</span><span>截图待补</span></div>
           </div>
-          <figcaption>属性 · 按值分组，这是标签做不到的一件事。</figcaption>
+          <figcaption>属性 · 同一个取值的文章自动归成一堆，标签做不到这一步。</figcaption>
         </figure>
       </div>
     </section>
@@ -166,12 +166,12 @@
 
     <section id="write">
       <h2>写与存</h2>
-      <p><strong>要做的</strong>：把东西写下来，并且相信它不会丢。</p>
+      <p><strong>要做的</strong>：把东西写下来，然后不用去想保存这回事。</p>
       <ul>
         <li>日记按日期走，一天一篇；文章挂在主题下面。两种笔记体，同一种写法。</li>
         <li>不用按保存。停下来半秒它就存了，右下角写「已保存」。想立刻落盘按 <kbd>Ctrl+S</kbd>——顺手留一版历史。</li>
         <li>三档模式，用 <kbd>Ctrl+Shift+M</kbd> 轮：阅读（只看）→ 所见即所得（写）→ 源码（看原始的 Markdown）。</li>
-        <li>切到源码档之前它会先比一遍：<strong>确认改完还能原样回来</strong>才切。真会动到你的字，它就把你留在源码档并说清是哪几处——宁可切不过去，也不悄悄吃掉你写的东西。</li>
+        <li>切到源码档之前它会先比一遍，确认这些字存出去还能一个字不变地回来才切。可能会动到你的字，它就把你留在源码档，并且说是哪几处。</li>
         <li>写长文想收起小节：点标题左边那颗折叠箭头；<kbd>Ctrl+K</kbd> 搜「全部折叠」一次全收。</li>
         <li>选中一段字，右下角会告诉你这一段多少字。</li>
       </ul>
@@ -204,7 +204,7 @@
         <div class="frame">
           <img src="assets/screenshots/g-md.webp" alt="同一屏里的对照表、写放大公式、Mermaid 分层图、SQL 代码块与 Callout" loading="lazy" onerror="this.closest('.shot').classList.add('is-broken')" srcset="assets/screenshots/g-md.webp 1440w, assets/screenshots/g-md@720w.webp 720w" sizes="(max-width: 760px) 92vw, 660px" width="1440" height="900">
         </div>
-        <figcaption>同屏的六种 Markdown 写法。</figcaption>
+        <figcaption>同一种屏里能出现的五种写法：对照表、公式、Mermaid、SQL 代码块、Callout。</figcaption>
       </figure>
     </section>
 
@@ -219,13 +219,13 @@
         <li>想知道那一头是什么，按住 <kbd>Ctrl</kbd> 把鼠标停在链接上——弹一张小卡，写着那一头的第一段和被几处指向。没写出来的那一篇也弹，而且它最有用：「这个写法已经被写了 N 处」。</li>
       </ol>
       <p><strong>还没写的那一篇</strong>：链接会画成虚线，不红、不报错。等你哪天补上，它自己就连上了。</p>
-      <p><strong>一个写法想指到哪儿，你可以自己定</strong>：<kbd>Ctrl+K</kbd> 搜「别名」，开一扇窗，把 <code>[[玻璃]]</code> 这样的写法绑到某个主题或某一篇上，正文一个字都不用改。给主题改名时它还会问你要不要「旧名留作别名」；那条别名在窗口里看得见、删得掉，删掉之后那几处掉回虚线，不会静默消失。</p>
+      <p><strong>一个写法想指到哪儿，你可以自己定</strong>：<kbd>Ctrl+K</kbd> 搜「别名」，弹出一个小窗口，把 <code>[[玻璃]]</code> 这样的写法绑到某个主题或某一篇上，正文一个字都不用改。给主题改名时它还会问你要不要「旧名留作别名」；那条别名在窗口里看得见、删得掉，删掉之后那几处会变回虚线，不会一声不吭地没了。</p>
       <p><strong>右栏那两块</strong>：「反向链接」是别人怎么指到这一篇的（带上下文那一行）；「出链」是这一篇指到哪儿去了，哪几条还是虚线。底下偶尔冒出一组「未链接提及」——别处平写着这一篇的名字但没打成链接，一行一处，点「连上」只动你点的那一处。</p>
       <figure class="shot">
         <div class="frame">
           <img src="assets/screenshots/g-embed.webp" alt="日记里用 ![[…]] 嵌进另外两篇的正文，带来源那一行的标题" loading="lazy" onerror="this.closest('.shot').classList.add('is-broken')" srcset="assets/screenshots/g-embed.webp 1440w, assets/screenshots/g-embed@720w.webp 720w" sizes="(max-width: 760px) 92vw, 660px" width="1440" height="900">
         </div>
-        <figcaption>嵌入与悬停预览。</figcaption>
+        <figcaption>这一天里嵌着另外两篇的正文，每一块上面写着它从哪儿来。</figcaption>
       </figure>
     </section>
 
@@ -254,7 +254,7 @@
         <div class="frame">
           <img src="assets/screenshots/g-query.webp" alt="一个查询块：上面是写下来的问句，下面是它跑出来的六张卡片" loading="lazy" onerror="this.closest('.shot').classList.add('is-broken')" srcset="assets/screenshots/g-query.webp 1440w, assets/screenshots/g-query@720w.webp 720w" sizes="(max-width: 760px) 92vw, 660px" width="1440" height="900">
         </div>
-        <figcaption>一个查询块的表格视图。</figcaption>
+        <figcaption>一个查询块：上面是写下来的问句，下面是它跑出来的那几张卡片。</figcaption>
       </figure>
     </section>
 
@@ -264,14 +264,21 @@
         <li>这一篇的邻居：右栏那块小图，两跳以内，颜色分日记 / 文章 / 主题，虚线是还没写出来的那一篇。</li>
         <li>整个库：<kbd>Ctrl+G</kbd> 开全屏图谱，能拖动、能缩放到某一堆、能按主题收拢。</li>
         <li>想按时间看：<kbd>Ctrl+Shift+G</kbd> 开时间轴那一档，密度格子 + 跨年同日的提示。</li>
-        <li>「反复提到」在右栏：某个链接被你在三个以上不同月份提过、而提到它的那些篇彼此一条链都没有，这一格就把那几篇摊出来，每行写「跨 7 个月 · 10 篇彼此没连」，你自己判要不要理。点「整理成一篇」只新建一篇空标题、把那几篇的双链摊进去——不合并、不代写、不删原篇。全库清单从 <kbd>Ctrl+K</kbd> 搜「思想重复度」。</li>
+        <li>「反复提到」在右栏。同一句话你在三个以上不同月份里写过，而写它的那几篇彼此一条链都没有，这一格就把它们列出来，每行写着「跨 7 个月 · 10 篇彼此没连」，要不要理由你判。点「整理成一篇」只会新建一篇空标题、把这几篇的双链写进去，原来那几篇它一篇都不动。全库的清单在 <kbd>Ctrl+K</kbd> 搜「思想重复度」。</li>
       </ul>
       <figure class="shot">
         <div class="frame">
           <img src="assets/screenshots/g-graph.webp" alt="右栏：局部图谱、出链三条、反向链接 12 条各带上下文那一行" loading="lazy" onerror="this.closest('.shot').classList.add('is-broken')" srcset="assets/screenshots/g-graph.webp 1440w, assets/screenshots/g-graph@720w.webp 720w" sizes="(max-width: 760px) 92vw, 660px" width="1440" height="900">
           <div class="fallback"><span>.webp</span><span>截图待补</span></div>
         </div>
-        <figcaption>右栏的局部图谱。全屏图谱待拍 <code>g-graph-full.png</code>。</figcaption>
+        <figcaption>右栏的局部图谱：中间是正在写的这篇，外圈是它两跳以内的邻居。</figcaption>
+      </figure>
+      <figure class="shot">
+        <div class="frame">
+          <img src="assets/screenshots/g-global.webp" alt="全屏图谱：102 条记录 155 条连线，方块按主题着色，虚线圈是还没有写出来的那一篇" loading="lazy" onerror="this.closest('.shot').classList.add('is-broken')" srcset="assets/screenshots/g-global.webp 1440w, assets/screenshots/g-global@720w.webp 720w" sizes="(max-width: 760px) 92vw, 660px" width="1440" height="900">
+          <div class="fallback"><span>.webp</span><span>截图待补</span></div>
+        </div>
+        <figcaption>按 <kbd>Ctrl+G</kbd> 之后的全屏图谱：102 条记录 155 条连线，方块按主题着色，虚线圈出来的是还没写的那一篇。</figcaption>
       </figure>
     </section>
 
@@ -293,7 +300,7 @@
         <div class="frame">
           <img src="assets/screenshots/g-tabs.webp" alt="标签条上三枚并排，每枚带着自己那一篇的标题，侧栏是主题底下的文章卡" loading="lazy" onerror="this.closest('.shot').classList.add('is-broken')" srcset="assets/screenshots/g-tabs.webp 1440w, assets/screenshots/g-tabs@720w.webp 720w" sizes="(max-width: 760px) 92vw, 660px" width="1440" height="900">
         </div>
-        <figcaption>标签与工作区。</figcaption>
+        <figcaption>标签条上三枚并排，每一枚带着自己那一篇的标题。</figcaption>
       </figure>
     </section>
 
@@ -323,7 +330,7 @@
       <ul>
         <li>图片直接封进那一个文件里，不用旁边再带一个 <code>assets/</code> 夹。</li>
         <li>公式用 MathML（不带走那 1 MB 字体），Mermaid 只带渲好的那张 SVG。</li>
-        <li>落盘前它自己再跑一遍三条判据：没有脚本、没有外链、没有你机器上的路径。<strong>过不了就不写</strong>——宁可少一份文件，也不寄出去一份带着脚本或你家目录的。</li>
+        <li>写下去之前它自己再查三样：没有脚本、没有外链、没有你机器上的路径。<strong>有一样不过就不写文件</strong>——少一份文件总比寄出去一份带着脚本或者你家目录的强。</li>
       </ul>
       <p>这一档不是发布、也不是托管：没有上传、没有链接、没有别人能访问的地址。发给谁，内容就归谁。</p>
     </section>
@@ -333,7 +340,7 @@
       <p><kbd>Ctrl+K</kbd> 搜「导出为 Markdown」。整个库导成一棵目录树，每篇一个 <code>.md</code>，标题、主题、标签、属性铺在文件开头的 frontmatter 里——Obsidian 那类编辑器打开就是原生形状。</p>
       <p>搜「从 Markdown 导回」可以把那棵树导回来。它<strong>认的是自家包头里的那串 <code>kestrel-id</code></strong>：同一篇导回去不会多出重复。</p>
       <div class="note">
-        <p>这一对只保证<strong>自己家往返</strong>。别的软件导过来的目录，它一个字都不读——这不是没做完，是设计选择：通用导入的边界太长，做不好就是把你现有的库搞乱。</p>
+        <p>这一对只保证<strong>自己导出去、再自己导回来</strong>。别的软件导过来的目录，它一个字都不读——这不是没做完，是有意这么选的：通用导入要照顾的格式太多，照顾不全反而会把你现有的库搞乱。</p>
       </div>
     </section>
 
@@ -350,7 +357,7 @@
           <img src="assets/screenshots/g-safety.webp" alt="回收站浮层：删掉的那一篇带着删除时间，可以恢复也可以彻底删除" loading="lazy" onerror="this.closest('.shot').classList.add('is-broken')" srcset="assets/screenshots/g-safety.webp 1440w, assets/screenshots/g-safety@720w.webp 720w" sizes="(max-width: 760px) 92vw, 660px" width="1440" height="900">
           <div class="fallback"><span>.webp</span><span>截图待补</span></div>
         </div>
-        <figcaption>回收站与历史版本。</figcaption>
+        <figcaption>回收站：删掉的那一篇带着删除时间，「恢复」和「彻底删除」各在一边。</figcaption>
       </figure>
     </section>
 
@@ -386,14 +393,14 @@
       <ul>
         <li><strong>四套主题</strong>：白桦（亮色默认）、麦秸（亮色，长阅读）、松林（暗色默认）、薄荷（暗色，高对比）。勾「跟随系统」就在亮暗两档之间自己换。强调色各有几档预设。</li>
         <li><strong>字号</strong>是一整条阶梯一起调，不是只放大正文。</li>
-        <li><strong>毛玻璃</strong>能关；关了之后界面变实色，读起来更安静。</li>
+        <li><strong>毛玻璃</strong>能关；关了之后界面变成实色，长文读起来背景不再跟着透。</li>
       </ul>
       <p><strong>想改得更深</strong>：把你的 <code>.css</code> 丢进 <code>%APPDATA%\Kestrel\snippets\</code>，立刻生效，删掉就撤回来。</p>
       <ul>
         <li>生效顺序按文件名升序，跟你什么时候存盘无关；两份撞同一条选择器，名字靠后那份赢。</li>
-        <li>设置那一格能看到每一份的大小与改过的时间，能单独关掉某一份（关着的状态重启还在）。超过 1 MB 的那份不生效，但会列出来并写着为什么——静默失灵是最难查的那种失灵。</li>
-        <li>写坏了、界面被你藏起来了？<kbd>Ctrl+K</kbd> 搜「暂停全部片段」，或者启动时加 <code>--no-snippets</code>。暂停只影响本次运行，不改任何勾。</li>
-        <li>一句实测经验：<strong>直接改类选择器最稳</strong>（<code>.md-prose { … }</code> 这种，不用 <code>!important</code> 就盖得住）。要换主题变量得写 <code>body[data-theme] { --text-1: … }</code>——写成 <code>body {}</code> 或 <code>:root {}</code> 压不住主题那一层。</li>
+        <li>设置那一格能看到每一份的大小与改过的时间，能单独关掉某一份（关着的状态重启还在）。超过 1 MB 的那份不生效，但会照样列出来，后面写着为什么没生效——最怕的是不生效还不说。</li>
+        <li>写坏了、界面被你藏起来了？<kbd>Ctrl+K</kbd> 搜「暂停全部片段」，或者启动时加 <code>--no-snippets</code>。暂停只管这一次运行，不改任何勾。</li>
+        <li>踩过的坑：<strong>直接改类选择器最稳</strong>（<code>.md-prose { … }</code> 这种，不用 <code>!important</code> 就盖得住）。要换主题变量得写 <code>body[data-theme] { --text-1: … }</code>——写成 <code>body {}</code> 或 <code>:root {}</code> 压不住主题那一层。</li>
         <li>片段是<strong>文件</strong>，不在库里：每日快照、导出、换库都不含它们。</li>
         <li>片段里写 <code>@import url(http://…)</code> 或背景图外链都出不了网——CSP 当场拦下。这跟「零网络请求」那句承诺是同一件事。</li>
       </ul>
@@ -403,7 +410,7 @@
             <img src="assets/screenshots/g-dark.webp" alt="松林（暗色档）下的整窗：正文、右栏与标签栏都跟着换色" loading="lazy" onerror="this.closest('.shot').classList.add('is-broken')" srcset="assets/screenshots/g-dark.webp 1440w, assets/screenshots/g-dark@720w.webp 720w" sizes="(max-width: 760px) 92vw, 660px" width="1440" height="900">
             <div class="fallback"><span>.webp</span><span>截图待补</span></div>
           </div>
-          <figcaption>松林 · 暗色档的整窗观感。</figcaption>
+          <figcaption>松林（暗色档）下的整个窗口：正文、右栏和标签条一起跟着换色。</figcaption>
         </figure>
         <figure class="shot">
           <div class="frame">

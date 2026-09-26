@@ -1190,6 +1190,9 @@ pre,
 .feat-shot {
   display: block;
   width: 100%;
+  /* 必须写死 auto：标签上的 height="900" 是一张 img 的 presentation attribute，
+     只覆盖 width 的话它会继续生效，把 1440×900 的图拉成 609×900（实测偏 58%–70%）。 */
+  height: auto;
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-panel);
